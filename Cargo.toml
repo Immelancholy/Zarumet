@@ -12,10 +12,6 @@ color-eyre = "0.6.5"
 image = "0.25.9"
 mpd = "0.1.0"
 
-[dependencies.ez-ffmpeg]
-version = "0.6.0"
-features = ["async"]
-
 [dependencies.ratatui-image]
 version = "8.0.2"
 features = ["crossterm"]
