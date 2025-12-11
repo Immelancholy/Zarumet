@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install FFmpeg
         run: |
           sudo apt-get update
@@ -48,7 +48,7 @@ jobs:
       checks: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install FFmpeg
         run: |
           sudo apt-get update
@@ -68,7 +68,7 @@ jobs:
     name: doc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install FFmpeg
         run: |
           sudo apt-get update
@@ -95,7 +95,7 @@ jobs:
       #   if: runner.os == 'Windows'
       # - run: vcpkg install openssl:x64-windows-static-md
       #   if: runner.os == 'Windows'
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install FFmpeg (Linux)
         if: runner.os == 'Linux'
         run: |
