@@ -11,10 +11,8 @@ crossterm = "0.29.0"
 color-eyre = "0.6.5"
 image = "0.25.9"
 mpd = "0.1.0"
+ratatui-image = "8.0.2"
 
-[dependencies.ratatui-image]
-version = "8.0.2"
-features = ["crossterm"]
 
 [profile.release]
 codegen-units = 1
