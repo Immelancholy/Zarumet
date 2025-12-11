@@ -22,7 +22,6 @@ in
     PKG_CONFIG_PATH = "${ffmpeg_7.dev}/lib/pkgconfig";
     FFMPEG_PKG_CONFIG_PATH = "${ffmpeg_7.dev}/lib/pkgconfig";
 
-    # Force use of system FFmpeg
     FFMPEG_STATIC = "false";
     FFMPEG_LIBS_DIR = "${ffmpeg_7.out}/lib";
     FFMPEG_INCLUDE_DIR = "${ffmpeg_7.dev}/include";
