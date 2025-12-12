@@ -18,7 +18,7 @@ in {
       description = "The zarumet package to use";
     };
 
-    settings = {
+    settings = mkOption {
       type = tomlFormat.type;
       default = {};
       example = literalExpression ''
