@@ -27,7 +27,7 @@ pub fn render(
     // Split the area: image on top, song info at bottom
     let chunks = Layout::vertical([
         Constraint::Min(10),   // Image takes most space
-        Constraint::Length(5), // Song info takes 5 lines
+        Constraint::Length(4), // Song info takes 4 lines
     ])
     .split(area);
 
@@ -42,9 +42,7 @@ pub fn render(
         let image = StatefulImage::default().resize(Resize::Fit(Some(FilterType::Lanczos3)));
         frame.render_stateful_widget(image, image_area, img);
     } else {
-        let [centered_area] = Layout::vertical([Constraint::Length(1)])
-            .flex(Flex::Center)
-            .areas(image_area);
+        let centered_area = center_area(image_area, Constraint::Length(12), Constraint::Length(1));
 
         let placeholder = Paragraph::new("No album art")
             .centered()
@@ -72,14 +70,11 @@ fn create_song_widget<'a>(current_song: &'a Option<SongInfo>, config: &Config) -
                 &song.title,
                 Style::default().fg(title_color),
             )]),
-            Line::from(vec![Span::styled(
-                &song.artist,
-                Style::default().fg(artist_color),
-            )]),
-            Line::from(vec![Span::styled(
-                &song.album,
-                Style::default().fg(album_color),
-            )]),
+            Line::from(vec![
+                Span::styled(&song.artist, Style::default().fg(artist_color)),
+                Span::styled(" - ", Style::default().fg(status_color)),
+                Span::styled(&song.album, Style::default().fg(album_color)),
+            ]),
         ],
         None => vec![Line::from("No song playing").dark_gray()],
     };
