@@ -2,6 +2,7 @@ self: {
   lib,
   pkgs,
   config,
+  ...
 }:
 with lib; let
   cfg = config.programs.zarumet;
