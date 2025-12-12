@@ -23,14 +23,24 @@ pub struct ColorsConfig {
 }
 
 impl Config {
-    pub fn load() -> color_eyre::Result<Self> {
-        let home = std::env::var("HOME")?;
-        let config_dir = PathBuf::from(home).join(".config").join("zarumet");
-        let config_path = config_dir.join("config.toml");
+    pub fn load(config_path: Option<PathBuf>) -> color_eyre::Result<Self> {
+        let config_path = match config_path {
+            Some(path) => path,
+            None => {
+                let home = std::env::var("HOME")?;
+                PathBuf::from(home)
+                    .join(".config")
+                    .join("zarumet")
+                    .join("config.toml")
+            }
+        };
+
         // Check if config file exists
         if !config_path.exists() {
             // Create config directory if it doesn't exist
-            std::fs::create_dir_all(&config_dir)?;
+            if let Some(parent) = config_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
 
             // Create default config
             let default_config = Config::default();

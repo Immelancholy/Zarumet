@@ -1,7 +1,9 @@
+mod cli;
 mod config;
 mod song;
 mod ui;
 
+use clap::Parser;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use mpd_client::{Client, commands};
 use ratatui::DefaultTerminal;
@@ -10,6 +12,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tokio::net::TcpStream;
 
+use cli::Args;
 use config::Config;
 use song::SongInfo;
 use ui::Protocol;
@@ -17,8 +20,13 @@ use ui::Protocol;
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
+
+    // Parse command line arguments
+    let args = Args::parse();
+
+    // Initialize terminal
     let terminal = ratatui::init();
-    let result = App::new()?.run(terminal).await;
+    let result = App::new(args)?.run(terminal).await;
     ratatui::restore();
     result
 }
@@ -36,8 +44,16 @@ pub struct App {
 
 impl App {
     /// Construct a new instance of [`App`].
-    pub fn new() -> color_eyre::Result<Self> {
-        let config = Config::load()?;
+    pub fn new(args: Args) -> color_eyre::Result<Self> {
+        let mut config = Config::load(args.config)?;
+
+        if let Some(address) = args.address {
+            config.mpd.address = address;
+        }
+
+        if let Some(music_dir) = args.music_dir {
+            config.mpd.music_dir = music_dir;
+        }
         Ok(Self {
             running: false,
             current_song: None,
