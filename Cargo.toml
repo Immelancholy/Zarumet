@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Immelancholy <lenalowes0@gmail.com>"]
 license = "MIT"
+description = "A terminal-based mpd album display"
+homepage = "https://github.com/Immelancholy/zarumet"
+repository = "https://github.com/Immelancholy/zarumet"
 
 [dependencies]
 ratatui = "0.29.0"
