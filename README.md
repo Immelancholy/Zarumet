@@ -1,4 +1,4 @@
-# Zarumet
+# 🦀 Zarumet 🦀
 
 ## Introduction
 
