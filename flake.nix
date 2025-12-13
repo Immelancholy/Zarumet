@@ -15,7 +15,6 @@
     rust-overlay,
     ...
   }: let
-    inherit (self) outputs;
     systems = [
       "x86_64-linux"
       "aarch64-linux"

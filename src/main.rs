@@ -53,9 +53,6 @@ impl App {
             config.mpd.address = address;
         }
 
-        if let Some(music_dir) = args.music_dir {
-            config.mpd.music_dir = music_dir;
-        }
         Ok(Self {
             running: false,
             current_song: None,

@@ -10,7 +10,6 @@ pub struct Config {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MpdConfig {
     pub address: String,
-    pub music_dir: PathBuf,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -114,10 +113,8 @@ impl Default for Config {
 
 impl Default for MpdConfig {
     fn default() -> Self {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/home".to_string());
         Self {
             address: "localhost:6600".to_string(),
-            music_dir: PathBuf::from(home).join("Music"),
         }
     }
 }

@@ -39,7 +39,6 @@ impl SongInfo {
     }
     pub async fn load_cover(&self, client: &Client) -> Option<Vec<u8>> {
         let uri = self.file_path.to_str()?;
-        eprintln!("Loading cover for {}", uri);
         let art_data_result = client.album_art(&uri).await.ok()?;
 
         let (raw_data, _mime_type_option) = art_data_result?;

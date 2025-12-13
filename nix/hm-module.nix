@@ -24,7 +24,6 @@ in {
       example = literalExpression ''
         {
           address = "localhost:6600";
-          music_dir = "/mnt/music";
         }
       '';
       description = "Settings for zarumet";
