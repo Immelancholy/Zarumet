@@ -39,7 +39,7 @@ pub fn render(
 
     // Only render image if we have one
     if let Some(ref mut img) = protocol.image {
-        let image = StatefulImage::default().resize(Resize::Fit(Some(FilterType::Lanczos3)));
+        let image = StatefulImage::default().resize(Resize::Scale(Some(FilterType::Lanczos3)));
         frame.render_stateful_widget(image, image_area, img);
     } else {
         let centered_area = center_area(image_area, Constraint::Length(12), Constraint::Length(1));
