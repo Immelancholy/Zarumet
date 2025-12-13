@@ -5,9 +5,11 @@ mod ui;
 
 use clap::Parser;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use futures::executor::block_on;
 use mpd_client::{Client, commands};
 use ratatui::DefaultTerminal;
 use ratatui_image::picker::Picker;
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::time::Duration;
 use tokio::net::TcpStream;
@@ -83,16 +85,20 @@ impl App {
             .map(|song| song.file_path.clone());
 
         // Try to get initial image
-        let initial_image_path = self
+        let initial_image = self
             .current_song
             .as_ref()
-            .and_then(|song| song.find_cover_art(&self.config.mpd.music_dir));
+            .and_then(|song| block_on(song.load_cover(&client)));
 
         // Create protocol with initial image (if available)
         let mut protocol = Protocol {
-            image: initial_image_path
+            image: initial_image
                 .as_ref()
-                .and_then(|path| image::ImageReader::open(path).ok())
+                .and_then(|raw_data| {
+                    image::ImageReader::new(Cursor::new(raw_data))
+                        .with_guessed_format()
+                        .ok()
+                })
                 .and_then(|reader| reader.decode().ok())
                 .map(|dyn_img| picker.new_resize_protocol(dyn_img)),
         };
@@ -121,14 +127,18 @@ impl App {
 
             if new_song_file != current_song_file {
                 // Song changed, reload the cover art
-                let new_image_path = self
+                let new_image = self
                     .current_song
                     .as_ref()
-                    .and_then(|song| song.find_cover_art(&self.config.mpd.music_dir));
+                    .and_then(|song| block_on(song.load_cover(&client)));
 
-                protocol.image = new_image_path
+                protocol.image = new_image
                     .as_ref()
-                    .and_then(|path| image::ImageReader::open(path).ok())
+                    .and_then(|raw_data| {
+                        image::ImageReader::new(Cursor::new(raw_data))
+                            .with_guessed_format()
+                            .ok()
+                    })
                     .and_then(|reader| reader.decode().ok())
                     .map(|dyn_img| picker.new_resize_protocol(dyn_img));
 
