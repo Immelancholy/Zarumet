@@ -69,7 +69,7 @@ impl App {
         let (client, _state_changes) = Client::connect(connection).await?;
 
         match SongInfo::set_max_art_size(&client, 5 * 1024 * 1024).await {
-            Ok(_) => println!("MPD binary limit set to 5MB successfully."),
+            Ok(_) => {}
             Err(e) => eprintln!("Failed to set MPD binary limit: {}", e),
         }
 
