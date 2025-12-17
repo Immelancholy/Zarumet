@@ -43,6 +43,16 @@ pub struct ColorsConfig {
     pub time_duration: String,
     #[serde(default = "ColorsConfig::default_time_elapsed")]
     pub time_elapsed: String,
+    #[serde(default = "ColorsConfig::default_queue_selected_highlight")]
+    pub queue_selected_highlight: String,
+    #[serde(default = "ColorsConfig::default_queue_selected_text")]
+    pub queue_selected_text: String,
+    #[serde(default = "ColorsConfig::default_queue_album")]
+    pub queue_album: String,
+    #[serde(default = "ColorsConfig::default_queue_song_title")]
+    pub queue_song_title: String,
+    #[serde(default = "ColorsConfig::default_queue_artist")]
+    pub queue_artist: String,
 }
 
 impl Config {
@@ -175,6 +185,36 @@ impl ColorsConfig {
             .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
             .unwrap_or(ratatui::style::Color::Yellow)
     }
+
+    pub fn queue_album_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.queue_album)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Green)
+    }
+
+    pub fn queue_artist_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.queue_artist)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Cyan)
+    }
+
+    pub fn queue_song_title_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.queue_song_title)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Yellow)
+    }
+
+    pub fn queue_selected_text_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.queue_selected_text)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::White)
+    }
+
+    pub fn queue_selected_highlight_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.queue_selected_highlight)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Black)
+    }
 }
 
 impl Default for Config {
@@ -252,6 +292,26 @@ impl ColorsConfig {
     fn default_time_elapsed() -> String {
         "#c6bb69".to_string()
     }
+
+    fn default_queue_selected_highlight() -> String {
+        "#b18a4a".to_string()
+    }
+
+    fn default_queue_selected_text() -> String {
+        "#1b1d0e".to_string()
+    }
+
+    fn default_queue_album() -> String {
+        "#26a0a1".to_string()
+    }
+
+    fn default_queue_artist() -> String {
+        "#d67751".to_string()
+    }
+
+    fn default_queue_song_title() -> String {
+        "#fae280".to_string()
+    }
 }
 
 impl Default for ColorsConfig {
@@ -270,6 +330,11 @@ impl Default for ColorsConfig {
             time_elapsed: Self::default_time_elapsed(),
             time_separator: Self::default_time_separator(),
             time_duration: Self::default_time_duration(),
+            queue_selected_highlight: Self::default_queue_selected_highlight(),
+            queue_selected_text: Self::default_queue_selected_text(),
+            queue_album: Self::default_queue_album(),
+            queue_artist: Self::default_queue_artist(),
+            queue_song_title: Self::default_queue_song_title(),
         }
     }
 }
