@@ -25,24 +25,47 @@ pub fn render(
     let area = frame.area();
 
     // Split the area horizontally: left box, right content
-    let horizontal_chunks = Layout::horizontal([
-        Constraint::Percentage(45), // Left box takes 25% of width
-        Constraint::Percentage(55), // Right content takes 75% of width
+    // Split area vertically: top section, middle section, bottom section
+    let main_vertical_chunks = Layout::vertical([
+        Constraint::Length(1),       // Format info takes 1 line
+        Constraint::Length(3),       // New middle box takes 3 lines
+        Constraint::Percentage(100), // Remaining content takes rest
     ])
     .split(area);
 
+    // Split bottom section horizontally: left box, right content
+    let bottom_horizontal_chunks = Layout::horizontal([
+        Constraint::Percentage(45), // Left box takes 45% of width
+        Constraint::Percentage(55), // Right content takes 55% of width
+    ])
+    .split(main_vertical_chunks[2]);
+
     let left_vertical_chunks = Layout::vertical([
         Constraint::Percentage(100), // Top content takes 100% of height left
-        Constraint::Length(3),       // Bottom content takes 3 lines
+        Constraint::Length(3),       // Progress bar takes 3 lines
     ])
-    .split(horizontal_chunks[0]);
+    .split(bottom_horizontal_chunks[0]);
 
-    // Extract play_state and progress from current_song
-    let (play_state, progress, elapsed, duration) = if let Some(song) = current_song {
-        (song.play_state, song.progress, song.elapsed, song.duration)
+    // Extract play_state, progress, and format from current_song
+    let (play_state, progress, elapsed, duration, format) = if let Some(song) = current_song {
+        (
+            song.play_state,
+            song.progress,
+            song.elapsed,
+            song.duration,
+            song.format.clone(),
+        )
     } else {
-        (None, None, None, None)
+        (None, None, None, None, None)
     };
+
+    // Render format info widget at top
+    let format_widget = create_format_widget(&format, current_song, config);
+    frame.render_widget(format_widget, main_vertical_chunks[0]);
+
+    // Render middle box that spans both splits
+    let middle_box = create_middle_box(config);
+    frame.render_widget(middle_box, main_vertical_chunks[1]);
 
     // Render widgets in left vertical split
     let left_box_top = create_left_box_top(config);
@@ -54,28 +77,34 @@ pub fn render(
 
     // Split the right area vertically: image on top, song info at bottom
     let right_vertical_chunks = Layout::vertical([
-        Constraint::Min(10),   // Image takes most space
-        Constraint::Length(4), // Song info takes 4 lines
+        Constraint::Percentage(100), // Image takes most space
+        Constraint::Length(4),       // Song info takes 4 lines
     ])
-    .split(horizontal_chunks[1]);
+    .split(bottom_horizontal_chunks[1]);
 
-    let image_area = center_area(
-        right_vertical_chunks[0],
-        Constraint::Percentage(100),
-        Constraint::Percentage(100),
-    );
+    let image_area = right_vertical_chunks[0];
+
+    // Use full image area for better space utilization
 
     // Only render image if we have one
     if let Some(ref mut img) = protocol.image {
-        let image = StatefulImage::default().resize(Resize::Scale(Some(FilterType::Lanczos3)));
-        frame.render_stateful_widget(image, image_area, img);
-    } else {
-        let centered_area = center_area(image_area, Constraint::Length(12), Constraint::Length(1));
+        // Get the image dimensions after resizing for the available area
+        let resize = Resize::Scale(Some(FilterType::Lanczos3));
+        let img_rect = img.size_for(resize.clone(), image_area);
 
-        let placeholder = Paragraph::new("No album art")
-            .centered()
-            .style(Style::default().dark_gray());
-        frame.render_widget(placeholder, centered_area);
+        // Center the image within the available area
+        let centered_area = center_image(img_rect, image_area);
+
+        let image = StatefulImage::default().resize(resize);
+        frame.render_stateful_widget(image, centered_area, img);
+    } else {
+        let placeholder_area = center_area(
+            right_vertical_chunks[0],
+            Constraint::Length(12),
+            Constraint::Length(1),
+        );
+        let placeholder = Paragraph::new("No album art").style(Style::default().dark_gray());
+        frame.render_widget(placeholder, placeholder_area);
     }
 
     // Render the song information
@@ -152,21 +181,23 @@ fn create_left_box_bottom(
             // Create styled time spans
             let time_spans = match (self.elapsed, self.duration) {
                 (Some(elapsed), Some(duration)) => vec![
-                    Span::styled(" ", self.song_title_color),
+                    Span::raw(" "),
                     Span::styled(format_duration(elapsed), self.time_elapsed_color),
                     Span::styled("/", self.time_separator_color),
                     Span::styled(format_duration(duration), self.time_duration_color),
-                    Span::styled(" ", self.song_title_color),
+                    Span::raw(" "),
                 ],
                 (Some(elapsed), None) => vec![
-                    Span::styled(" ", self.song_title_color),
+                    Span::raw(" "),
                     Span::styled(format_duration(elapsed), self.time_elapsed_color),
-                    Span::styled("/--:-- ", self.song_title_color),
+                    Span::styled("/--:--", self.song_title_color),
+                    Span::raw(" "),
                 ],
                 (None, Some(duration)) => vec![
-                    Span::styled(" --:--/", self.song_title_color),
+                    Span::raw(" "),
+                    Span::styled("--:--/", self.song_title_color),
                     Span::styled(format_duration(duration), self.time_duration_color),
-                    Span::styled(" ", self.song_title_color),
+                    Span::raw(" "),
                 ],
                 (None, None) => vec![Span::styled(" --:--/--:-- ", self.song_title_color)],
             };
@@ -230,6 +261,67 @@ fn create_left_box_top<'a>(config: &Config) -> Paragraph<'a> {
         .centered()
 }
 
+/// Create the middle box widget that spans both splits
+fn create_middle_box<'a>(config: &Config) -> Paragraph<'a> {
+    let border_color = config.colors.border_color();
+    let text_color = config.colors.song_title_color();
+
+    let content = "Placeholder".to_string();
+
+    Paragraph::new(content)
+        .block(
+            Block::default()
+                .border_type(BorderType::Rounded)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(border_color)),
+        )
+        .style(Style::default().fg(text_color))
+        .centered()
+}
+
+/// Create the format information widget
+fn create_format_widget<'a>(
+    format: &Option<String>,
+    current_song: &Option<SongInfo>,
+    config: &Config,
+) -> Paragraph<'a> {
+    let format_color = config.colors.song_title_color();
+
+    let format_text = match format {
+        Some(f) => {
+            // Parse format string like "44100:24:2" to extract sample rate
+            if let Some(sample_rate_part) = f.split(':').next() {
+                if let Ok(sample_rate) = sample_rate_part.parse::<u32>() {
+                    // Format sample rate as kHz
+                    let sample_rate_khz = sample_rate as f32 / 1000.0;
+
+                    // Extract file extension from the current song's file path
+                    let file_type = if let Some(song) = current_song {
+                        song.file_path
+                            .extension()
+                            .and_then(|ext| ext.to_str())
+                            .unwrap_or("unknown")
+                            .to_uppercase()
+                    } else {
+                        "unknown".to_string()
+                    };
+
+                    format!("{}: {:.1}kHz", file_type, sample_rate_khz)
+                } else {
+                    f.clone()
+                }
+            } else {
+                f.clone()
+            }
+        }
+        None => "--".to_string(),
+    };
+
+    Paragraph::new(format_text)
+        .style(Style::default().fg(format_color))
+        .left_aligned()
+}
+
 /// Create the song information widget
 fn create_song_widget<'a>(current_song: &'a Option<SongInfo>, config: &Config) -> Paragraph<'a> {
     // Get colors from config
@@ -277,4 +369,12 @@ pub fn center_area(area: Rect, horizontal: Constraint, vertical: Constraint) -> 
         .areas(area);
     let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
     area
+}
+pub fn center_image(image_dimensions: Rect, available_area: Rect) -> Rect {
+    Rect {
+        x: available_area.x + (available_area.width - image_dimensions.width) / 2,
+        y: available_area.y + (available_area.height - image_dimensions.height) / 2,
+        width: image_dimensions.width,
+        height: image_dimensions.height,
+    }
 }

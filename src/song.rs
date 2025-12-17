@@ -12,6 +12,7 @@ pub struct SongInfo {
     pub artist: String,
     pub album: String,
     pub file_path: PathBuf,
+    pub format: Option<String>,
     pub play_state: Option<PlayState>,
     pub progress: Option<f64>,
     pub elapsed: Option<std::time::Duration>,
@@ -35,12 +36,14 @@ impl SongInfo {
             .unwrap_or_else(|| "Unknown Album".to_string());
 
         let file_path = song.file_path().to_path_buf();
+        let format = song.format.clone();
 
         Self {
             title,
             artist,
             album,
             file_path,
+            format,
             play_state: None,
             progress: None,
             elapsed: None,
