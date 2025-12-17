@@ -36,13 +36,13 @@ pub fn render(
 
     // Split bottom section horizontally: left box, right content
     let bottom_horizontal_chunks = Layout::horizontal([
-        Constraint::Percentage(45), // Left box takes 45% of width
-        Constraint::Percentage(55), // Right content takes 55% of width
+        Constraint::Percentage(50), // Left box takes 55% of width
+        Constraint::Percentage(50), // Right content takes 45% of width
     ])
     .split(main_vertical_chunks[2]);
 
     let left_vertical_chunks = Layout::vertical([
-        Constraint::Percentage(100), // Top content takes 100% of height left
+        Constraint::Percentage(100), // Queue takes most of the space
         Constraint::Length(3),       // Progress bar takes 3 lines
     ])
     .split(bottom_horizontal_chunks[0]);
