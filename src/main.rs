@@ -24,7 +24,7 @@ use binds::{KeyBinds, MPDAction};
 use cli::Args;
 use config::Config;
 use menu::{MenuMode, PanelFocus};
-use song::{SongInfo, Library};
+use song::{Library, SongInfo};
 use ui::Protocol;
 
 #[tokio::main]
@@ -118,7 +118,7 @@ impl App {
 
         // Load library
         self.library = Some(Library::load_library(&client).await?);
-        
+
         // Initialize artist selection if library has artists
         if let Some(ref library) = self.library {
             if !library.artists.is_empty() {
@@ -167,11 +167,11 @@ impl App {
                     &self.queue,
                     &mut self.queue_list_state,
                     &self.config,
-                     &self.menu_mode,
-                     &self.library,
-                     &mut self.artist_list_state,
-                     &mut self.album_list_state,
-                     &self.panel_focus,
+                    &self.menu_mode,
+                    &self.library,
+                    &mut self.artist_list_state,
+                    &mut self.album_list_state,
+                    &self.panel_focus,
                 )
             })?;
 
@@ -468,8 +468,12 @@ impl App {
                             self.panel_focus = menu::PanelFocus::Albums;
                             // Initialize album selection when switching to albums panel
                             if let Some(ref library) = self.library {
-                                if let Some(selected_artist_index) = self.artist_list_state.selected() {
-                                    if let Some(selected_artist) = library.artists.get(selected_artist_index) {
+                                if let Some(selected_artist_index) =
+                                    self.artist_list_state.selected()
+                                {
+                                    if let Some(selected_artist) =
+                                        library.artists.get(selected_artist_index)
+                                    {
                                         if !selected_artist.albums.is_empty() {
                                             self.album_list_state.select(Some(0));
                                         }
@@ -503,17 +507,21 @@ impl App {
                         }
                         menu::PanelFocus::Albums => {
                             // Navigate albums list
-                            if let (Some(library), Some(selected_artist_index)) = 
-                                (&self.library, self.artist_list_state.selected()) {
-                                if let Some(selected_artist) = library.artists.get(selected_artist_index) {
+                            if let (Some(library), Some(selected_artist_index)) =
+                                (&self.library, self.artist_list_state.selected())
+                            {
+                                if let Some(selected_artist) =
+                                    library.artists.get(selected_artist_index)
+                                {
                                     if !selected_artist.albums.is_empty() {
                                         let current = self.album_list_state.selected().unwrap_or(0);
                                         if current > 0 {
                                             self.album_list_state.select(Some(current - 1));
                                         } else {
                                             // Wrap around to bottom
-                                            self.album_list_state
-                                                .select(Some(selected_artist.albums.len().saturating_sub(1)));
+                                            self.album_list_state.select(Some(
+                                                selected_artist.albums.len().saturating_sub(1),
+                                            ));
                                         }
                                     }
                                 }
@@ -541,12 +549,16 @@ impl App {
                         }
                         menu::PanelFocus::Albums => {
                             // Navigate albums list
-                            if let (Some(library), Some(selected_artist_index)) = 
-                                (&self.library, self.artist_list_state.selected()) {
-                                if let Some(selected_artist) = library.artists.get(selected_artist_index) {
+                            if let (Some(library), Some(selected_artist_index)) =
+                                (&self.library, self.artist_list_state.selected())
+                            {
+                                if let Some(selected_artist) =
+                                    library.artists.get(selected_artist_index)
+                                {
                                     if !selected_artist.albums.is_empty() {
                                         let current = self.album_list_state.selected().unwrap_or(0);
-                                        if current < selected_artist.albums.len().saturating_sub(1) {
+                                        if current < selected_artist.albums.len().saturating_sub(1)
+                                        {
                                             self.album_list_state.select(Some(current + 1));
                                         } else {
                                             // Wrap around to top
