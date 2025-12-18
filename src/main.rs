@@ -23,7 +23,7 @@ use tokio::net::TcpStream;
 use binds::{KeyBinds, MPDAction};
 use cli::Args;
 use config::Config;
-use menu::{MenuMode, PanelFocus};
+use menu::MenuMode;
 use song::{Library, SongInfo};
 use ui::Protocol;
 
@@ -65,7 +65,6 @@ pub struct App {
     artist_list_state: ListState,
     album_list_state: ListState,
     album_display_list_state: ListState, // For handling expanded album navigation
-    track_list_state: ListState,
     /// Configuration loaded from TOML file
     config: Config,
     /// Current menu mode
@@ -99,7 +98,6 @@ impl App {
             artist_list_state: ListState::default(),
             album_list_state: ListState::default(),
             album_display_list_state: ListState::default(),
-            track_list_state: ListState::default(),
             config,
             menu_mode: MenuMode::Queue, // Start with queue menu
             panel_focus: menu::PanelFocus::Artists, // Start with artists panel focused
@@ -503,16 +501,16 @@ impl App {
                             if let Some(ref library) = self.library {
                                 if !library.artists.is_empty() {
                                     let current = self.artist_list_state.selected().unwrap_or(0);
-                            if current > 0 {
-                                self.artist_list_state.select(Some(current - 1));
-                            } else {
-                                // Wrap around to the bottom
-                                self.artist_list_state
-                                    .select(Some(library.artists.len().saturating_sub(1)));
-                            }
-                            // Clear album selection when navigating artists
-                            self.album_list_state.select(None);
-                            self.album_display_list_state.select(None);
+                                    if current > 0 {
+                                        self.artist_list_state.select(Some(current - 1));
+                                    } else {
+                                        // Wrap around to the bottom
+                                        self.artist_list_state
+                                            .select(Some(library.artists.len().saturating_sub(1)));
+                                    }
+                                    // Clear album selection when navigating artists
+                                    self.album_list_state.select(None);
+                                    self.album_display_list_state.select(None);
                                 }
                             }
                         }
@@ -525,11 +523,15 @@ impl App {
                                     library.artists.get(selected_artist_index)
                                 {
                                     // Compute display list to get total count
-                                    let (display_items, _album_indices) = 
-                                        ui::compute_album_display_list(selected_artist, &self.expanded_albums);
-                                    
+                                    let (display_items, _album_indices) =
+                                        ui::compute_album_display_list(
+                                            selected_artist,
+                                            &self.expanded_albums,
+                                        );
+
                                     if !display_items.is_empty() {
-                                        let current = self.album_display_list_state.selected().unwrap_or(0);
+                                        let current =
+                                            self.album_display_list_state.selected().unwrap_or(0);
                                         if current > 0 {
                                             self.album_display_list_state.select(Some(current - 1));
                                         } else {
@@ -538,7 +540,7 @@ impl App {
                                                 display_items.len().saturating_sub(1),
                                             ));
                                         }
-                                        
+
                                         // Update the legacy album_list_state to point to the current album if on album
                                         if let Some(display_item) = display_items.get(current - 1) {
                                             if let ui::DisplayItem::Album(_) = display_item {
@@ -547,7 +549,8 @@ impl App {
                                                 for (i, item) in display_items.iter().enumerate() {
                                                     if matches!(item, ui::DisplayItem::Album(_)) {
                                                         if i == current - 1 {
-                                                            self.album_list_state.select(Some(album_count));
+                                                            self.album_list_state
+                                                                .select(Some(album_count));
                                                             break;
                                                         }
                                                         album_count += 1;
@@ -568,15 +571,15 @@ impl App {
                             if let Some(ref library) = self.library {
                                 if !library.artists.is_empty() {
                                     let current = self.artist_list_state.selected().unwrap_or(0);
-                            if current < library.artists.len().saturating_sub(1) {
-                                self.artist_list_state.select(Some(current + 1));
-                            } else {
-                                // Wrap around to the top
-                                self.artist_list_state.select(Some(0));
-                            }
-                            // Clear album selection when navigating artists
-                            self.album_list_state.select(None);
-                            self.album_display_list_state.select(None);
+                                    if current < library.artists.len().saturating_sub(1) {
+                                        self.artist_list_state.select(Some(current + 1));
+                                    } else {
+                                        // Wrap around to the top
+                                        self.artist_list_state.select(Some(0));
+                                    }
+                                    // Clear album selection when navigating artists
+                                    self.album_list_state.select(None);
+                                    self.album_display_list_state.select(None);
                                 }
                             }
                         }
@@ -589,18 +592,22 @@ impl App {
                                     library.artists.get(selected_artist_index)
                                 {
                                     // Compute display list to get total count
-                                    let (display_items, _album_indices) = 
-                                        ui::compute_album_display_list(selected_artist, &self.expanded_albums);
-                                    
+                                    let (display_items, _album_indices) =
+                                        ui::compute_album_display_list(
+                                            selected_artist,
+                                            &self.expanded_albums,
+                                        );
+
                                     if !display_items.is_empty() {
-                                        let current = self.album_display_list_state.selected().unwrap_or(0);
+                                        let current =
+                                            self.album_display_list_state.selected().unwrap_or(0);
                                         if current < display_items.len().saturating_sub(1) {
                                             self.album_display_list_state.select(Some(current + 1));
                                         } else {
                                             // Wrap around to top
                                             self.album_display_list_state.select(Some(0));
                                         }
-                                        
+
                                         // Update legacy album_list_state to point to current album if on album
                                         if let Some(display_item) = display_items.get(current + 1) {
                                             if let ui::DisplayItem::Album(_) = display_item {
@@ -609,7 +616,8 @@ impl App {
                                                 for (i, item) in display_items.iter().enumerate() {
                                                     if matches!(item, ui::DisplayItem::Album(_)) {
                                                         if i == current + 1 {
-                                                            self.album_list_state.select(Some(album_count));
+                                                            self.album_list_state
+                                                                .select(Some(album_count));
                                                             break;
                                                         }
                                                         album_count += 1;
@@ -630,15 +638,19 @@ impl App {
                         if let Some(selected_artist) = library.artists.get(selected_artist_index) {
                             // Get current display selection
                             if let Some(display_index) = self.album_display_list_state.selected() {
-                                let (display_items, _album_indices) = 
-                                    ui::compute_album_display_list(selected_artist, &self.expanded_albums);
-                                
+                                let (display_items, _album_indices) =
+                                    ui::compute_album_display_list(
+                                        selected_artist,
+                                        &self.expanded_albums,
+                                    );
+
                                 if let Some(display_item) = display_items.get(display_index) {
                                     match display_item {
                                         ui::DisplayItem::Album(album_name) => {
                                             // Toggle album expansion
-                                            let album_key = (selected_artist.name.clone(), album_name.clone());
-                                            
+                                            let album_key =
+                                                (selected_artist.name.clone(), album_name.clone());
+
                                             if self.expanded_albums.contains(&album_key) {
                                                 self.expanded_albums.remove(&album_key);
                                             } else {
@@ -647,7 +659,12 @@ impl App {
                                         }
                                         ui::DisplayItem::Song(_title, _duration, file_path) => {
                                             // Add specific song to queue
-                                            if let Err(e) = client.command(commands::Add::uri(file_path.to_str().unwrap())).await {
+                                            if let Err(e) = client
+                                                .command(commands::Add::uri(
+                                                    file_path.to_str().unwrap(),
+                                                ))
+                                                .await
+                                            {
                                                 eprintln!("Error adding song to queue: {}", e);
                                             }
                                         }
@@ -664,10 +681,17 @@ impl App {
                         if let Some(selected_artist) = library.artists.get(selected_artist_index) {
                             // For now, add all songs from the selected album to queue
                             if let Some(selected_album_index) = self.album_list_state.selected() {
-                                if let Some(selected_album) = selected_artist.albums.get(selected_album_index) {
+                                if let Some(selected_album) =
+                                    selected_artist.albums.get(selected_album_index)
+                                {
                                     // Add all songs from the album to queue
                                     for song in &selected_album.tracks {
-                                        if let Err(e) = client.command(commands::Add::uri(song.file_path.to_str().unwrap())).await {
+                                        if let Err(e) = client
+                                            .command(commands::Add::uri(
+                                                song.file_path.to_str().unwrap(),
+                                            ))
+                                            .await
+                                        {
                                             eprintln!("Error adding song to queue: {}", e);
                                         }
                                     }

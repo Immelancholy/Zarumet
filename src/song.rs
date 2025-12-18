@@ -89,7 +89,6 @@ impl SongInfo {
 #[derive(Debug, Clone)]
 pub struct Album {
     pub name: String,
-    pub artist: String,
     pub tracks: Vec<SongInfo>,
 }
 
@@ -98,14 +97,14 @@ impl Album {
     pub fn total_duration(&self) -> Option<std::time::Duration> {
         let mut total_secs = 0u64;
         let mut has_duration = false;
-        
+
         for track in &self.tracks {
             if let Some(duration) = track.duration {
                 total_secs += duration.as_secs();
                 has_duration = true;
             }
         }
-        
+
         if has_duration {
             Some(std::time::Duration::from_secs(total_secs))
         } else {
@@ -154,10 +153,6 @@ impl Library {
                     .into_iter()
                     .map(|(album_name, tracks)| Album {
                         name: album_name,
-                        artist: tracks
-                            .first()
-                            .map(|t| t.album_artist.clone())
-                            .unwrap_or_else(|| "Unknown Artist".to_string()),
                         tracks,
                     })
                     .collect(),
