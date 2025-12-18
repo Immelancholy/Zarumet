@@ -1,14 +1,15 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use mpd_client::{client::CommandError, commands, responses::PlayState};
+use crate::menu::{MenuMode, PanelFocus};
 
 /// Key binding definitions for MPD controls
 pub struct KeyBinds;
 
 impl KeyBinds {
     /// Handle key events and return corresponding MPD commands
-    pub fn handle_key(key: KeyEvent) -> Option<MPDAction> {
+    pub fn handle_key(key: KeyEvent, mode: &MenuMode, panel_focus: &PanelFocus) -> Option<MPDAction> {
         match (key.modifiers, key.code) {
-            // Playback controls
+            // Global keybindings (work in all modes)
             (KeyModifiers::NONE, KeyCode::Char(' ')) => Some(MPDAction::TogglePlayPause),
             (KeyModifiers::NONE, KeyCode::Char('p')) => Some(MPDAction::TogglePlayPause),
             (KeyModifiers::NONE, KeyCode::Char('>')) | (KeyModifiers::NONE, KeyCode::Char('n')) => {
@@ -17,8 +18,6 @@ impl KeyBinds {
             (KeyModifiers::NONE, KeyCode::Char('<')) | (KeyModifiers::NONE, KeyCode::Char('b')) => {
                 Some(MPDAction::Previous)
             }
-
-            // Volume controls
             (KeyModifiers::NONE, KeyCode::Char('=')) | (KeyModifiers::NONE, KeyCode::Char('+')) => {
                 Some(MPDAction::VolumeUp)
             }
@@ -26,25 +25,40 @@ impl KeyBinds {
                 Some(MPDAction::VolumeDown)
             }
             (KeyModifiers::NONE, KeyCode::Char('m')) => Some(MPDAction::ToggleMute),
-
-            // Seek controls
             (KeyModifiers::CONTROL, KeyCode::Char('l')) => Some(MPDAction::SeekForward),
             (KeyModifiers::CONTROL, KeyCode::Char('h')) => Some(MPDAction::SeekBackward),
             (KeyModifiers::CONTROL, KeyCode::Right) => Some(MPDAction::SeekForward),
             (KeyModifiers::CONTROL, KeyCode::Left) => Some(MPDAction::SeekBackward),
-            (KeyModifiers::CONTROL, KeyCode::Char('k')) => Some(MPDAction::MoveUpInQueue),
-            (KeyModifiers::CONTROL, KeyCode::Char('j')) => Some(MPDAction::MoveDownInQueue),
-            (KeyModifiers::CONTROL, KeyCode::Up) => Some(MPDAction::MoveUpInQueue),
-            (KeyModifiers::CONTROL, KeyCode::Down) => Some(MPDAction::MoveDownInQueue),
-
-            // Queue controls
             (KeyModifiers::NONE, KeyCode::Char('d')) => Some(MPDAction::ClearQueue),
-            (KeyModifiers::NONE, KeyCode::Char('x')) => Some(MPDAction::RemoveFromQueue),
             (KeyModifiers::NONE, KeyCode::Char('r')) => Some(MPDAction::Repeat),
             (KeyModifiers::NONE, KeyCode::Char('z')) => Some(MPDAction::Random),
             (KeyModifiers::NONE, KeyCode::Char('s')) => Some(MPDAction::Single),
             (KeyModifiers::NONE, KeyCode::Char('c')) => Some(MPDAction::Consume),
+            (KeyModifiers::NONE, KeyCode::Esc) | (KeyModifiers::NONE, KeyCode::Char('q')) => {
+                Some(MPDAction::Quit)
+            }
+            (KeyModifiers::CONTROL, KeyCode::Char('C')) => Some(MPDAction::Quit),
+            (KeyModifiers::NONE, KeyCode::Char('R')) => Some(MPDAction::Refresh),
+            (KeyModifiers::NONE, KeyCode::Char('1')) => Some(MPDAction::SwitchToQueueMenu),
+            (KeyModifiers::NONE, KeyCode::Char('2')) => Some(MPDAction::SwitchToTracks),
 
+            // Mode-specific keybindings
+            _ => {
+                match mode {
+                    MenuMode::Queue => {
+                        Self::handle_queue_mode_key(key)
+                    }
+                    MenuMode::Tracks => {
+                        Self::handle_tracks_mode_key(key, panel_focus)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Handle keys specific to Queue mode
+    fn handle_queue_mode_key(key: KeyEvent) -> Option<MPDAction> {
+        match (key.modifiers, key.code) {
             // Queue navigation
             (KeyModifiers::NONE, KeyCode::Char('j')) => Some(MPDAction::QueueDown),
             (KeyModifiers::NONE, KeyCode::Char('k')) => Some(MPDAction::QueueUp),
@@ -53,18 +67,36 @@ impl KeyBinds {
             (KeyModifiers::NONE, KeyCode::Enter) => Some(MPDAction::PlaySelected),
             (KeyModifiers::NONE, KeyCode::Char('l')) => Some(MPDAction::PlaySelected),
             (KeyModifiers::NONE, KeyCode::Right) => Some(MPDAction::PlaySelected),
+            
+            // Queue management
+            (KeyModifiers::NONE, KeyCode::Char('x')) => Some(MPDAction::RemoveFromQueue),
+            (KeyModifiers::CONTROL, KeyCode::Char('k')) => Some(MPDAction::MoveUpInQueue),
+            (KeyModifiers::CONTROL, KeyCode::Char('j')) => Some(MPDAction::MoveDownInQueue),
+            (KeyModifiers::CONTROL, KeyCode::Up) => Some(MPDAction::MoveUpInQueue),
+            (KeyModifiers::CONTROL, KeyCode::Down) => Some(MPDAction::MoveDownInQueue),
+            
+            _ => None,
+        }
+    }
 
-            // Menu mode controls
-            (KeyModifiers::NONE, KeyCode::Char('1')) => Some(MPDAction::SwitchToQueueMenu),
-            (KeyModifiers::NONE, KeyCode::Char('2')) => Some(MPDAction::SwitchToTracks),
-
-            // Application controls
-            (KeyModifiers::NONE, KeyCode::Esc) | (KeyModifiers::NONE, KeyCode::Char('q')) => {
-                Some(MPDAction::Quit)
-            }
-            (KeyModifiers::CONTROL, KeyCode::Char('C')) => Some(MPDAction::Quit),
-            (KeyModifiers::NONE, KeyCode::Char('R')) => Some(MPDAction::Refresh),
-
+    /// Handle keys specific to Tracks mode
+    fn handle_tracks_mode_key(key: KeyEvent, _panel_focus: &PanelFocus) -> Option<MPDAction> {
+        match (key.modifiers, key.code) {
+            // Panel switching
+            (KeyModifiers::NONE, KeyCode::Char('h')) => Some(MPDAction::SwitchPanelLeft),
+            (KeyModifiers::NONE, KeyCode::Char('l')) => Some(MPDAction::SwitchPanelRight),
+            (KeyModifiers::NONE, KeyCode::Left) => Some(MPDAction::SwitchPanelLeft),
+            (KeyModifiers::NONE, KeyCode::Right) => Some(MPDAction::SwitchPanelRight),
+            
+            // Navigation (up/down)
+            (KeyModifiers::NONE, KeyCode::Char('j')) => Some(MPDAction::NavigateDown),
+            (KeyModifiers::NONE, KeyCode::Char('k')) => Some(MPDAction::NavigateUp),
+            (KeyModifiers::NONE, KeyCode::Down) => Some(MPDAction::NavigateDown),
+            (KeyModifiers::NONE, KeyCode::Up) => Some(MPDAction::NavigateUp),
+            
+            // Action keys
+            (KeyModifiers::NONE, KeyCode::Enter) => Some(MPDAction::PlaySelected),
+            
             _ => None,
         }
     }
@@ -111,6 +143,14 @@ pub enum MPDAction {
     // Menu mode
     SwitchToQueueMenu,
     SwitchToTracks,
+    
+    // Panel focus
+    SwitchPanelLeft,
+    SwitchPanelRight,
+    
+    // Panel-specific navigation
+    NavigateUp,
+    NavigateDown,
 }
 
 impl MPDAction {
@@ -203,7 +243,11 @@ impl MPDAction {
             | MPDAction::MoveUpInQueue
             | MPDAction::MoveDownInQueue
             | MPDAction::SwitchToQueueMenu
-            | MPDAction::SwitchToTracks => {
+            | MPDAction::SwitchToTracks
+            | MPDAction::SwitchPanelLeft
+            | MPDAction::SwitchPanelRight
+            | MPDAction::NavigateUp
+            | MPDAction::NavigateDown => {
                 // These are handled by the main application
             }
         }

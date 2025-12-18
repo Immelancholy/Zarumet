@@ -23,8 +23,8 @@ use tokio::net::TcpStream;
 use binds::{KeyBinds, MPDAction};
 use cli::Args;
 use config::Config;
-use menu::MenuMode;
-use song::{SongInfo, Library, Album, Artist};
+use menu::{MenuMode, PanelFocus};
+use song::{SongInfo, Library};
 use ui::Protocol;
 
 #[tokio::main]
@@ -69,6 +69,8 @@ pub struct App {
     config: Config,
     /// Current menu mode
     menu_mode: MenuMode,
+    /// Current panel focus in Tracks mode
+    panel_focus: menu::PanelFocus,
     /// Music library
     library: Option<Library>,
 }
@@ -96,6 +98,7 @@ impl App {
             track_list_state: ListState::default(),
             config,
             menu_mode: MenuMode::Queue, // Start with queue menu
+            panel_focus: menu::PanelFocus::Artists, // Start with artists panel focused
             library: None,
         })
     }
@@ -167,6 +170,8 @@ impl App {
                      &self.menu_mode,
                      &self.library,
                      &mut self.artist_list_state,
+                     &mut self.album_list_state,
+                     &self.panel_focus,
                 )
             })?;
 
@@ -311,7 +316,7 @@ impl App {
         key: KeyEvent,
         client: &mpd_client::Client,
     ) -> color_eyre::Result<()> {
-        if let Some(action) = KeyBinds::handle_key(key) {
+        if let Some(action) = KeyBinds::handle_key(key, &self.menu_mode, &self.panel_focus) {
             match action {
                 MPDAction::QueueUp => {
                     match self.menu_mode {
@@ -329,18 +334,7 @@ impl App {
                             }
                         }
                         MenuMode::Tracks => {
-                            if let Some(ref library) = self.library {
-                                if !library.artists.is_empty() {
-                                    let current = self.artist_list_state.selected().unwrap_or(0);
-                                    if current > 0 {
-                                        self.artist_list_state.select(Some(current - 1));
-                                    } else {
-                                        // Wrap around to the bottom
-                                        self.artist_list_state
-                                            .select(Some(library.artists.len().saturating_sub(1)));
-                                    }
-                                }
-                            }
+                            // Navigation is now handled by NavigateUp/Down actions based on panel focus
                         }
                     }
                 }
@@ -359,17 +353,7 @@ impl App {
                             }
                         }
                         MenuMode::Tracks => {
-                            if let Some(ref library) = self.library {
-                                if !library.artists.is_empty() {
-                                    let current = self.artist_list_state.selected().unwrap_or(0);
-                                    if current < library.artists.len().saturating_sub(1) {
-                                        self.artist_list_state.select(Some(current + 1));
-                                    } else {
-                                        // Wrap around to the top
-                                        self.artist_list_state.select(Some(0));
-                                    }
-                                }
-                            }
+                            // Navigation is now handled by NavigateUp/Down actions based on panel focus
                         }
                     }
                 }
@@ -465,6 +449,98 @@ impl App {
                 }
                 MPDAction::SwitchToTracks => {
                     self.menu_mode = MenuMode::Tracks;
+                }
+                MPDAction::SwitchPanelLeft => {
+                    match self.panel_focus {
+                        menu::PanelFocus::Artists => {
+                            // Already at artists panel, can't go left
+                        }
+                        menu::PanelFocus::Albums => {
+                            self.panel_focus = menu::PanelFocus::Artists;
+                        }
+                    }
+                }
+                MPDAction::SwitchPanelRight => {
+                    match self.panel_focus {
+                        menu::PanelFocus::Artists => {
+                            self.panel_focus = menu::PanelFocus::Albums;
+                        }
+                        menu::PanelFocus::Albums => {
+                            // Already at albums panel, can't go right
+                        }
+                    }
+                }
+                MPDAction::NavigateUp => {
+                    match self.panel_focus {
+                        menu::PanelFocus::Artists => {
+                            // Navigate artists list
+                            if let Some(ref library) = self.library {
+                                if !library.artists.is_empty() {
+                                    let current = self.artist_list_state.selected().unwrap_or(0);
+                                    if current > 0 {
+                                        self.artist_list_state.select(Some(current - 1));
+                                    } else {
+                                        // Wrap around to the bottom
+                                        self.artist_list_state
+                                            .select(Some(library.artists.len().saturating_sub(1)));
+                                    }
+                                }
+                            }
+                        }
+                        menu::PanelFocus::Albums => {
+                            // Navigate albums list
+                            if let (Some(library), Some(selected_artist_index)) = 
+                                (&self.library, self.artist_list_state.selected()) {
+                                if let Some(selected_artist) = library.artists.get(selected_artist_index) {
+                                    if !selected_artist.albums.is_empty() {
+                                        let current = self.album_list_state.selected().unwrap_or(0);
+                                        if current > 0 {
+                                            self.album_list_state.select(Some(current - 1));
+                                        } else {
+                                            // Wrap around to bottom
+                                            self.album_list_state
+                                                .select(Some(selected_artist.albums.len().saturating_sub(1)));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                MPDAction::NavigateDown => {
+                    match self.panel_focus {
+                        menu::PanelFocus::Artists => {
+                            // Navigate artists list
+                            if let Some(ref library) = self.library {
+                                if !library.artists.is_empty() {
+                                    let current = self.artist_list_state.selected().unwrap_or(0);
+                                    if current < library.artists.len().saturating_sub(1) {
+                                        self.artist_list_state.select(Some(current + 1));
+                                    } else {
+                                        // Wrap around to the top
+                                        self.artist_list_state.select(Some(0));
+                                    }
+                                }
+                            }
+                        }
+                        menu::PanelFocus::Albums => {
+                            // Navigate albums list
+                            if let (Some(library), Some(selected_artist_index)) = 
+                                (&self.library, self.artist_list_state.selected()) {
+                                if let Some(selected_artist) = library.artists.get(selected_artist_index) {
+                                    if !selected_artist.albums.is_empty() {
+                                        let current = self.album_list_state.selected().unwrap_or(0);
+                                        if current < selected_artist.albums.len().saturating_sub(1) {
+                                            self.album_list_state.select(Some(current + 1));
+                                        } else {
+                                            // Wrap around to top
+                                            self.album_list_state.select(Some(0));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 _ => {
                     // Execute MPD command for other actions

@@ -10,7 +10,7 @@ use ratatui_image::{Resize, StatefulImage, protocol::StatefulProtocol};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::config::Config;
-use crate::menu::MenuMode;
+use crate::menu::{MenuMode, PanelFocus};
 use crate::song::Library;
 use crate::song::SongInfo;
 
@@ -63,6 +63,8 @@ pub fn render(
     menu_mode: &MenuMode,
     library: &Option<Library>,
     artist_list_state: &mut ListState,
+    album_list_state: &mut ListState,
+    panel_focus: &PanelFocus,
 ) {
     let area = frame.area();
 
@@ -213,6 +215,12 @@ pub fn render(
                     })
                     .collect();
 
+                let artists_border_style = if panel_focus == &PanelFocus::Artists {
+                    Style::default().fg(config.colors.queue_selected_highlight_color())
+                } else {
+                    Style::default().fg(config.colors.border_color())
+                };
+
                 let artists_list_widget = List::new(artists_list)
                     .block(
                         Block::default()
@@ -220,9 +228,13 @@ pub fn render(
                             .border_type(BorderType::Rounded)
                             .title(Span::styled(
                                 " Artists ",
-                                Style::default().fg(config.colors.border_title_color()),
+                                Style::default().fg(if panel_focus == &PanelFocus::Artists {
+                                    config.colors.queue_selected_highlight_color()
+                                } else {
+                                    config.colors.border_title_color()
+                                }),
                             ))
-                            .border_style(Style::default().fg(config.colors.border_color())),
+                            .border_style(artists_border_style),
                     )
                     .highlight_style(
                         Style::default()
@@ -244,32 +256,57 @@ pub fn render(
                 (library, artist_list_state.selected())
             {
                 if let Some(selected_artist) = library.artists.get(selected_artist_index) {
-                    let albums_text = selected_artist
+                    // Initialize album selection if needed
+                    if album_list_state.selected().is_none() && !selected_artist.albums.is_empty() {
+                        album_list_state.select(Some(0));
+                    }
+
+                    let albums_list: Vec<ListItem> = selected_artist
                         .albums
                         .iter()
-                        .map(|album| format!("{}", album.name))
-                        .collect::<Vec<_>>()
-                        .join("\n");
+                        .enumerate()
+                        .map(|(_i, album)| {
+                            let display_text = format!("{}", album.name);
+                            ListItem::new(vec![Line::from(display_text)])
+                        })
+                        .collect();
 
-                    let albums_widget = Paragraph::new(albums_text)
+                    let albums_border_color = if panel_focus == &PanelFocus::Albums {
+                        config.colors.queue_selected_highlight_color()
+                    } else {
+                        config.colors.border_color()
+                    };
+
+                    let albums_title_color = if panel_focus == &PanelFocus::Albums {
+                        config.colors.queue_selected_highlight_color()
+                    } else {
+                        config.colors.border_title_color()
+                    };
+
+                    let albums_list_widget = List::new(albums_list)
                         .block(
                             Block::default()
                                 .borders(Borders::ALL)
                                 .border_type(BorderType::Rounded)
-                                .title(Span::styled(
-                                    " Albums ",
-                                    Style::default().fg(config.colors.border_title_color()),
-                                ))
-                                .border_style(Style::default().fg(config.colors.border_color())),
+                                .title(Span::styled(" Albums ", Style::default().fg(albums_title_color)))
+                                .border_style(Style::default().fg(albums_border_color)),
                         )
-                        .style(Style::default());
-                    frame.render_widget(albums_widget, left_horizontal_chunks[1]);
+                        .highlight_style(
+                            Style::default()
+                                .fg(config.colors.queue_selected_text_color())
+                                .bg(config.colors.queue_selected_highlight_color()),
+                        );
+                    frame.render_stateful_widget(
+                        albums_list_widget,
+                        left_horizontal_chunks[1],
+                        album_list_state,
+                    );
                 } else {
-                    let tracks_box = create_empty_box("Tracks", config);
+                    let tracks_box = create_empty_box("Albums", config);
                     frame.render_widget(tracks_box, left_horizontal_chunks[1]);
                 }
             } else {
-                let tracks_box = create_empty_box("Tracks", config);
+                let tracks_box = create_empty_box("Albums", config);
                 frame.render_widget(tracks_box, left_horizontal_chunks[1]);
             }
 
