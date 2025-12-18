@@ -115,6 +115,13 @@ impl App {
 
         // Load library
         self.library = Some(Library::load_library(&client).await?);
+        
+        // Initialize artist selection if library has artists
+        if let Some(ref library) = self.library {
+            if !library.artists.is_empty() {
+                self.artist_list_state.select(Some(0));
+            }
+        }
 
         // Set up the image picker and protocol
         let mut picker = Picker::from_query_stdio().unwrap();
@@ -159,6 +166,7 @@ impl App {
                     &self.config,
                      &self.menu_mode,
                      &self.library,
+                     &mut self.artist_list_state,
                 )
             })?;
 
@@ -306,28 +314,63 @@ impl App {
         if let Some(action) = KeyBinds::handle_key(key) {
             match action {
                 MPDAction::QueueUp => {
-                    if !self.queue.is_empty() {
-                        let current = self.queue_list_state.selected().unwrap_or(0);
-                        if current > 0 {
-                            self.queue_list_state.select(Some(current - 1));
-                        } else {
-                            // Wrap around to the bottom
-                            self.queue_list_state
-                                .select(Some(self.queue.len().saturating_sub(1)));
+                    match self.menu_mode {
+                        MenuMode::Queue => {
+                            if !self.queue.is_empty() {
+                                let current = self.queue_list_state.selected().unwrap_or(0);
+                                if current > 0 {
+                                    self.queue_list_state.select(Some(current - 1));
+                                } else {
+                                    // Wrap around to the bottom
+                                    self.queue_list_state
+                                        .select(Some(self.queue.len().saturating_sub(1)));
+                                }
+                                self.selected_queue_index = self.queue_list_state.selected();
+                            }
                         }
-                        self.selected_queue_index = self.queue_list_state.selected();
+                        MenuMode::Tracks => {
+                            if let Some(ref library) = self.library {
+                                if !library.artists.is_empty() {
+                                    let current = self.artist_list_state.selected().unwrap_or(0);
+                                    if current > 0 {
+                                        self.artist_list_state.select(Some(current - 1));
+                                    } else {
+                                        // Wrap around to the bottom
+                                        self.artist_list_state
+                                            .select(Some(library.artists.len().saturating_sub(1)));
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 MPDAction::QueueDown => {
-                    if !self.queue.is_empty() {
-                        let current = self.queue_list_state.selected().unwrap_or(0);
-                        if current < self.queue.len().saturating_sub(1) {
-                            self.queue_list_state.select(Some(current + 1));
-                        } else {
-                            // Wrap around to the top
-                            self.queue_list_state.select(Some(0));
+                    match self.menu_mode {
+                        MenuMode::Queue => {
+                            if !self.queue.is_empty() {
+                                let current = self.queue_list_state.selected().unwrap_or(0);
+                                if current < self.queue.len().saturating_sub(1) {
+                                    self.queue_list_state.select(Some(current + 1));
+                                } else {
+                                    // Wrap around to the top
+                                    self.queue_list_state.select(Some(0));
+                                }
+                                self.selected_queue_index = self.queue_list_state.selected();
+                            }
                         }
-                        self.selected_queue_index = self.queue_list_state.selected();
+                        MenuMode::Tracks => {
+                            if let Some(ref library) = self.library {
+                                if !library.artists.is_empty() {
+                                    let current = self.artist_list_state.selected().unwrap_or(0);
+                                    if current < library.artists.len().saturating_sub(1) {
+                                        self.artist_list_state.select(Some(current + 1));
+                                    } else {
+                                        // Wrap around to the top
+                                        self.artist_list_state.select(Some(0));
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 MPDAction::PlaySelected => {

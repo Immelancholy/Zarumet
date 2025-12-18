@@ -62,6 +62,7 @@ pub fn render(
     config: &Config,
     menu_mode: &MenuMode,
     library: &Option<Library>,
+    artist_list_state: &mut ListState,
 ) {
     let area = frame.area();
 
@@ -202,37 +203,75 @@ pub fn render(
 
             // Render artists list
             if let Some(library) = library {
-                let artists_text = library
+                let artists_list: Vec<ListItem> = library
                     .artists
                     .iter()
                     .enumerate()
-                    .map(|(i, artist)| format!("{}", artist.name))
-                    .collect::<Vec<_>>()
-                    .join("\n");
+                    .map(|(_i, artist)| {
+                        let display_text = format!("{}", artist.name);
+                        ListItem::new(vec![Line::from(display_text)])
+                    })
+                    .collect();
 
-                let artists_widget = ratatui::widgets::Paragraph::new(artists_text)
+                let artists_list_widget = List::new(artists_list)
                     .block(
-                        ratatui::widgets::Block::default()
-                            .borders(ratatui::widgets::Borders::ALL)
-                            .border_type(ratatui::widgets::BorderType::Rounded)
-                            .title(ratatui::text::Span::styled(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .title(Span::styled(
                                 " Artists ",
-                                ratatui::style::Style::default()
-                                    .fg(config.colors.border_title_color()),
+                                Style::default().fg(config.colors.border_title_color()),
                             ))
-                            .border_style(
-                                ratatui::style::Style::default().fg(config.colors.border_color()),
-                            ),
+                            .border_style(Style::default().fg(config.colors.border_color())),
                     )
-                    .style(ratatui::style::Style::default());
-                frame.render_widget(artists_widget, left_horizontal_chunks[0]);
+                    .highlight_style(
+                        Style::default()
+                            .fg(config.colors.queue_selected_text_color())
+                            .bg(config.colors.queue_selected_highlight_color()),
+                    );
+                frame.render_stateful_widget(
+                    artists_list_widget,
+                    left_horizontal_chunks[0],
+                    artist_list_state,
+                );
             } else {
                 let artists_box = create_empty_box("Artists", config);
                 frame.render_widget(artists_box, left_horizontal_chunks[0]);
             }
 
-            let tracks_box = create_empty_box("Tracks", config);
-            frame.render_widget(tracks_box, left_horizontal_chunks[1]);
+            // Show albums for selected artist, or empty tracks box
+            if let (Some(library), Some(selected_artist_index)) =
+                (library, artist_list_state.selected())
+            {
+                if let Some(selected_artist) = library.artists.get(selected_artist_index) {
+                    let albums_text = selected_artist
+                        .albums
+                        .iter()
+                        .map(|album| format!("{}", album.name))
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
+                    let albums_widget = Paragraph::new(albums_text)
+                        .block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .border_type(BorderType::Rounded)
+                                .title(Span::styled(
+                                    " Albums ",
+                                    Style::default().fg(config.colors.border_title_color()),
+                                ))
+                                .border_style(Style::default().fg(config.colors.border_color())),
+                        )
+                        .style(Style::default());
+                    frame.render_widget(albums_widget, left_horizontal_chunks[1]);
+                } else {
+                    let tracks_box = create_empty_box("Tracks", config);
+                    frame.render_widget(tracks_box, left_horizontal_chunks[1]);
+                }
+            } else {
+                let tracks_box = create_empty_box("Tracks", config);
+                frame.render_widget(tracks_box, left_horizontal_chunks[1]);
+            }
 
             // Render progress bar under the two empty boxes
             let progress_widget =
