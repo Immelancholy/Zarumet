@@ -9,11 +9,11 @@ use ratatui::{
 use ratatui_image::{Resize, StatefulImage, protocol::StatefulProtocol};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use std::option::Option;
 use crate::config::Config;
 use crate::menu::{MenuMode, PanelFocus};
 use crate::song::Library;
 use crate::song::SongInfo;
+use std::option::Option;
 
 /// Truncate a string to fit within the given display width, handling Unicode properly
 fn truncate_by_width(s: &str, max_width: usize) -> String {
@@ -55,7 +55,7 @@ pub struct Protocol {
 
 #[derive(Debug, Clone)]
 pub enum DisplayItem {
-    Album(String), // album name
+    Album(String),                                                 // album name
     Song(String, Option<std::time::Duration>, std::path::PathBuf), // song title, duration, and file path
 }
 
@@ -67,24 +67,28 @@ pub fn compute_album_display_list(
 ) -> (Vec<DisplayItem>, Vec<Option<usize>>) {
     let mut display_items = Vec::new();
     let mut album_indices = Vec::new(); // Maps display indices to album indices (None for songs)
-    
+
     for (album_index, album) in artist.albums.iter().enumerate() {
         let album_key = (artist.name.clone(), album.name.clone());
         let is_expanded = expanded_albums.contains(&album_key);
-        
+
         // Add album header
         album_indices.push(Some(album_index));
         display_items.push(DisplayItem::Album(album.name.clone()));
-        
+
         // If expanded, add songs
         if is_expanded {
             for song in &album.tracks {
                 album_indices.push(None); // Songs don't map to album indices
-                display_items.push(DisplayItem::Song(song.title.clone(), song.duration, song.file_path.clone()));
+                display_items.push(DisplayItem::Song(
+                    song.title.clone(),
+                    song.duration,
+                    song.file_path.clone(),
+                ));
             }
         }
     }
-    
+
     (display_items, album_indices)
 }
 
@@ -298,69 +302,85 @@ pub fn render(
                         album_list_state.select(Some(0));
                     }
 
-                    let (display_items, _album_indices) = compute_album_display_list(selected_artist, expanded_albums);
-                    
-                    let albums_list: Vec<ListItem> = display_items.iter().enumerate().map(|(_display_index, item)| {
-                        match item {
-                            DisplayItem::Album(album_name) => {
-                                // Find the actual album to get duration
-                                let album = selected_artist.albums.iter()
-                                    .find(|a| a.name == *album_name)
-                                    .unwrap();
-                                
-                                // Format total duration
-                                let duration_str = match album.total_duration() {
-                                    Some(duration) => {
-                                        let total_seconds = duration.as_secs();
-                                        let hours = total_seconds / 3600;
-                                        let minutes = (total_seconds % 3600) / 60;
-                                        let seconds = total_seconds % 60;
+                    let (display_items, _album_indices) =
+                        compute_album_display_list(selected_artist, expanded_albums);
 
-                                        if hours > 0 {
-                                            format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-                                        } else {
-                                            format!("{:02}:{:02}", minutes, seconds)
+                    let albums_list: Vec<ListItem> = display_items
+                        .iter()
+                        .enumerate()
+                        .map(|(_display_index, item)| {
+                            match item {
+                                DisplayItem::Album(album_name) => {
+                                    // Find the actual album to get duration
+                                    let album = selected_artist
+                                        .albums
+                                        .iter()
+                                        .find(|a| a.name == *album_name)
+                                        .unwrap();
+
+                                    // Format total duration
+                                    let duration_str = match album.total_duration() {
+                                        Some(duration) => {
+                                            let total_seconds = duration.as_secs();
+                                            let hours = total_seconds / 3600;
+                                            let minutes = (total_seconds % 3600) / 60;
+                                            let seconds = total_seconds % 60;
+
+                                            if hours > 0 {
+                                                format!("{}:{}:{:02}", hours, minutes, seconds)
+                                            } else {
+                                                format!("{}:{:02}", minutes, seconds)
+                                            }
                                         }
-                                    }
-                                    None => "--:--".to_string(),
-                                };
+                                        None => "--:--".to_string(),
+                                    };
 
-                                // Calculate available width for filler (subtract album name width and duration width + spaces)
-                                let album_name_width = album_name.width();
-                                let duration_width = duration_str.width();
-                                let available_width =
-                                    left_horizontal_chunks[1].width.saturating_sub(4) as usize; // 4 for borders/padding
-                                let filler_width = available_width
-                                    .saturating_sub(album_name_width + duration_width + 3); // 3 for "  " between name and duration
+                                    // Calculate available width for filler (subtract album name width and duration width + spaces)
+                                    let album_name_width = album_name.width();
+                                    let duration_width = duration_str.width();
+                                    let available_width =
+                                        left_horizontal_chunks[1].width.saturating_sub(4) as usize; // 4 for borders/padding
+                                    let filler_width = available_width
+                                        .saturating_sub(album_name_width + duration_width + 5); // 3 for "  " between name and duration
 
-                                let filler = "─".repeat(filler_width.max(0));
-                                let display_text =
-                                    format!("{}{}     {}", album_name, filler, duration_str);
-                                
-                                ListItem::new(vec![
-                                    Line::from(display_text)
-                                        .style(Style::default().fg(config.colors.album_color())),
-                                ])
+                                    let filler = "─".repeat(filler_width.max(0));
+                                    let display_text =
+                                        format!("{}{}     {}", album_name, filler, duration_str);
+
+                                    ListItem::new(vec![
+                                        Line::from(display_text).style(
+                                            Style::default().fg(config.colors.album_color()),
+                                        ),
+                                    ])
+                                }
+                                DisplayItem::Song(song_title, duration, _file_path) => {
+                                    let song_duration_str = match duration {
+                                        Some(duration) => {
+                                            let total_seconds = duration.as_secs();
+                                            let minutes = total_seconds / 60;
+                                            let seconds = total_seconds % 60;
+                                            format!("  {}:{:02}", minutes, seconds)
+                                        }
+                                        None => "  --:--".to_string(),
+                                    };
+
+                                    let song_title_width = song_title.width();
+                                    let song_duration_width = song_duration_str.width();
+                                    let available_width =
+                                        left_horizontal_chunks[1].width.saturating_sub(4) as usize;
+                                    let filler_width = available_width
+                                        .saturating_sub(song_title_width + song_duration_width + 2);
+                                    let filler = " ".repeat(filler_width.max(0));
+
+                                    let song_text =
+                                        format!("  {}{}{}", song_title, filler, song_duration_str);
+                                    ListItem::new(vec![Line::from(song_text).style(
+                                        Style::default().fg(config.colors.queue_song_title_color()),
+                                    )])
+                                }
                             }
-                            DisplayItem::Song(song_title, duration, _file_path) => {
-                                let song_duration_str = match duration {
-                                    Some(duration) => {
-                                        let total_seconds = duration.as_secs();
-                                        let minutes = total_seconds / 60;
-                                        let seconds = total_seconds % 60;
-                                        format!("  {:02}:{:02}", minutes, seconds)
-                                    }
-                                    None => "  --:--".to_string(),
-                                };
-                                
-                                let song_text = format!("  {}  {}", song_title, song_duration_str);
-                                ListItem::new(vec![
-                                    Line::from(song_text)
-                                        .style(Style::default().fg(config.colors.queue_song_title_color())),
-                                ])
-                            }
-                        }
-                    }).collect();
+                        })
+                        .collect();
 
                     let albums_border_color = if panel_focus == &PanelFocus::Albums {
                         config.colors.queue_selected_highlight_color()
