@@ -77,3 +77,21 @@ impl SongInfo {
         self.duration = duration;
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct Album {
+    pub name: String,
+    pub artist: String,
+    pub tracks: Vec<SongInfo>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Artist {
+    pub name: String,
+    pub albums: Vec<Album>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Library {
+    pub artists: Vec<Artist>,
+}

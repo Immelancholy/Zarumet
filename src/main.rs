@@ -24,7 +24,7 @@ use binds::{KeyBinds, MPDAction};
 use cli::Args;
 use config::Config;
 use menu::MenuMode;
-use song::SongInfo;
+use song::{SongInfo, Library, Album, Artist};
 use ui::Protocol;
 
 #[tokio::main]
@@ -61,10 +61,16 @@ pub struct App {
     selected_queue_index: Option<usize>,
     /// List state for the queue widget
     queue_list_state: ListState,
+    /// List states for Tracks navigation
+    artist_list_state: ListState,
+    album_list_state: ListState,
+    track_list_state: ListState,
     /// Configuration loaded from TOML file
     config: Config,
     /// Current menu mode
     menu_mode: MenuMode,
+    /// Music library
+    library: Option<Library>,
 }
 
 impl App {
@@ -85,8 +91,12 @@ impl App {
             queue: Vec::new(),
             selected_queue_index: None, // Will be set when queue is populated
             queue_list_state,
+            artist_list_state: ListState::default(),
+            album_list_state: ListState::default(),
+            track_list_state: ListState::default(),
             config,
             menu_mode: MenuMode::Queue, // Start with queue menu
+            library: None,
         })
     }
 
@@ -144,7 +154,8 @@ impl App {
                     &self.queue,
                     &mut self.queue_list_state,
                     &self.config,
-                    &self.menu_mode,
+                     &self.menu_mode,
+                     &self.library,
                 )
             })?;
 

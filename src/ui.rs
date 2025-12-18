@@ -12,6 +12,7 @@ use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 use crate::config::Config;
 use crate::menu::MenuMode;
 use crate::song::SongInfo;
+use crate::song::Library;
 
 /// Truncate a string to fit within the given display width, handling Unicode properly
 fn truncate_by_width(s: &str, max_width: usize) -> String {
@@ -60,6 +61,7 @@ pub fn render(
     queue_list_state: &mut ListState,
     config: &Config,
     menu_mode: &MenuMode,
+    library: &Option<Library>,
 ) {
     let area = frame.area();
 
@@ -198,9 +200,36 @@ pub fn render(
             let middle_box = create_middle_box(config);
             frame.render_widget(middle_box, main_vertical_chunks[1]);
 
-            // Render two empty boxes side by side on the left
-            let artists_box = create_empty_box("Artists", config);
-            frame.render_widget(artists_box, left_horizontal_chunks[0]);
+            // Render artists list
+            if let Some(library) = library {
+                let artists_text = library
+                    .artists
+                    .iter()
+                    .enumerate()
+                    .map(|(i, artist)| format!("{}. {}", i + 1, artist.name))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+
+                let artists_widget = ratatui::widgets::Paragraph::new(artists_text)
+                    .block(
+                        ratatui::widgets::Block::default()
+                            .borders(ratatui::widgets::Borders::ALL)
+                            .border_type(ratatui::widgets::BorderType::Rounded)
+                            .title(ratatui::text::Span::styled(
+                                " Artists ",
+                                ratatui::style::Style::default()
+                                    .fg(config.colors.border_title_color()),
+                            ))
+                            .border_style(
+                                ratatui::style::Style::default().fg(config.colors.border_color()),
+                            ),
+                    )
+                    .style(ratatui::style::Style::default());
+                frame.render_widget(artists_widget, left_horizontal_chunks[0]);
+            } else {
+                let artists_box = create_empty_box("Artists", config);
+                frame.render_widget(artists_box, left_horizontal_chunks[0]);
+            }
 
             let tracks_box = create_empty_box("Tracks", config);
             frame.render_widget(tracks_box, left_horizontal_chunks[1]);
