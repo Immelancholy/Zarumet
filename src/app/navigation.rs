@@ -1,18 +1,26 @@
 use mpd_client::{Client, commands};
 
-use crate::ui::{compute_album_display_list, DisplayItem};
-use crate::ui::menu::{MenuMode, PanelFocus};
-use crate::mpd_handler::MPDAction;
 use super::App;
+use crate::app::mpd_handler::MPDAction;
+use crate::ui::menu::{MenuMode, PanelFocus};
+use crate::ui::{DisplayItem, compute_album_display_list};
 
 /// Trait for navigation-related functionality
 pub trait Navigation {
-    async fn handle_navigation_action(&mut self, action: MPDAction, client: &Client) -> color_eyre::Result<()>;
+    async fn handle_navigation_action(
+        &mut self,
+        action: MPDAction,
+        client: &Client,
+    ) -> color_eyre::Result<()>;
 }
 
 impl Navigation for App {
     /// Handle navigation and UI-related actions
-    async fn handle_navigation_action(&mut self, action: MPDAction, client: &Client) -> color_eyre::Result<()> {
+    async fn handle_navigation_action(
+        &mut self,
+        action: MPDAction,
+        client: &Client,
+    ) -> color_eyre::Result<()> {
         match action {
             MPDAction::QueueUp => {
                 match self.menu_mode {
@@ -75,8 +83,7 @@ impl Navigation for App {
                         let to_pos: mpd_client::commands::SongPosition = (selected - 1).into();
                         if let Err(e) = client
                             .command(
-                                mpd_client::commands::Move::position(from_pos)
-                                    .to_position(to_pos),
+                                mpd_client::commands::Move::position(from_pos).to_position(to_pos),
                             )
                             .await
                         {
@@ -97,8 +104,7 @@ impl Navigation for App {
                         let to_pos: mpd_client::commands::SongPosition = (selected + 1).into();
                         if let Err(e) = client
                             .command(
-                                mpd_client::commands::Move::position(from_pos)
-                                    .to_position(to_pos),
+                                mpd_client::commands::Move::position(from_pos).to_position(to_pos),
                             )
                             .await
                         {
@@ -164,9 +170,7 @@ impl Navigation for App {
                         self.panel_focus = PanelFocus::Albums;
                         // Initialize album selection when switching to albums panel
                         if let Some(ref library) = self.library {
-                            if let Some(selected_artist_index) =
-                                self.artist_list_state.selected()
-                            {
+                            if let Some(selected_artist_index) = self.artist_list_state.selected() {
                                 if let Some(selected_artist) =
                                     library.artists.get(selected_artist_index)
                                 {
@@ -251,11 +255,10 @@ impl App {
                                 library.artists.get(selected_artist_index)
                             {
                                 // Compute display list to get total count
-                                let (display_items, _album_indices) =
-                                    compute_album_display_list(
-                                        selected_artist,
-                                        &self.expanded_albums,
-                                    );
+                                let (display_items, _album_indices) = compute_album_display_list(
+                                    selected_artist,
+                                    &self.expanded_albums,
+                                );
 
                                 if !display_items.is_empty() {
                                     let current =
@@ -264,9 +267,8 @@ impl App {
                                         self.album_display_list_state.select(Some(current - 1));
                                     } else {
                                         // Wrap around to bottom
-                                        self.album_display_list_state.select(Some(
-                                            display_items.len().saturating_sub(1),
-                                        ));
+                                        self.album_display_list_state
+                                            .select(Some(display_items.len().saturating_sub(1)));
                                     }
 
                                     // Update the legacy album_list_state to point to the current album if on album
@@ -275,8 +277,7 @@ impl App {
                                     } else {
                                         display_items.len().saturating_sub(1)
                                     };
-                                    if let Some(display_item) = display_items.get(wrapped_index)
-                                    {
+                                    if let Some(display_item) = display_items.get(wrapped_index) {
                                         if let DisplayItem::Album(_) = display_item {
                                             // Find which album this corresponds to
                                             let mut album_count = 0;
@@ -326,11 +327,10 @@ impl App {
                                 library.artists.get(selected_artist_index)
                             {
                                 // Compute display list to get total count
-                                let (display_items, _album_indices) =
-                                    compute_album_display_list(
-                                        selected_artist,
-                                        &self.expanded_albums,
-                                    );
+                                let (display_items, _album_indices) = compute_album_display_list(
+                                    selected_artist,
+                                    &self.expanded_albums,
+                                );
 
                                 if !display_items.is_empty() {
                                     let current =
@@ -378,17 +378,13 @@ impl App {
                 // Get current display selection
                 if let Some(display_index) = self.album_display_list_state.selected() {
                     let (display_items, _album_indices) =
-                        compute_album_display_list(
-                            selected_artist,
-                            &self.expanded_albums,
-                        );
+                        compute_album_display_list(selected_artist, &self.expanded_albums);
 
                     if let Some(display_item) = display_items.get(display_index) {
                         match display_item {
                             DisplayItem::Album(album_name) => {
                                 // Toggle album expansion
-                                let album_key =
-                                    (selected_artist.name.clone(), album_name.clone());
+                                let album_key = (selected_artist.name.clone(), album_name.clone());
 
                                 if self.expanded_albums.contains(&album_key) {
                                     self.expanded_albums.remove(&album_key);
@@ -399,9 +395,7 @@ impl App {
                             DisplayItem::Song(_title, _duration, file_path) => {
                                 // Add specific song to queue
                                 if let Err(e) = client
-                                    .command(commands::Add::uri(
-                                        file_path.to_str().unwrap(),
-                                    ))
+                                    .command(commands::Add::uri(file_path.to_str().unwrap()))
                                     .await
                                 {
                                     eprintln!("Error adding song to queue: {}", e);
@@ -423,15 +417,11 @@ impl App {
             if let Some(selected_artist) = library.artists.get(selected_artist_index) {
                 // For now, add all songs from the selected album to queue
                 if let Some(selected_album_index) = self.album_list_state.selected() {
-                    if let Some(selected_album) =
-                        selected_artist.albums.get(selected_album_index)
-                    {
+                    if let Some(selected_album) = selected_artist.albums.get(selected_album_index) {
                         // Add all songs from the album to queue
                         for song in &selected_album.tracks {
                             if let Err(e) = client
-                                .command(commands::Add::uri(
-                                    song.file_path.to_str().unwrap(),
-                                ))
+                                .command(commands::Add::uri(song.file_path.to_str().unwrap()))
                                 .await
                             {
                                 eprintln!("Error adding song to queue: {}", e);

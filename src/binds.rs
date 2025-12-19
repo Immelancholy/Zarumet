@@ -1,7 +1,7 @@
 use crate::ui::menu::{MenuMode, PanelFocus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::mpd_handler::MPDAction;
+use crate::app::mpd_handler::MPDAction;
 
 /// Key binding definitions for MPD controls
 pub struct KeyBinds;
@@ -122,5 +122,3 @@ impl KeyBinds {
         }
     }
 }
-
-

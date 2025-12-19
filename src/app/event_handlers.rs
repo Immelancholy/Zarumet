@@ -2,9 +2,9 @@ use crossterm::event::{Event, KeyEvent, KeyEventKind};
 use mpd_client::Client;
 
 use super::App;
+use crate::app::mpd_handler::MPDAction;
 use crate::app::navigation::Navigation;
 use crate::binds::KeyBinds;
-use crate::mpd_handler::MPDAction;
 
 /// Trait for event handling
 pub trait EventHandlers {

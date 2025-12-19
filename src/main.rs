@@ -2,15 +2,17 @@
 mod app;
 mod binds;
 mod config;
-mod mpd_handler;
 mod song;
-mod terminal;
 mod ui;
 
 use app::cli::Args;
-use app::{App, constructor::AppConstructor, main_loop::AppMainLoop};
+use app::{
+    App,
+    constructor::AppConstructor,
+    main_loop::AppMainLoop,
+    terminal::{init_terminal, restore_terminal},
+};
 use clap::Parser;
-use terminal::{init_terminal, restore_terminal};
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {

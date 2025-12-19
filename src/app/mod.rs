@@ -8,8 +8,10 @@ pub mod cli;
 pub mod constructor;
 pub mod event_handlers;
 pub mod main_loop;
+pub mod mpd_handler;
 pub mod mpd_updates;
 pub mod navigation;
+pub mod terminal;
 
 /// The main application which holds the state and logic of the application.
 #[derive(Debug)]
