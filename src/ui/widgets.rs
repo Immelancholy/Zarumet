@@ -1,0 +1,454 @@
+use ratatui::{
+    layout::{Constraint, Rect},
+    style::{Style, Stylize},
+    text::{Line, Span},
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+};
+use ratatui_image::{Resize, StatefulImage};
+
+
+use crate::config::Config;
+use crate::song::SongInfo;
+use crate::ui::utils::*;
+
+/// Create the left side box widget (progress bar)
+pub fn create_left_box_bottom(
+    play_state: &Option<mpd_client::responses::PlayState>,
+    progress: Option<f64>,
+    elapsed: Option<std::time::Duration>,
+    duration: Option<std::time::Duration>,
+    config: &Config,
+) -> impl ratatui::widgets::Widget {
+    let border_color = config.colors.border_color();
+    let border_title_color = config.colors.border_title_color();
+    let song_title_color = config.colors.song_title_color();
+    let progress_filled_color = config.colors.progress_filled_color();
+    let progress_empty_color = config.colors.progress_empty_color();
+
+    let state_text = match play_state {
+        Some(mpd_client::responses::PlayState::Playing) => "⏸",
+        Some(mpd_client::responses::PlayState::Paused) => "▶",
+        Some(mpd_client::responses::PlayState::Stopped) => "⏹",
+        None => "⏹",
+    };
+
+    let state_color = match play_state {
+        Some(mpd_client::responses::PlayState::Playing) => config.colors.playing(),
+        Some(mpd_client::responses::PlayState::Paused) => config.colors.paused(),
+        Some(mpd_client::responses::PlayState::Stopped) => config.colors.stopped(),
+        None => config.colors.stopped(),
+    };
+
+    let progress_value = progress.unwrap_or(0.0);
+    let progress_percentage = (progress_value * 100.0) as u16;
+
+    struct DynamicProgressBar {
+        state_text: String,
+        progress_percentage: u16,
+        border_title_color: Style,
+        border_color: Style,
+        song_title_color: Style,
+        progress_filled_color: Style,
+        progress_empty_color: Style,
+        state_color: Style,
+        time_elapsed_color: Style,
+        time_duration_color: Style,
+        time_separator_color: Style,
+        elapsed: Option<std::time::Duration>,
+        duration: Option<std::time::Duration>,
+    }
+
+    impl ratatui::widgets::Widget for DynamicProgressBar {
+        fn render(self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
+            let block = Block::default()
+                .border_type(BorderType::Rounded)
+                .borders(Borders::ALL)
+                .title(Span::styled(" Progress ", self.border_title_color))
+                .border_style(self.border_color);
+
+            let inner = block.inner(area);
+            block.render(area, buf);
+
+            // Create styled time spans
+            let time_spans = match (self.elapsed, self.duration) {
+                (Some(elapsed), Some(duration)) => vec![
+                    Span::raw(" "),
+                    Span::styled(format_duration(elapsed), self.time_elapsed_color),
+                    Span::styled("/", self.time_separator_color),
+                    Span::styled(format_duration(duration), self.time_duration_color),
+                    Span::raw(" "),
+                ],
+                (Some(elapsed), None) => vec![
+                    Span::raw(" "),
+                    Span::styled(format_duration(elapsed), self.time_elapsed_color),
+                    Span::styled("/--:--", self.song_title_color),
+                    Span::raw(" "),
+                ],
+                (None, Some(duration)) => vec![
+                    Span::raw(" "),
+                    Span::styled("--:--/", self.song_title_color),
+                    Span::styled(format_duration(duration), self.time_duration_color),
+                    Span::raw(" "),
+                ],
+                (None, None) => vec![Span::styled(" --:--/--:-- ", self.song_title_color)],
+            };
+            let time_width: usize = time_spans.iter().map(|span| span.content.len()).sum();
+
+            // Calculate available width for progress bar
+            let state_width = 3; // state icon
+            let spacing_width = 2; // Spaces around percentage
+            let total_text_width = state_width + spacing_width + time_width;
+
+            let bar_width = inner.width.saturating_sub(total_text_width as u16) as usize;
+            let filled = (self.progress_percentage as usize * bar_width / 100).min(bar_width);
+            let empty = bar_width.saturating_sub(filled);
+
+            let mut content_spans = vec![
+                Span::styled(&self.state_text, self.state_color),
+                Span::styled(" ", self.state_color),
+                Span::styled("━".repeat(filled), self.progress_filled_color),
+                Span::styled("━".repeat(empty), self.progress_empty_color),
+            ];
+            content_spans.extend(time_spans);
+            let content = Line::from(content_spans);
+
+            let paragraph = Paragraph::new(content).centered();
+            paragraph.render(inner, buf);
+        }
+    }
+
+    DynamicProgressBar {
+        state_text: state_text.to_string(),
+        progress_percentage,
+        border_title_color: Style::default().fg(border_title_color),
+        border_color: Style::default().fg(border_color),
+        song_title_color: Style::default().fg(song_title_color),
+        progress_filled_color: Style::default().fg(progress_filled_color),
+        progress_empty_color: Style::default().fg(progress_empty_color),
+        state_color: Style::default().fg(state_color),
+        time_elapsed_color: Style::default().fg(config.colors.time_elapsed()),
+        time_duration_color: Style::default().fg(config.colors.time_duration()),
+        time_separator_color: Style::default().fg(config.colors.time_separator()),
+        elapsed,
+        duration,
+    }
+}
+
+/// Create the left side box widget (queue list)
+pub fn create_left_box_top<'a>(
+    queue: &[SongInfo],
+    queue_list_state: &ListState,
+    current_song: &Option<SongInfo>,
+    config: &Config,
+    area: Rect,
+) -> List<'a> {
+    let border_color = config.colors.border_color();
+    let border_title_color = config.colors.border_title_color();
+    let text_color = config.colors.song_title_color();
+    let queue_album_color = config.colors.queue_album_color();
+    let queue_artist_color = config.colors.queue_artist_color();
+    let queue_song_title_color = config.colors.queue_song_title_color();
+
+    // Calculate available width inside the box (minus borders and padding)
+    let inner_width = area.width.saturating_sub(4) as usize; // 2 for borders, 2 for padding
+
+    let queue_items: Vec<ListItem> = if queue.is_empty() {
+        vec![]
+    } else {
+        // First, determine the maximum number width needed for proper alignment
+        let max_num_width = queue
+            .iter()
+            .enumerate()
+            .take(1000) // Reasonable limit for calculation
+            .map(|(i, _)| {
+                let num_str = format!("{}. ", i + 1);
+                unicode_width::UnicodeWidthStr::width(&num_str as &str)
+            })
+            .max()
+            .unwrap_or(3); // fallback to 3 for single digit
+
+        queue
+            .iter()
+            .enumerate()
+            .map(|(i, song)| {
+                // Calculate available width for entire line using consistent max_num_width
+                let separator_width = 3; // " ║ "
+                let duration_display_width = 8; // " (MM:SS)"
+                let remaining_width = inner_width
+                    .saturating_sub(max_num_width + separator_width * 2 + duration_display_width);
+
+                // Split remaining width into 3 equal parts for title, artist, album
+                let field_width = remaining_width / 3;
+
+                // Format duration if available
+                let duration_str = match song.duration {
+                    Some(duration) => {
+                        let total_seconds = duration.as_secs();
+                        let minutes = total_seconds / 60;
+                        let seconds = total_seconds % 60;
+                        format!(" ({:02}:{:02})", minutes, seconds)
+                    }
+                    None => " (--:--)".to_string(),
+                };
+
+                // Truncate each field to its allocated width using Unicode-aware width
+                let field_width_max = field_width.max(8);
+                let title = left_align(&song.title, field_width_max);
+                let artist = left_align(&song.artist, field_width_max);
+                let album = left_align(&song.album, field_width_max);
+
+                // Check if this is the currently playing song
+                let is_currently_playing = current_song
+                    .as_ref()
+                    .map(|current| current.file_path == song.file_path)
+                    .unwrap_or(false);
+
+                // Check if this is the selected song
+                let is_selected = queue_list_state.selected() == Some(i);
+
+                // Create base style
+                let mut queue_album_color = Style::default().fg(queue_album_color);
+                let mut queue_song_title_color = Style::default().fg(queue_song_title_color);
+                let mut queue_artist_color = Style::default().fg(queue_artist_color);
+                let mut text_color = Style::default().fg(text_color);
+                let mut duration_color = text_color;
+                let mut pos_color = text_color;
+
+                // Apply background highlight for selected song
+                if is_selected {
+                    queue_album_color = queue_album_color
+                        .bg(config.colors.queue_selected_highlight_color())
+                        .fg(config.colors.queue_selected_text_color());
+                    queue_song_title_color = queue_song_title_color
+                        .bg(config.colors.queue_selected_highlight_color())
+                        .fg(config.colors.queue_selected_text_color());
+                    queue_artist_color = queue_artist_color
+                        .bg(config.colors.queue_selected_highlight_color())
+                        .fg(config.colors.queue_selected_text_color());
+                    text_color = text_color
+                        .bg(config.colors.queue_selected_highlight_color())
+                        .fg(config.colors.queue_selected_text_color());
+                    duration_color = text_color
+                        .bg(config.colors.queue_selected_highlight_color())
+                        .fg(config.colors.queue_selected_text_color());
+                    pos_color = text_color
+                        .bg(config.colors.queue_selected_highlight_color())
+                        .fg(config.colors.queue_selected_text_color());
+                }
+
+                // Apply bold-italics to currently playing song content
+                if is_currently_playing {
+                    queue_album_color = queue_album_color.bold().italic();
+                    queue_song_title_color = queue_song_title_color.bold().italic();
+                    queue_artist_color = queue_artist_color.bold().italic();
+                    text_color = text_color.bold().italic();
+                    duration_color = duration_color.bold().italic();
+                    pos_color = pos_color.bold().italic();
+                }
+
+                // Create spans with appropriate styling
+                let num_str = format!("{}. ", i + 1);
+                let padded_num_str = format!("{:<width$}", num_str, width = max_num_width);
+                let mut spans = vec![Span::styled(padded_num_str, pos_color)];
+
+                // Each field should have its own style, but when selected should be overwritten by the selection styling
+                spans.push(Span::styled(title.clone(), queue_song_title_color));
+                spans.push(Span::styled(" ║ ", text_color));
+                spans.push(Span::styled(artist.clone(), queue_artist_color));
+                spans.push(Span::styled(" ║ ", text_color));
+                spans.push(Span::styled(album.clone(), queue_album_color));
+                spans.push(Span::styled(duration_str.clone(), duration_color));
+
+                // If this row is selected, add padding to fill the entire width
+                if is_selected {
+                    // Calculate the current line width by reconstructing the line content
+                    let line_content = format!(
+                        "{}. {} ║ {} ║ {}{}",
+                        i + 1,
+                        title.clone(),
+                        artist.clone(),
+                        album.clone(),
+                        duration_str.clone()
+                    );
+                    let current_width =
+                        unicode_width::UnicodeWidthStr::width(&line_content as &str);
+                    let remaining_width = area.width.saturating_sub(current_width as u16) as usize;
+
+                    if remaining_width > 0 {
+                        // Add spaces to fill the remaining width with the selected background color
+                        spans.push(Span::styled(" ".repeat(remaining_width), text_color));
+                    }
+                }
+
+                ListItem::new(Line::from(spans))
+            })
+            .collect::<Vec<_>>()
+    };
+
+    List::new(queue_items)
+        .block(
+            Block::default()
+                .border_type(BorderType::Rounded)
+                .borders(Borders::ALL)
+                .title(Span::styled(
+                    " Queue ",
+                    Style::default().fg(border_title_color),
+                ))
+                .border_style(Style::default().fg(border_color)),
+        )
+        .style(Style::default().fg(text_color))
+        .highlight_style(Style::default())
+        .repeat_highlight_symbol(true)
+}
+
+/// Create the middle box widget that spans both splits
+pub fn create_middle_box<'a>(config: &Config) -> Paragraph<'a> {
+    let border_color = config.colors.border_color();
+    let text_color = config.colors.song_title_color();
+
+    let content = "Placeholder".to_string();
+
+    Paragraph::new(content)
+        .block(
+            Block::default()
+                .border_type(BorderType::Rounded)
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(border_color)),
+        )
+        .style(Style::default().fg(text_color))
+        .centered()
+}
+
+/// Create an empty box widget
+pub fn create_empty_box<'a>(title: &'a str, config: &Config) -> Paragraph<'a> {
+    let border_color = config.colors.border_color();
+    let border_title_color = config.colors.border_title_color();
+    let text_color = config.colors.song_title_color();
+
+    Paragraph::new("")
+        .block(
+            Block::default()
+                .border_type(BorderType::Rounded)
+                .borders(Borders::ALL)
+                .title(Span::styled(
+                    format!(" {} ", title),
+                    Style::default().fg(border_title_color),
+                ))
+                .border_style(Style::default().fg(border_color)),
+        )
+        .style(Style::default().fg(text_color))
+        .centered()
+}
+
+/// Create the format information widget
+pub fn create_format_widget<'a>(
+    format: &Option<String>,
+    current_song: &Option<SongInfo>,
+    config: &Config,
+) -> Paragraph<'a> {
+    let format_color = config.colors.song_title_color();
+
+    let format_text = match format {
+        Some(f) => {
+            // Parse format string like "44100:24:2" to extract sample rate
+            if let Some(sample_rate_part) = f.split(':').next() {
+                if let Ok(sample_rate) = sample_rate_part.parse::<u32>() {
+                    // Format sample rate as kHz
+                    let sample_rate_khz = sample_rate as f32 / 1000.0;
+
+                    // Extract file extension from the current song's file path
+                    let file_type = if let Some(song) = current_song {
+                        song.file_path
+                            .extension()
+                            .and_then(|ext| ext.to_str())
+                            .unwrap_or("unknown")
+                            .to_uppercase()
+                    } else {
+                        "unknown".to_string()
+                    };
+
+                    format!("{}: {:.1}kHz", file_type, sample_rate_khz)
+                } else {
+                    f.clone()
+                }
+            } else {
+                f.clone()
+            }
+        }
+        None => "--".to_string(),
+    };
+
+    Paragraph::new(format_text)
+        .style(Style::default().fg(format_color))
+        .left_aligned()
+}
+
+/// Create the song information widget
+pub fn create_song_widget<'a>(current_song: &'a Option<SongInfo>, config: &Config) -> Paragraph<'a> {
+    // Get colors from config
+    let album_color = config.colors.album_color();
+    let artist_color = config.colors.artist_color();
+    let song_title_color = config.colors.song_title_color();
+    let border_title_color = config.colors.border_title_color();
+    let border_color = config.colors.border_color();
+
+    let lines = match current_song {
+        Some(song) => {
+            vec![
+                Line::from(vec![Span::styled(
+                    &song.title,
+                    Style::default().fg(song_title_color),
+                )]),
+                Line::from(vec![
+                    Span::styled(&song.artist, Style::default().fg(artist_color)),
+                    Span::styled(" - ", Style::default().fg(border_title_color)),
+                    Span::styled(&song.album, Style::default().fg(album_color)),
+                ]),
+            ]
+        }
+        None => vec![Line::from("No song playing").dark_gray()],
+    };
+
+    Paragraph::new(lines)
+        .block(
+            Block::default()
+                .border_type(BorderType::Rounded)
+                .borders(Borders::ALL)
+                .title(Span::styled(
+                    " Now Playing ",
+                    Style::default().fg(border_title_color),
+                ))
+                .border_style(Style::default().fg(border_color)),
+        )
+        .centered()
+}
+
+/// Render image widget if available
+pub fn render_image_widget(
+    frame: &mut ratatui::Frame<'_>,
+    protocol: &mut crate::ui::Protocol,
+    image_area: Rect,
+) {
+    use image::imageops::FilterType;
+    
+    if let Some(ref mut img) = protocol.image {
+        // Get the image dimensions after resizing for the available area
+        let resize = Resize::Scale(Some(FilterType::Lanczos3));
+        let img_rect = img.size_for(resize.clone(), image_area);
+
+        // Center the image within the available area
+        let centered_area = center_image(img_rect, image_area);
+
+        let image = StatefulImage::default().resize(resize);
+        frame.render_stateful_widget(image, centered_area, img);
+    } else {
+        let placeholder_area = center_area(
+            image_area,
+            Constraint::Length(12),
+            Constraint::Length(1),
+        );
+        let placeholder =
+            Paragraph::new("No album art").style(Style::default().dark_gray());
+        frame.render_widget(placeholder, placeholder_area);
+    }
+}
