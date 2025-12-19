@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -7,12 +8,80 @@ pub struct Config {
     pub mpd: MpdConfig,
     #[serde(default)]
     pub colors: ColorsConfig,
+    #[serde(default)]
+    pub binds: BindsConfig,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MpdConfig {
     #[serde(default = "MpdConfig::default_address")]
     pub address: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct BindsConfig {
+    #[serde(default = "BindsConfig::default_next")]
+    pub next: Vec<String>,
+    #[serde(default = "BindsConfig::default_previous")]
+    pub previous: Vec<String>,
+    #[serde(default = "BindsConfig::default_toggle_play_pause")]
+    pub toggle_play_pause: Vec<String>,
+    #[serde(default = "BindsConfig::default_volume_up")]
+    pub volume_up: Vec<String>,
+    #[serde(default = "BindsConfig::default_volume_down")]
+    pub volume_down: Vec<String>,
+    #[serde(default = "BindsConfig::default_toggle_mute")]
+    pub toggle_mute: Vec<String>,
+    #[serde(default = "BindsConfig::default_cycle_mode_right")]
+    pub cycle_mode_right: Vec<String>,
+    #[serde(default = "BindsConfig::default_cycle_mode_left")]
+    pub cycle_mode_left: Vec<String>,
+    #[serde(default = "BindsConfig::default_clear_queue")]
+    pub clear_queue: Vec<String>,
+    #[serde(default = "BindsConfig::default_repeat")]
+    pub repeat: Vec<String>,
+    #[serde(default = "BindsConfig::default_random")]
+    pub random: Vec<String>,
+    #[serde(default = "BindsConfig::default_single")]
+    pub single: Vec<String>,
+    #[serde(default = "BindsConfig::default_consume")]
+    pub consume: Vec<String>,
+    #[serde(default = "BindsConfig::default_quit")]
+    pub quit: Vec<String>,
+    #[serde(default = "BindsConfig::default_refresh")]
+    pub refresh: Vec<String>,
+    #[serde(default = "BindsConfig::default_switch_to_queue_menu")]
+    pub switch_to_queue_menu: Vec<String>,
+    #[serde(default = "BindsConfig::default_switch_to_tracks")]
+    pub switch_to_tracks: Vec<String>,
+    #[serde(default = "BindsConfig::default_seek_forward")]
+    pub seek_forward: Vec<String>,
+    #[serde(default = "BindsConfig::default_seek_backward")]
+    pub seek_backward: Vec<String>,
+    #[serde(default = "BindsConfig::default_queue_up")]
+    pub queue_up: Vec<String>,
+    #[serde(default = "BindsConfig::default_queue_down")]
+    pub queue_down: Vec<String>,
+    #[serde(default = "BindsConfig::default_play_selected")]
+    pub play_selected: Vec<String>,
+    #[serde(default = "BindsConfig::default_remove_from_queue")]
+    pub remove_from_queue: Vec<String>,
+    #[serde(default = "BindsConfig::default_move_up_in_queue")]
+    pub move_up_in_queue: Vec<String>,
+    #[serde(default = "BindsConfig::default_move_down_in_queue")]
+    pub move_down_in_queue: Vec<String>,
+    #[serde(default = "BindsConfig::default_switch_panel_left")]
+    pub switch_panel_left: Vec<String>,
+    #[serde(default = "BindsConfig::default_switch_panel_right")]
+    pub switch_panel_right: Vec<String>,
+    #[serde(default = "BindsConfig::default_navigate_up")]
+    pub navigate_up: Vec<String>,
+    #[serde(default = "BindsConfig::default_navigate_down")]
+    pub navigate_down: Vec<String>,
+    #[serde(default = "BindsConfig::default_toggle_album_expansion")]
+    pub toggle_album_expansion: Vec<String>,
+    #[serde(default = "BindsConfig::default_add_song_to_queue")]
+    pub add_song_to_queue: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -278,6 +347,7 @@ impl Default for Config {
         Self {
             mpd: MpdConfig::default(),
             colors: ColorsConfig::default(),
+            binds: BindsConfig::default(),
         }
     }
 }
@@ -292,6 +362,311 @@ impl Default for MpdConfig {
     fn default() -> Self {
         Self {
             address: Self::default_address(),
+        }
+    }
+}
+
+impl BindsConfig {
+    fn default_next() -> Vec<String> { vec![">".to_string(), "shift-j".to_string(), "shift-down".to_string()] }
+    fn default_previous() -> Vec<String> { vec!["<".to_string(), "shift-k".to_string(), "shift-up".to_string()] }
+    fn default_toggle_play_pause() -> Vec<String> { vec![" ".to_string(), "p".to_string()] }
+    fn default_volume_up() -> Vec<String> { vec!["=".to_string(), "+".to_string()] }
+    fn default_volume_down() -> Vec<String> { vec!["-".to_string(), "_".to_string()] }
+    fn default_toggle_mute() -> Vec<String> { vec!["m".to_string()] }
+    fn default_cycle_mode_right() -> Vec<String> { vec!["ctrl-l".to_string(), "ctrl-right".to_string()] }
+    fn default_cycle_mode_left() -> Vec<String> { vec!["ctrl-h".to_string(), "ctrl-left".to_string()] }
+    fn default_clear_queue() -> Vec<String> { vec!["d".to_string()] }
+    fn default_repeat() -> Vec<String> { vec!["r".to_string()] }
+    fn default_random() -> Vec<String> { vec!["z".to_string()] }
+    fn default_single() -> Vec<String> { vec!["s".to_string()] }
+    fn default_consume() -> Vec<String> { vec!["c".to_string()] }
+    fn default_quit() -> Vec<String> { vec!["esc".to_string(), "q".to_string(), "ctrl-c".to_string()] }
+    fn default_refresh() -> Vec<String> { vec!["u".to_string()] }
+    fn default_switch_to_queue_menu() -> Vec<String> { vec!["1".to_string()] }
+    fn default_switch_to_tracks() -> Vec<String> { vec!["2".to_string()] }
+    fn default_seek_forward() -> Vec<String> { vec!["shift-l".to_string(), "shift-right".to_string()] }
+    fn default_seek_backward() -> Vec<String> { vec!["shift-h".to_string(), "shift-left".to_string()] }
+    fn default_queue_up() -> Vec<String> { vec!["k".to_string(), "up".to_string()] }
+    fn default_queue_down() -> Vec<String> { vec!["j".to_string(), "down".to_string()] }
+    fn default_play_selected() -> Vec<String> { vec!["enter".to_string(), "l".to_string(), "right".to_string()] }
+    fn default_remove_from_queue() -> Vec<String> { vec!["x".to_string(), "backspace".to_string()] }
+    fn default_move_up_in_queue() -> Vec<String> { vec!["ctrl-k".to_string(), "ctrl-up".to_string()] }
+    fn default_move_down_in_queue() -> Vec<String> { vec!["ctrl-j".to_string(), "ctrl-down".to_string()] }
+    fn default_switch_panel_left() -> Vec<String> { vec!["h".to_string(), "left".to_string()] }
+    fn default_switch_panel_right() -> Vec<String> { vec!["l".to_string(), "right".to_string()] }
+    fn default_navigate_up() -> Vec<String> { vec!["k".to_string(), "up".to_string()] }
+    fn default_navigate_down() -> Vec<String> { vec!["j".to_string(), "down".to_string()] }
+    fn default_toggle_album_expansion() -> Vec<String> { vec!["l".to_string(), "right".to_string()] }
+    fn default_add_song_to_queue() -> Vec<String> { vec!["a".to_string(), "enter".to_string()] }
+
+    pub fn parse_keybinding(&self, key_str: &str) -> Option<(crossterm::event::KeyModifiers, crossterm::event::KeyCode)> {
+        let key_str = key_str.to_lowercase();
+        
+        let parts: Vec<&str> = key_str.split('-').collect();
+        if parts.is_empty() {
+            return None;
+        }
+        
+        let mut modifiers = crossterm::event::KeyModifiers::NONE;
+        let key_part = parts[parts.len() - 1];
+        
+        // Parse modifiers
+        for part in &parts[..parts.len() - 1] {
+            match *part {
+                "ctrl" => modifiers |= crossterm::event::KeyModifiers::CONTROL,
+                "alt" => modifiers |= crossterm::event::KeyModifiers::ALT,
+                "shift" => modifiers |= crossterm::event::KeyModifiers::SHIFT,
+                _ => return None,
+            }
+        }
+        
+        // Parse key code
+        let code = match key_part {
+            "esc" => crossterm::event::KeyCode::Esc,
+            "enter" => crossterm::event::KeyCode::Enter,
+            "backspace" => crossterm::event::KeyCode::Backspace,
+            "tab" => crossterm::event::KeyCode::Tab,
+            "delete" => crossterm::event::KeyCode::Delete,
+            "insert" => crossterm::event::KeyCode::Insert,
+            "home" => crossterm::event::KeyCode::Home,
+            "end" => crossterm::event::KeyCode::End,
+            "pageup" => crossterm::event::KeyCode::PageUp,
+            "pagedown" => crossterm::event::KeyCode::PageDown,
+            "up" => crossterm::event::KeyCode::Up,
+            "down" => crossterm::event::KeyCode::Down,
+            "left" => crossterm::event::KeyCode::Left,
+            "right" => crossterm::event::KeyCode::Right,
+            "f1" => crossterm::event::KeyCode::F(1),
+            "f2" => crossterm::event::KeyCode::F(2),
+            "f3" => crossterm::event::KeyCode::F(3),
+            "f4" => crossterm::event::KeyCode::F(4),
+            "f5" => crossterm::event::KeyCode::F(5),
+            "f6" => crossterm::event::KeyCode::F(6),
+            "f7" => crossterm::event::KeyCode::F(7),
+            "f8" => crossterm::event::KeyCode::F(8),
+            "f9" => crossterm::event::KeyCode::F(9),
+            "f10" => crossterm::event::KeyCode::F(10),
+            "f11" => crossterm::event::KeyCode::F(11),
+            "f12" => crossterm::event::KeyCode::F(12),
+            // Handle special single-character keys
+            "space" => crossterm::event::KeyCode::Char(' '),
+            // Handle characters - if shift is present, capitalize
+            c if c.len() == 1 => {
+                let char_bytes = c.chars().next().unwrap();
+                if modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                    crossterm::event::KeyCode::Char(char_bytes.to_ascii_uppercase())
+                } else {
+                    crossterm::event::KeyCode::Char(char_bytes)
+                }
+            },
+            _ => return None,
+        };
+        
+        Some((modifiers, code))
+    }
+
+    pub fn build_key_map(&self) -> HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction> {
+        let mut key_map = HashMap::new();
+        
+        // Global bindings
+        for key_str in &self.next {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::Next);
+            }
+        }
+        for key_str in &self.previous {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::Previous);
+            }
+        }
+        for key_str in &self.toggle_play_pause {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::TogglePlayPause);
+            }
+        }
+        for key_str in &self.volume_up {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::VolumeUp);
+            }
+        }
+        for key_str in &self.volume_down {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::VolumeDown);
+            }
+        }
+        for key_str in &self.toggle_mute {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::ToggleMute);
+            }
+        }
+        for key_str in &self.cycle_mode_right {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::CycleModeRight);
+            }
+        }
+        for key_str in &self.cycle_mode_left {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::CycleModeLeft);
+            }
+        }
+        for key_str in &self.clear_queue {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::ClearQueue);
+            }
+        }
+        for key_str in &self.repeat {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::Repeat);
+            }
+        }
+        for key_str in &self.random {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::Random);
+            }
+        }
+        for key_str in &self.single {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::Single);
+            }
+        }
+        for key_str in &self.consume {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::Consume);
+            }
+        }
+        for key_str in &self.quit {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::Quit);
+            }
+        }
+        for key_str in &self.refresh {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::Refresh);
+            }
+        }
+        for key_str in &self.switch_to_queue_menu {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::SwitchToQueueMenu);
+            }
+        }
+        for key_str in &self.switch_to_tracks {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::SwitchToTracks);
+            }
+        }
+        for key_str in &self.seek_forward {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::SeekForward);
+            }
+        }
+        for key_str in &self.seek_backward {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::SeekBackward);
+            }
+        }
+        
+        // Queue mode bindings
+        for key_str in &self.queue_up {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::QueueUp);
+            }
+        }
+        for key_str in &self.queue_down {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::QueueDown);
+            }
+        }
+        for key_str in &self.play_selected {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::PlaySelected);
+            }
+        }
+        for key_str in &self.remove_from_queue {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::RemoveFromQueue);
+            }
+        }
+        for key_str in &self.move_up_in_queue {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::MoveUpInQueue);
+            }
+        }
+        for key_str in &self.move_down_in_queue {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::MoveDownInQueue);
+            }
+        }
+        
+        // Tracks mode bindings
+        for key_str in &self.switch_panel_left {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelLeft);
+            }
+        }
+        for key_str in &self.switch_panel_right {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelRight);
+            }
+        }
+        for key_str in &self.navigate_up {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::NavigateUp);
+            }
+        }
+        for key_str in &self.navigate_down {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::NavigateDown);
+            }
+        }
+        for key_str in &self.toggle_album_expansion {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion);
+            }
+        }
+        for key_str in &self.add_song_to_queue {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                key_map.insert(key, crate::app::mpd_handler::MPDAction::AddSongToQueue);
+            }
+        }
+        
+        key_map
+    }
+}
+
+impl Default for BindsConfig {
+    fn default() -> Self {
+        Self {
+            next: Self::default_next(),
+            previous: Self::default_previous(),
+            toggle_play_pause: Self::default_toggle_play_pause(),
+            volume_up: Self::default_volume_up(),
+            volume_down: Self::default_volume_down(),
+            toggle_mute: Self::default_toggle_mute(),
+            cycle_mode_right: Self::default_cycle_mode_right(),
+            cycle_mode_left: Self::default_cycle_mode_left(),
+            clear_queue: Self::default_clear_queue(),
+            repeat: Self::default_repeat(),
+            random: Self::default_random(),
+            single: Self::default_single(),
+            consume: Self::default_consume(),
+            quit: Self::default_quit(),
+            refresh: Self::default_refresh(),
+            switch_to_queue_menu: Self::default_switch_to_queue_menu(),
+            switch_to_tracks: Self::default_switch_to_tracks(),
+            seek_forward: Self::default_seek_forward(),
+            seek_backward: Self::default_seek_backward(),
+            queue_up: Self::default_queue_up(),
+            queue_down: Self::default_queue_down(),
+            play_selected: Self::default_play_selected(),
+            remove_from_queue: Self::default_remove_from_queue(),
+            move_up_in_queue: Self::default_move_up_in_queue(),
+            move_down_in_queue: Self::default_move_down_in_queue(),
+            switch_panel_left: Self::default_switch_panel_left(),
+            switch_panel_right: Self::default_switch_panel_right(),
+            navigate_up: Self::default_navigate_up(),
+            navigate_down: Self::default_navigate_down(),
+            toggle_album_expansion: Self::default_toggle_album_expansion(),
+            add_song_to_queue: Self::default_add_song_to_queue(),
         }
     }
 }
