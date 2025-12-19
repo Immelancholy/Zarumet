@@ -58,10 +58,10 @@ pub struct BindsConfig {
     pub seek_forward: Vec<String>,
     #[serde(default = "BindsConfig::default_seek_backward")]
     pub seek_backward: Vec<String>,
-    #[serde(default = "BindsConfig::default_queue_up")]
-    pub queue_up: Vec<String>,
-    #[serde(default = "BindsConfig::default_queue_down")]
-    pub queue_down: Vec<String>,
+    #[serde(default = "BindsConfig::default_scroll_up")]
+    pub scroll_up: Vec<String>,
+    #[serde(default = "BindsConfig::default_scroll_down")]
+    pub scroll_down: Vec<String>,
     #[serde(default = "BindsConfig::default_play_selected")]
     pub play_selected: Vec<String>,
     #[serde(default = "BindsConfig::default_remove_from_queue")]
@@ -74,18 +74,14 @@ pub struct BindsConfig {
     pub switch_panel_left: Vec<String>,
     #[serde(default = "BindsConfig::default_switch_panel_right")]
     pub switch_panel_right: Vec<String>,
-    #[serde(default = "BindsConfig::default_navigate_up")]
-    pub navigate_up: Vec<String>,
-    #[serde(default = "BindsConfig::default_navigate_down")]
-    pub navigate_down: Vec<String>,
     #[serde(default = "BindsConfig::default_toggle_album_expansion")]
     pub toggle_album_expansion: Vec<String>,
     #[serde(default = "BindsConfig::default_add_song_to_queue")]
     pub add_song_to_queue: Vec<String>,
-    #[serde(default = "BindsConfig::default_scroll_up")]
-    pub scroll_up: Vec<String>,
-    #[serde(default = "BindsConfig::default_scroll_down")]
-    pub scroll_down: Vec<String>,
+    #[serde(default = "BindsConfig::default_scroll_up_big")]
+    pub scroll_up_big: Vec<String>,
+    #[serde(default = "BindsConfig::default_scroll_down_big")]
+    pub scroll_down_big: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -371,56 +367,130 @@ impl Default for MpdConfig {
 }
 
 impl BindsConfig {
-    fn default_next() -> Vec<String> { vec![">".to_string(), "shift-j".to_string(), "shift-down".to_string()] }
-    fn default_previous() -> Vec<String> { vec!["<".to_string(), "shift-k".to_string(), "shift-up".to_string()] }
-    fn default_toggle_play_pause() -> Vec<String> { vec![" ".to_string(), "p".to_string()] }
-    fn default_volume_up() -> Vec<String> { vec!["=".to_string(), "+".to_string()] }
-    fn default_volume_down() -> Vec<String> { vec!["-".to_string(), "_".to_string()] }
-    fn default_toggle_mute() -> Vec<String> { vec!["m".to_string()] }
-    fn default_cycle_mode_right() -> Vec<String> { vec!["ctrl-l".to_string(), "ctrl-right".to_string()] }
-    fn default_cycle_mode_left() -> Vec<String> { vec!["ctrl-h".to_string(), "ctrl-left".to_string()] }
-    fn default_clear_queue() -> Vec<String> { vec!["d".to_string()] }
-    fn default_repeat() -> Vec<String> { vec!["r".to_string()] }
-    fn default_random() -> Vec<String> { vec!["z".to_string()] }
-    fn default_single() -> Vec<String> { vec!["s".to_string()] }
-    fn default_consume() -> Vec<String> { vec!["c".to_string()] }
-    fn default_quit() -> Vec<String> { vec!["esc".to_string(), "q".to_string(), "ctrl-c".to_string()] }
-    fn default_refresh() -> Vec<String> { vec!["u".to_string()] }
-    fn default_switch_to_queue_menu() -> Vec<String> { vec!["1".to_string()] }
-    fn default_switch_to_tracks() -> Vec<String> { vec!["2".to_string()] }
-    fn default_seek_forward() -> Vec<String> { vec!["shift-l".to_string(), "shift-right".to_string()] }
-    fn default_seek_backward() -> Vec<String> { vec!["shift-h".to_string(), "shift-left".to_string()] }
-    fn default_queue_up() -> Vec<String> { vec!["k".to_string(), "up".to_string()] }
-    fn default_queue_down() -> Vec<String> { vec!["j".to_string(), "down".to_string()] }
-    fn default_play_selected() -> Vec<String> { vec!["enter".to_string(), "l".to_string(), "right".to_string()] }
-    fn default_remove_from_queue() -> Vec<String> { vec!["x".to_string(), "backspace".to_string()] }
-    fn default_move_up_in_queue() -> Vec<String> { vec!["ctrl-k".to_string(), "ctrl-up".to_string()] }
-    fn default_move_down_in_queue() -> Vec<String> { vec!["ctrl-j".to_string(), "ctrl-down".to_string()] }
-    fn default_switch_panel_left() -> Vec<String> { vec!["h".to_string(), "left".to_string()] }
-    fn default_switch_panel_right() -> Vec<String> { vec!["l".to_string(), "right".to_string()] }
-    fn default_navigate_up() -> Vec<String> { vec!["k".to_string(), "up".to_string()] }
-    fn default_navigate_down() -> Vec<String> { vec!["j".to_string(), "down".to_string()] }
-    fn default_toggle_album_expansion() -> Vec<String> { vec!["l".to_string(), "right".to_string()] }
-    fn default_add_song_to_queue() -> Vec<String> { vec!["a".to_string(), "enter".to_string()] }
-    fn default_scroll_up() -> Vec<String> { vec!["ctrl-u".to_string()] }
-    fn default_scroll_down() -> Vec<String> { vec!["ctrl-d".to_string()] }
+    fn default_next() -> Vec<String> {
+        vec![
+            ">".to_string(),
+            "shift-j".to_string(),
+            "shift-down".to_string(),
+        ]
+    }
+    fn default_previous() -> Vec<String> {
+        vec![
+            "<".to_string(),
+            "shift-k".to_string(),
+            "shift-up".to_string(),
+        ]
+    }
+    fn default_toggle_play_pause() -> Vec<String> {
+        vec![" ".to_string(), "p".to_string()]
+    }
+    fn default_volume_up() -> Vec<String> {
+        vec!["=".to_string(), "+".to_string()]
+    }
+    fn default_volume_down() -> Vec<String> {
+        vec!["-".to_string(), "_".to_string()]
+    }
+    fn default_toggle_mute() -> Vec<String> {
+        vec!["m".to_string()]
+    }
+    fn default_cycle_mode_right() -> Vec<String> {
+        vec!["ctrl-l".to_string(), "ctrl-right".to_string()]
+    }
+    fn default_cycle_mode_left() -> Vec<String> {
+        vec!["ctrl-h".to_string(), "ctrl-left".to_string()]
+    }
+    fn default_clear_queue() -> Vec<String> {
+        vec!["d".to_string()]
+    }
+    fn default_repeat() -> Vec<String> {
+        vec!["r".to_string()]
+    }
+    fn default_random() -> Vec<String> {
+        vec!["z".to_string()]
+    }
+    fn default_single() -> Vec<String> {
+        vec!["s".to_string()]
+    }
+    fn default_consume() -> Vec<String> {
+        vec!["c".to_string()]
+    }
+    fn default_quit() -> Vec<String> {
+        vec!["esc".to_string(), "q".to_string(), "ctrl-c".to_string()]
+    }
+    fn default_refresh() -> Vec<String> {
+        vec!["u".to_string()]
+    }
+    fn default_switch_to_queue_menu() -> Vec<String> {
+        vec!["1".to_string()]
+    }
+    fn default_switch_to_tracks() -> Vec<String> {
+        vec!["2".to_string()]
+    }
+    fn default_seek_forward() -> Vec<String> {
+        vec!["shift-l".to_string(), "shift-right".to_string()]
+    }
+    fn default_seek_backward() -> Vec<String> {
+        vec!["shift-h".to_string(), "shift-left".to_string()]
+    }
+    fn default_scroll_up() -> Vec<String> {
+        vec!["k".to_string(), "up".to_string()]
+    }
+    fn default_scroll_down() -> Vec<String> {
+        vec!["j".to_string(), "down".to_string()]
+    }
+    fn default_play_selected() -> Vec<String> {
+        vec!["enter".to_string(), "l".to_string(), "right".to_string()]
+    }
+    fn default_remove_from_queue() -> Vec<String> {
+        vec!["x".to_string(), "backspace".to_string()]
+    }
+    fn default_move_up_in_queue() -> Vec<String> {
+        vec!["ctrl-k".to_string(), "ctrl-up".to_string()]
+    }
+    fn default_move_down_in_queue() -> Vec<String> {
+        vec!["ctrl-j".to_string(), "ctrl-down".to_string()]
+    }
+    fn default_switch_panel_left() -> Vec<String> {
+        vec!["h".to_string(), "left".to_string()]
+    }
+    fn default_switch_panel_right() -> Vec<String> {
+        vec!["l".to_string(), "right".to_string()]
+    }
+    fn default_toggle_album_expansion() -> Vec<String> {
+        vec!["l".to_string(), "right".to_string()]
+    }
+    fn default_add_song_to_queue() -> Vec<String> {
+        vec!["a".to_string(), "enter".to_string()]
+    }
+    fn default_scroll_up_big() -> Vec<String> {
+        vec!["ctrl-u".to_string()]
+    }
+    fn default_scroll_down_big() -> Vec<String> {
+        vec!["ctrl-d".to_string()]
+    }
 
-    pub fn parse_keybinding(&self, key_str: &str) -> Option<(crossterm::event::KeyModifiers, crossterm::event::KeyCode)> {
+    pub fn parse_keybinding(
+        &self,
+        key_str: &str,
+    ) -> Option<(crossterm::event::KeyModifiers, crossterm::event::KeyCode)> {
         let key_str = key_str.to_lowercase();
-        
+
         // Special case for standalone "-" character
         if key_str == "-" {
-            return Some((crossterm::event::KeyModifiers::NONE, crossterm::event::KeyCode::Char('-')));
+            return Some((
+                crossterm::event::KeyModifiers::NONE,
+                crossterm::event::KeyCode::Char('-'),
+            ));
         }
-        
+
         let parts: Vec<&str> = key_str.split('-').collect();
         if parts.is_empty() {
             return None;
         }
-        
+
         let mut modifiers = crossterm::event::KeyModifiers::NONE;
         let key_part = parts[parts.len() - 1];
-        
+
         // Parse modifiers
         for part in &parts[..parts.len() - 1] {
             match *part {
@@ -430,7 +500,7 @@ impl BindsConfig {
                 _ => return None,
             }
         }
-        
+
         // Parse key code
         let code = match key_part {
             "esc" => crossterm::event::KeyCode::Esc,
@@ -469,37 +539,52 @@ impl BindsConfig {
                 } else {
                     crossterm::event::KeyCode::Char(char_bytes)
                 }
-            },
+            }
             _ => return None,
         };
-        
+
         Some((modifiers, code))
     }
 
     pub fn build_key_maps(
-        &self
+        &self,
     ) -> (
-        HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>,
-        HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>,
-        HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>,
+        HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+        HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+        HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
     ) {
         let mut global_map = HashMap::new();
         let mut queue_map = HashMap::new();
         let mut tracks_map = HashMap::new();
-        
+
         // Global bindings (always available)
         self.add_global_bindings(&mut global_map);
-        
+
         // Queue mode specific bindings
         self.add_queue_bindings(&mut queue_map);
-        
-        // Tracks mode specific bindings  
+
+        // Tracks mode specific bindings
         self.add_tracks_bindings(&mut tracks_map);
-        
+
         (global_map, queue_map, tracks_map)
     }
-    
-    fn add_global_bindings(&self, map: &mut HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>) {
+
+    fn add_global_bindings(
+        &self,
+        map: &mut HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+    ) {
         // Global bindings - these work in all modes
         // Note: Navigation keys (h,j,k,l,arrows) are NOT included here - they're mode-specific
         for key_str in &self.next {
@@ -598,15 +683,21 @@ impl BindsConfig {
             }
         }
     }
-    
-    fn add_queue_bindings(&self, map: &mut HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>) {
+
+    fn add_queue_bindings(
+        &self,
+        map: &mut HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+    ) {
         // Queue mode specific bindings
-        for key_str in &self.queue_up {
+        for key_str in &self.scroll_up {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::QueueUp);
             }
         }
-        for key_str in &self.queue_down {
+        for key_str in &self.scroll_down {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::QueueDown);
             }
@@ -631,21 +722,26 @@ impl BindsConfig {
                 map.insert(key, crate::app::mpd_handler::MPDAction::MoveDownInQueue);
             }
         }
-        for key_str in &self.scroll_up {
+        for key_str in &self.scroll_up_big {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::ScrollUp);
             }
         }
-        for key_str in &self.scroll_down {
+        for key_str in &self.scroll_down_big {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::ScrollDown);
             }
         }
-
     }
-    
-    fn add_tracks_bindings(&self, map: &mut HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>) {
-        // Tracks mode specific bindings  
+
+    fn add_tracks_bindings(
+        &self,
+        map: &mut HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+    ) {
+        // Tracks mode specific bindings
         for key_str in &self.switch_panel_left {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelLeft);
@@ -655,7 +751,10 @@ impl BindsConfig {
         // This allows us to use the same keys for both actions with different behavior
         for key_str in &self.toggle_album_expansion {
             if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion);
+                map.insert(
+                    key,
+                    crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion,
+                );
             }
         }
         for key_str in &self.switch_panel_right {
@@ -663,12 +762,12 @@ impl BindsConfig {
                 map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelRight);
             }
         }
-        for key_str in &self.navigate_up {
+        for key_str in &self.scroll_up {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::NavigateUp);
             }
         }
-        for key_str in &self.navigate_down {
+        for key_str in &self.scroll_down {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::NavigateDown);
             }
@@ -679,12 +778,12 @@ impl BindsConfig {
                 map.insert(key, crate::app::mpd_handler::MPDAction::AddSongToQueue);
             }
         }
-        for key_str in &self.scroll_up {
+        for key_str in &self.scroll_up_big {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::ScrollUp);
             }
         }
-        for key_str in &self.scroll_down {
+        for key_str in &self.scroll_down_big {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::ScrollDown);
             }
@@ -714,18 +813,16 @@ impl Default for BindsConfig {
             switch_to_tracks: Self::default_switch_to_tracks(),
             seek_forward: Self::default_seek_forward(),
             seek_backward: Self::default_seek_backward(),
-            queue_up: Self::default_queue_up(),
-            queue_down: Self::default_queue_down(),
             play_selected: Self::default_play_selected(),
             remove_from_queue: Self::default_remove_from_queue(),
             move_up_in_queue: Self::default_move_up_in_queue(),
             move_down_in_queue: Self::default_move_down_in_queue(),
             switch_panel_left: Self::default_switch_panel_left(),
             switch_panel_right: Self::default_switch_panel_right(),
-            navigate_up: Self::default_navigate_up(),
-            navigate_down: Self::default_navigate_down(),
             toggle_album_expansion: Self::default_toggle_album_expansion(),
             add_song_to_queue: Self::default_add_song_to_queue(),
+            scroll_up_big: Self::default_scroll_up_big(),
+            scroll_down_big: Self::default_scroll_down_big(),
             scroll_up: Self::default_scroll_up(),
             scroll_down: Self::default_scroll_down(),
         }
