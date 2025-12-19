@@ -211,6 +211,9 @@ impl Navigation for App {
                     MenuMode::Tracks => MenuMode::Queue,
                 };
             }
+            MPDAction::ScrollUp | MPDAction::ScrollDown => {
+                self.handle_scroll(action).await;
+            }
             _ => {
                 // Execute MPD command for other actions
                 if let Err(e) = action.execute(client).await {
@@ -366,6 +369,133 @@ impl App {
                 }
             }
             _ => {}
+        }
+    }
+
+    /// Handle scrolling by 5 items at a time
+    async fn handle_scroll(&mut self, action: MPDAction) {
+        match self.menu_mode {
+            MenuMode::Queue => {
+                if !self.queue.is_empty() {
+                    let current = self.queue_list_state.selected().unwrap_or(0);
+                    let new_index = match action {
+                        MPDAction::ScrollUp => {
+                            if current < 5 {
+                                // Wrap around to near bottom
+                                self.queue.len().saturating_sub(1)
+                            } else {
+                                current - 5
+                            }
+                        }
+                        MPDAction::ScrollDown => {
+                            let potential = current + 5;
+                            if potential >= self.queue.len() {
+                                // Wrap around to top
+                                0
+                            } else {
+                                potential
+                            }
+                        }
+                        _ => current,
+                    };
+                    self.queue_list_state.select(Some(new_index));
+                    self.selected_queue_index = self.queue_list_state.selected();
+                }
+            }
+            MenuMode::Tracks => {
+                // Handle scrolling based on current panel focus
+                match self.panel_focus {
+                    PanelFocus::Artists => {
+                        if let Some(ref library) = self.library {
+                            if !library.artists.is_empty() {
+                                let current = self.artist_list_state.selected().unwrap_or(0);
+                                let new_index = match action {
+                                    MPDAction::ScrollUp => {
+                                        if current < 5 {
+                                            // Wrap around to near bottom
+                                            library.artists.len().saturating_sub(1)
+                                        } else {
+                                            current - 5
+                                        }
+                                    }
+                                    MPDAction::ScrollDown => {
+                                        let potential = current + 5;
+                                        if potential >= library.artists.len() {
+                                            // Wrap around to top
+                                            0
+                                        } else {
+                                            potential
+                                        }
+                                    }
+                                    _ => current,
+                                };
+                                self.artist_list_state.select(Some(new_index));
+                                // Clear album selection when scrolling artists
+                                self.album_list_state.select(None);
+                                self.album_display_list_state.select(None);
+                            }
+                        }
+                    }
+                    PanelFocus::Albums => {
+                        if let (Some(library), Some(selected_artist_index)) =
+                            (&self.library, self.artist_list_state.selected())
+                        {
+                            if let Some(selected_artist) =
+                                library.artists.get(selected_artist_index)
+                            {
+                                // Compute display list to get total count
+                                let (display_items, _album_indices) = compute_album_display_list(
+                                    selected_artist,
+                                    &self.expanded_albums,
+                                );
+                                if !display_items.is_empty() {
+                                    let current =
+                                        self.album_display_list_state.selected().unwrap_or(0);
+                                    let new_index = match action {
+                                        MPDAction::ScrollUp => {
+                                            if current < 5 {
+                                                // Wrap around to near bottom
+                                                display_items.len().saturating_sub(1)
+                                            } else {
+                                                current - 5
+                                            }
+                                        }
+                                        MPDAction::ScrollDown => {
+                                            let potential = current + 5;
+                                            if potential >= display_items.len() {
+                                                // Wrap around to top
+                                                0
+                                            } else {
+                                                potential
+                                            }
+                                        }
+                                        _ => current,
+                                    };
+                                    self.album_display_list_state.select(Some(new_index));
+
+                                    // Update the legacy album_list_state to point to the current album if on album
+                                    if let Some(display_item) = display_items.get(new_index) {
+                                        if let DisplayItem::Album(_) = display_item {
+                                            // Find which album this corresponds to
+                                            let mut album_count = 0;
+                                            for (i, item) in display_items.iter().enumerate() {
+                                                if matches!(item, DisplayItem::Album(_)) {
+                                                    if i == new_index {
+                                                        self.album_list_state
+                                                            .select(Some(album_count));
+                                                        break;
+                                                    }
+                                                    album_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

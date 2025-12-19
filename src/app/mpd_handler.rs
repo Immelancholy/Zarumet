@@ -59,6 +59,10 @@ pub enum MPDAction {
     // Mode cycling
     CycleModeLeft,
     CycleModeRight,
+
+    // Scrolling
+    ScrollUp,
+    ScrollDown,
 }
 
 impl MPDAction {
@@ -159,7 +163,9 @@ impl MPDAction {
             | MPDAction::ToggleAlbumExpansion
             | MPDAction::AddSongToQueue
             | MPDAction::CycleModeLeft
-            | MPDAction::CycleModeRight => {
+            | MPDAction::CycleModeRight
+            | MPDAction::ScrollUp
+            | MPDAction::ScrollDown => {
                 // These are handled by the main application
             }
         }

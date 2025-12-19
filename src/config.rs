@@ -82,6 +82,10 @@ pub struct BindsConfig {
     pub toggle_album_expansion: Vec<String>,
     #[serde(default = "BindsConfig::default_add_song_to_queue")]
     pub add_song_to_queue: Vec<String>,
+    #[serde(default = "BindsConfig::default_scroll_up")]
+    pub scroll_up: Vec<String>,
+    #[serde(default = "BindsConfig::default_scroll_down")]
+    pub scroll_down: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -398,6 +402,8 @@ impl BindsConfig {
     fn default_navigate_down() -> Vec<String> { vec!["j".to_string(), "down".to_string()] }
     fn default_toggle_album_expansion() -> Vec<String> { vec!["l".to_string(), "right".to_string()] }
     fn default_add_song_to_queue() -> Vec<String> { vec!["a".to_string(), "enter".to_string()] }
+    fn default_scroll_up() -> Vec<String> { vec!["ctrl-u".to_string()] }
+    fn default_scroll_down() -> Vec<String> { vec!["ctrl-d".to_string()] }
 
     pub fn parse_keybinding(&self, key_str: &str) -> Option<(crossterm::event::KeyModifiers, crossterm::event::KeyCode)> {
         let key_str = key_str.to_lowercase();
@@ -625,6 +631,17 @@ impl BindsConfig {
                 map.insert(key, crate::app::mpd_handler::MPDAction::MoveDownInQueue);
             }
         }
+        for key_str in &self.scroll_up {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                map.insert(key, crate::app::mpd_handler::MPDAction::ScrollUp);
+            }
+        }
+        for key_str in &self.scroll_down {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                map.insert(key, crate::app::mpd_handler::MPDAction::ScrollDown);
+            }
+        }
+
     }
     
     fn add_tracks_bindings(&self, map: &mut HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>) {
@@ -660,6 +677,16 @@ impl BindsConfig {
         for key_str in &self.add_song_to_queue {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::AddSongToQueue);
+            }
+        }
+        for key_str in &self.scroll_up {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                map.insert(key, crate::app::mpd_handler::MPDAction::ScrollUp);
+            }
+        }
+        for key_str in &self.scroll_down {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                map.insert(key, crate::app::mpd_handler::MPDAction::ScrollDown);
             }
         }
     }
@@ -699,6 +726,8 @@ impl Default for BindsConfig {
             navigate_down: Self::default_navigate_down(),
             toggle_album_expansion: Self::default_toggle_album_expansion(),
             add_song_to_queue: Self::default_add_song_to_queue(),
+            scroll_up: Self::default_scroll_up(),
+            scroll_down: Self::default_scroll_down(),
         }
     }
 }
