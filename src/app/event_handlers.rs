@@ -4,7 +4,6 @@ use mpd_client::Client;
 use super::App;
 use crate::app::mpd_handler::MPDAction;
 use crate::app::navigation::Navigation;
-use crate::binds::KeyBinds;
 
 /// Trait for event handling
 pub trait EventHandlers {
@@ -30,7 +29,7 @@ impl EventHandlers for App {
 
     /// Handles the key events and updates the state of [`App`].
     async fn on_key_event(&mut self, key: KeyEvent, client: &Client) -> color_eyre::Result<()> {
-        if let Some(action) = KeyBinds::handle_key(key, &self.menu_mode, &self.panel_focus) {
+        if let Some(action) = self.key_binds.handle_key(key, &self.menu_mode, &self.panel_focus) {
             match action {
                 MPDAction::Quit => self.quit(),
                 _ => {

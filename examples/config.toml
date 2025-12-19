@@ -15,3 +15,41 @@ progress_empty = "#1b1d0e"
 time_elapsed = "#c6bb69"
 time_separator = "#c6bb69"
 time_duration = "#c6bb69"
+
+[binds]
+# Global bindings - work in all modes
+next = [">", "shift-j", "shift-down"]
+previous = ["<", "shift-k", "shift-up"]
+toggle_play_pause = [" ", "p"]
+volume_up = ["=", "+"]
+volume_down = ["-", "_"]
+toggle_mute = ["m"]
+cycle_mode_right = ["ctrl-l", "ctrl-right"]
+cycle_mode_left = ["ctrl-h", "ctrl-left"]
+clear_queue = ["d"]
+repeat = ["r"]
+random = ["z"]
+single = ["s"]
+consume = ["c"]
+quit = ["esc", "q", "ctrl-c"]
+refresh = ["u"]
+switch_to_queue_menu = ["1"]
+switch_to_tracks = ["2"]
+seek_forward = ["shift-l", "shift-right"]
+seek_backward = ["shift-h", "shift-left"]
+
+# Queue mode only bindings
+queue_up = ["k", "up"]
+queue_down = ["j", "down"]
+play_selected = ["enter", "l", "right"]
+remove_from_queue = ["x", "backspace"]
+move_up_in_queue = ["ctrl-k", "ctrl-up"]
+move_down_in_queue = ["ctrl-j", "ctrl-down"]
+
+# Tracks mode only bindings
+switch_panel_left = ["h", "left"]
+switch_panel_right = ["l", "right"]
+navigate_up = ["k", "up"]
+navigate_down = ["j", "down"]
+toggle_album_expansion = ["l", "right"]
+add_song_to_queue = ["a", "enter"]

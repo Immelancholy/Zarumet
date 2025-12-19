@@ -465,171 +465,195 @@ impl BindsConfig {
         Some((modifiers, code))
     }
 
-    pub fn build_key_map(&self) -> HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction> {
-        let mut key_map = HashMap::new();
+    pub fn build_key_maps(
+        &self
+    ) -> (
+        HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>,
+        HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>,
+        HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>,
+    ) {
+        let mut global_map = HashMap::new();
+        let mut queue_map = HashMap::new();
+        let mut tracks_map = HashMap::new();
         
-        // Global bindings
+        // Global bindings (always available)
+        self.add_global_bindings(&mut global_map);
+        
+        // Queue mode specific bindings
+        self.add_queue_bindings(&mut queue_map);
+        
+        // Tracks mode specific bindings  
+        self.add_tracks_bindings(&mut tracks_map);
+        
+        (global_map, queue_map, tracks_map)
+    }
+    
+    fn add_global_bindings(&self, map: &mut HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>) {
+        // Global bindings - these work in all modes
+        // Note: Navigation keys (h,j,k,l,arrows) are NOT included here - they're mode-specific
         for key_str in &self.next {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::Next);
+                map.insert(key, crate::app::mpd_handler::MPDAction::Next);
             }
         }
         for key_str in &self.previous {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::Previous);
+                map.insert(key, crate::app::mpd_handler::MPDAction::Previous);
             }
         }
         for key_str in &self.toggle_play_pause {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::TogglePlayPause);
+                map.insert(key, crate::app::mpd_handler::MPDAction::TogglePlayPause);
             }
         }
         for key_str in &self.volume_up {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::VolumeUp);
+                map.insert(key, crate::app::mpd_handler::MPDAction::VolumeUp);
             }
         }
         for key_str in &self.volume_down {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::VolumeDown);
+                map.insert(key, crate::app::mpd_handler::MPDAction::VolumeDown);
             }
         }
         for key_str in &self.toggle_mute {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::ToggleMute);
+                map.insert(key, crate::app::mpd_handler::MPDAction::ToggleMute);
             }
         }
         for key_str in &self.cycle_mode_right {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::CycleModeRight);
+                map.insert(key, crate::app::mpd_handler::MPDAction::CycleModeRight);
             }
         }
         for key_str in &self.cycle_mode_left {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::CycleModeLeft);
+                map.insert(key, crate::app::mpd_handler::MPDAction::CycleModeLeft);
             }
         }
         for key_str in &self.clear_queue {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::ClearQueue);
+                map.insert(key, crate::app::mpd_handler::MPDAction::ClearQueue);
             }
         }
         for key_str in &self.repeat {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::Repeat);
+                map.insert(key, crate::app::mpd_handler::MPDAction::Repeat);
             }
         }
         for key_str in &self.random {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::Random);
+                map.insert(key, crate::app::mpd_handler::MPDAction::Random);
             }
         }
         for key_str in &self.single {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::Single);
+                map.insert(key, crate::app::mpd_handler::MPDAction::Single);
             }
         }
         for key_str in &self.consume {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::Consume);
+                map.insert(key, crate::app::mpd_handler::MPDAction::Consume);
             }
         }
         for key_str in &self.quit {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::Quit);
+                map.insert(key, crate::app::mpd_handler::MPDAction::Quit);
             }
         }
         for key_str in &self.refresh {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::Refresh);
+                map.insert(key, crate::app::mpd_handler::MPDAction::Refresh);
             }
         }
         for key_str in &self.switch_to_queue_menu {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::SwitchToQueueMenu);
+                map.insert(key, crate::app::mpd_handler::MPDAction::SwitchToQueueMenu);
             }
         }
         for key_str in &self.switch_to_tracks {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::SwitchToTracks);
+                map.insert(key, crate::app::mpd_handler::MPDAction::SwitchToTracks);
             }
         }
         for key_str in &self.seek_forward {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::SeekForward);
+                map.insert(key, crate::app::mpd_handler::MPDAction::SeekForward);
             }
         }
         for key_str in &self.seek_backward {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::SeekBackward);
+                map.insert(key, crate::app::mpd_handler::MPDAction::SeekBackward);
             }
         }
-        
-        // Queue mode bindings
+    }
+    
+    fn add_queue_bindings(&self, map: &mut HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>) {
+        // Queue mode specific bindings
         for key_str in &self.queue_up {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::QueueUp);
+                map.insert(key, crate::app::mpd_handler::MPDAction::QueueUp);
             }
         }
         for key_str in &self.queue_down {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::QueueDown);
+                map.insert(key, crate::app::mpd_handler::MPDAction::QueueDown);
             }
         }
         for key_str in &self.play_selected {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::PlaySelected);
+                map.insert(key, crate::app::mpd_handler::MPDAction::PlaySelected);
             }
         }
         for key_str in &self.remove_from_queue {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::RemoveFromQueue);
+                map.insert(key, crate::app::mpd_handler::MPDAction::RemoveFromQueue);
             }
         }
         for key_str in &self.move_up_in_queue {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::MoveUpInQueue);
+                map.insert(key, crate::app::mpd_handler::MPDAction::MoveUpInQueue);
             }
         }
         for key_str in &self.move_down_in_queue {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::MoveDownInQueue);
+                map.insert(key, crate::app::mpd_handler::MPDAction::MoveDownInQueue);
             }
         }
-        
-        // Tracks mode bindings
+    }
+    
+    fn add_tracks_bindings(&self, map: &mut HashMap<(crossterm::event::KeyModifiers, crossterm::event::KeyCode), crate::app::mpd_handler::MPDAction>) {
+        // Tracks mode specific bindings  
         for key_str in &self.switch_panel_left {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelLeft);
+                map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelLeft);
             }
         }
         for key_str in &self.switch_panel_right {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelRight);
+                map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelRight);
             }
         }
         for key_str in &self.navigate_up {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::NavigateUp);
+                map.insert(key, crate::app::mpd_handler::MPDAction::NavigateUp);
             }
         }
         for key_str in &self.navigate_down {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::NavigateDown);
+                map.insert(key, crate::app::mpd_handler::MPDAction::NavigateDown);
             }
         }
         for key_str in &self.toggle_album_expansion {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion);
+                map.insert(key, crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion);
             }
         }
         for key_str in &self.add_song_to_queue {
             if let Some(key) = self.parse_keybinding(key_str) {
-                key_map.insert(key, crate::app::mpd_handler::MPDAction::AddSongToQueue);
+                map.insert(key, crate::app::mpd_handler::MPDAction::AddSongToQueue);
             }
         }
-        
-        key_map
     }
 }
 

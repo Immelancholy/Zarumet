@@ -1,5 +1,6 @@
 use super::App;
 use crate::app::cli::Args;
+use crate::binds::KeyBinds;
 use crate::config::Config;
 use crate::ui::menu::{MenuMode, PanelFocus};
 use ratatui::widgets::ListState;
@@ -23,6 +24,10 @@ impl AppConstructor for App {
         let queue_list_state = ListState::default();
         // Don't select anything initially - will be set when queue is populated
 
+        // Build key maps from config
+        let (global_map, queue_map, tracks_map) = config.binds.build_key_maps();
+        let key_binds = KeyBinds::new(global_map, queue_map, tracks_map);
+
         Ok(Self {
             running: false,
             current_song: None,
@@ -38,6 +43,7 @@ impl AppConstructor for App {
             library: None,
             expanded_albums: std::collections::HashSet::new(),
             mpd_status: None,
+            key_binds,
         })
     }
 }

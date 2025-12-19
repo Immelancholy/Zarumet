@@ -1,3 +1,4 @@
+use crate::binds::KeyBinds;
 use crate::config::Config;
 use crate::song::{Library, SongInfo};
 use crate::ui::menu::{MenuMode, PanelFocus};
@@ -42,4 +43,6 @@ pub struct App {
     pub expanded_albums: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
     /// Current MPD status information
     pub mpd_status: Option<mpd_client::responses::Status>,
+    /// Key bindings handler
+    pub key_binds: KeyBinds,
 }
