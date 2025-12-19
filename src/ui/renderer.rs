@@ -235,7 +235,14 @@ fn render_tracks_mode(
             .iter()
             .enumerate()
             .map(|(_i, artist)| {
-                let display_text = format!("{}", artist.name);
+                // Calculate available width for artist name (subtract borders and padding)
+                let available_width = left_horizontal_chunks[0].width.saturating_sub(4) as usize;
+                let truncated_name = if artist.name.width() > available_width {
+                    crate::ui::utils::truncate_by_width(&artist.name, available_width)
+                } else {
+                    artist.name.clone()
+                };
+                let display_text = format!("{}", truncated_name);
                 ratatui::widgets::ListItem::new(vec![Line::from(display_text)])
             })
             .collect();
@@ -314,16 +321,22 @@ fn render_tracks_mode(
                             };
 
                             // Calculate available width for filler (subtract album name width and duration width + spaces)
-                            let album_name_width = album_name.width();
-                            let duration_width = duration_str.width();
                             let available_width =
                                 left_horizontal_chunks[1].width.saturating_sub(4) as usize; // 4 for borders/padding
-                            let filler_width = available_width
-                                .saturating_sub(album_name_width + duration_width + 6); // 5 for " " between name and duration and 1 for " " at start
+                            let duration_width = duration_str.width();
+                            let max_album_name_width = available_width.saturating_sub(duration_width + 6); // 6 for " " before/after and "     " between name and duration
 
+                            // Truncate album name if needed to keep duration aligned
+                            let truncated_album_name = if album_name.width() > max_album_name_width {
+                                crate::ui::utils::truncate_by_width(album_name, max_album_name_width)
+                            } else {
+                                album_name.clone()
+                            };
+
+                            let filler_width = max_album_name_width.saturating_sub(truncated_album_name.width());
                             let filler = "─".repeat(filler_width.max(0));
                             let display_text =
-                                format!(" {}{}     {}", album_name, filler, duration_str);
+                                format!(" {}{}     {}", truncated_album_name, filler, duration_str);
 
                             ratatui::widgets::ListItem::new(vec![
                                 Line::from(display_text)
@@ -341,15 +354,22 @@ fn render_tracks_mode(
                                 None => "  --:--".to_string(),
                             };
 
-                            let song_title_width = song_title.width();
-                            let song_duration_width = song_duration_str.width();
                             let available_width =
                                 left_horizontal_chunks[1].width.saturating_sub(4) as usize;
-                            let filler_width = available_width
-                                .saturating_sub(song_title_width + song_duration_width + 3);
+                            let song_duration_width = song_duration_str.width();
+                            let max_song_title_width = available_width.saturating_sub(song_duration_width + 6); // 6 for "   " prefix and spaces
+
+                            // Truncate song title if needed to keep duration aligned
+                            let truncated_song_title = if song_title.width() > max_song_title_width {
+                                crate::ui::utils::truncate_by_width(song_title, max_song_title_width)
+                            } else {
+                                song_title.clone()
+                            };
+
+                            let filler_width = max_song_title_width.saturating_sub(truncated_song_title.width());
                             let filler = " ".repeat(filler_width.max(0));
 
-                            let song_text = format!("   {}{}", song_title, filler,);
+                            let song_text = format!("   {}{}", truncated_song_title, filler,);
                             let mut spans = vec![Span::styled(
                                 song_text,
                                 config.colors.queue_song_title_color(),
