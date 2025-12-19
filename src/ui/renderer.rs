@@ -325,7 +325,7 @@ fn render_tracks_mode(
                                 left_horizontal_chunks[1].width.saturating_sub(4) as usize; // 4 for borders/padding
                             let duration_width = duration_str.width();
                             let max_album_name_width =
-                                available_width.saturating_sub(duration_width + 6); // 6 for " " before/after and "     " between name and duration
+                                available_width.saturating_sub(duration_width + 4); // 6 for " " before/after and "     " between name and duration
 
                             // Truncate album name if needed to keep duration aligned
                             let truncated_album_name = if album_name.width() > max_album_name_width
@@ -342,7 +342,7 @@ fn render_tracks_mode(
                                 max_album_name_width.saturating_sub(truncated_album_name.width());
                             let filler = "─".repeat(filler_width.max(0));
                             let display_text =
-                                format!(" {}{}     {}", truncated_album_name, filler, duration_str);
+                                format!(" {}{}   {}", truncated_album_name, filler, duration_str);
 
                             ratatui::widgets::ListItem::new(vec![
                                 Line::from(display_text)
