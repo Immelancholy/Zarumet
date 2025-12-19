@@ -59,8 +59,12 @@ pub struct ColorsConfig {
     pub queue_duration: String,
     #[serde(default = "ColorsConfig::default_top_accent")]
     pub top_accent: String,
-    #[serde(default = "ColorsConfig::default_search_duration")]
-    pub search_duration: String,
+    #[serde(default = "ColorsConfig::default_volume")]
+    pub volume: String,
+    #[serde(default = "ColorsConfig::default_volume_empty")]
+    pub volume_empty: String,
+    #[serde(default = "ColorsConfig::default_mode")]
+    pub mode: String,
 }
 
 impl Config {
@@ -242,10 +246,22 @@ impl ColorsConfig {
             .unwrap_or(ratatui::style::Color::Blue)
     }
 
-    pub fn search_duration_color(&self) -> ratatui::style::Color {
-        Self::parse_hex(&self.search_duration)
+    pub fn volume_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.volume)
             .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
             .unwrap_or(ratatui::style::Color::Yellow)
+    }
+
+    pub fn volume_empty_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.volume_empty)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Black)
+    }
+
+    pub fn mode_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.mode)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Green)
     }
 }
 
@@ -353,12 +369,20 @@ impl ColorsConfig {
         "#e16a7c".to_string()
     }
 
-    fn default_search_duration() -> String {
-        "#e16a7c".to_string()
+    fn default_volume() -> String {
+        "#26a0a1".to_string()
     }
 
     fn default_top_accent() -> String {
-        "#26a0a1".to_string()
+        "#e16a7c".to_string()
+    }
+
+    fn default_volume_empty() -> String {
+        "#1b1d0e".to_string()
+    }
+
+    fn default_mode() -> String {
+        "fae280".to_string()
     }
 }
 
@@ -386,7 +410,9 @@ impl Default for ColorsConfig {
             queue_position: Self::default_queue_position(),
             queue_duration: Self::default_queue_duration(),
             top_accent: Self::default_top_accent(),
-            search_duration: Self::default_search_duration(),
+            volume: Self::default_volume(),
+            volume_empty: Self::default_volume_empty(),
+            mode: Self::default_mode(),
         }
     }
 }

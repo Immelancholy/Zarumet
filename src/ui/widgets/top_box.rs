@@ -18,6 +18,9 @@ pub fn create_top_box<'a>(
     let paused = config.colors.paused();
     let stopped = config.colors.stopped();
     let accent_color = config.colors.top_accent_color();
+    let volume_color = config.colors.volume_color();
+    let volume_empty_color = config.colors.volume_empty_color();
+    let mode_color = config.colors.mode_color();
 
     let mut spans = Vec::new();
 
@@ -49,9 +52,9 @@ pub fn create_top_box<'a>(
 
         // Consume (󰮝)
         if status.consume {
-            spans.push(Span::styled("󰮝", Style::default().fg(accent_color).bold()));
+            spans.push(Span::styled("󰆴", Style::default().fg(accent_color).bold()));
         } else {
-            spans.push(Span::styled("󰮝", Style::default().fg(text_color)));
+            spans.push(Span::styled("󰆴", Style::default().fg(text_color)));
         }
 
         // Playback state and song count
@@ -97,15 +100,15 @@ pub fn create_top_box<'a>(
             "󰕾"
         };
 
-        spans.push(Span::styled(volume_icon, Style::default().fg(text_color)));
+        spans.push(Span::styled(volume_icon, Style::default().fg(accent_color)));
         spans.push(Span::styled(" ", Style::default().fg(text_color)));
         spans.push(Span::styled(
             "█".repeat(volume_bars as usize),
-            Style::default().fg(accent_color),
+            Style::default().fg(volume_color),
         ));
         spans.push(Span::styled(
-            "░".repeat(empty_bars as usize),
-            Style::default().fg(text_color),
+            "█".repeat(empty_bars as usize),
+            Style::default().fg(volume_empty_color),
         ));
         spans.push(Span::styled(
             format!(" {}%", status.volume),
@@ -115,14 +118,15 @@ pub fn create_top_box<'a>(
         // Menu mode indicator
         spans.push(Span::raw("  │  "));
         let mode_text = match menu_mode {
-            MenuMode::Queue => ("󰒺 Queue", accent_color),
-            MenuMode::Tracks => ("󰝚 Tracks", accent_color),
+            MenuMode::Queue => (" ", accent_color, "Queue", mode_color),
+            MenuMode::Tracks => ("󰝚 ", accent_color, "Tracks", mode_color),
         };
         spans.push(Span::styled(mode_text.0, Style::default().fg(mode_text.1)));
+        spans.push(Span::styled(mode_text.2, Style::default().fg(mode_text.3)));
     } else {
         spans.push(Span::styled(
             "󰅙 No MPD connection",
-            Style::default().fg(text_color),
+            Style::default().fg(accent_color),
         ));
     }
 
