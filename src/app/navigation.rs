@@ -102,13 +102,13 @@ impl Navigation for App {
                         // Move song down in queue (from position `selected` to `selected + 1`)
                         let from_pos: mpd_client::commands::SongPosition = selected.into();
                         let to_pos: mpd_client::commands::SongPosition = (selected + 1).into();
-                        if let Err(e) = client
+                        if let Err(_) = client
                             .command(
                                 mpd_client::commands::Move::position(from_pos).to_position(to_pos),
                             )
                             .await
                         {
-                            eprintln!("Error moving song down in queue: {}", e);
+                            eprintln!("");
                         } else {
                             // Update selected index to follow the moved song
                             self.queue_list_state.select(Some(selected + 1));
@@ -402,7 +402,8 @@ impl App {
                                     eprintln!("Error adding song to queue: {}", e);
                                 } else if queue_was_empty {
                                     // Start playback if queue was empty
-                                    if let Err(e) = client.command(commands::Play::current()).await {
+                                    if let Err(e) = client.command(commands::Play::current()).await
+                                    {
                                         eprintln!("Error starting playback: {}", e);
                                     }
                                 }

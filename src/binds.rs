@@ -32,12 +32,7 @@ impl KeyBinds {
         if let Some(action) = self.global_map.get(&(key.modifiers, key.code)) {
             // Handle mode-specific logic for certain bindings
             match (action, mode) {
-                (MPDAction::SwitchPanelRight, MenuMode::Tracks) => {
-                    match panel_focus {
-                        PanelFocus::Artists => return Some(MPDAction::SwitchPanelRight),
-                        PanelFocus::Albums => return Some(MPDAction::ToggleAlbumExpansion),
-                    }
-                }
+
                 (MPDAction::PlaySelected, MenuMode::Tracks) => {
                     // Don't allow play_selected in tracks mode - it conflicts with navigation
                     return None;

@@ -629,6 +629,13 @@ impl BindsConfig {
                 map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelLeft);
             }
         }
+        // Note: toggle_album_expansion is added first so switch_panel_right can overwrite it
+        // This allows us to use the same keys for both actions with different behavior
+        for key_str in &self.toggle_album_expansion {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                map.insert(key, crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion);
+            }
+        }
         for key_str in &self.switch_panel_right {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelRight);
@@ -644,11 +651,7 @@ impl BindsConfig {
                 map.insert(key, crate::app::mpd_handler::MPDAction::NavigateDown);
             }
         }
-        for key_str in &self.toggle_album_expansion {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion);
-            }
-        }
+
         for key_str in &self.add_song_to_queue {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::AddSongToQueue);
