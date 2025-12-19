@@ -79,6 +79,9 @@ impl MPDUpdates for App {
             _ => None,
         };
 
+        // Store the status for UI components
+        self.mpd_status = Some(status.clone());
+
         if let Some(ref mut song) = self.current_song {
             song.update_playback_info(Some(status.state), progress);
             song.update_time_info(status.elapsed, status.duration);

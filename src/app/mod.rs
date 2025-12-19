@@ -40,4 +40,6 @@ pub struct App {
     pub library: Option<Library>,
     /// Expanded albums (tracks which albums are currently expanded)
     pub expanded_albums: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
+    /// Current MPD status information
+    pub mpd_status: Option<mpd_client::responses::Status>,
 }

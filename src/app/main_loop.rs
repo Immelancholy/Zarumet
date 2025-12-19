@@ -92,6 +92,7 @@ impl AppMainLoop for App {
                     &mut self.album_display_list_state,
                     &self.panel_focus,
                     &self.expanded_albums,
+                    &self.mpd_status,
                 )
             })?;
 

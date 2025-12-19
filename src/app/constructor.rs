@@ -37,6 +37,7 @@ impl AppConstructor for App {
             panel_focus: PanelFocus::Artists, // Start with artists panel focused
             library: None,
             expanded_albums: std::collections::HashSet::new(),
+            mpd_status: None,
         })
     }
 }
