@@ -65,6 +65,8 @@ pub struct ColorsConfig {
     pub volume_empty: String,
     #[serde(default = "ColorsConfig::default_mode")]
     pub mode: String,
+    #[serde(default = "ColorsConfig::default_track_duration")]
+    pub track_duration: String,
 }
 
 impl Config {
@@ -263,6 +265,12 @@ impl ColorsConfig {
             .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
             .unwrap_or(ratatui::style::Color::Green)
     }
+
+    pub fn track_duration_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.track_duration)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Red)
+    }
 }
 
 impl Default for Config {
@@ -377,6 +385,10 @@ impl ColorsConfig {
         "#e16a7c".to_string()
     }
 
+    fn default_track_duration() -> String {
+        "#e16a7c".to_string()
+    }
+
     fn default_volume_empty() -> String {
         "#1b1d0e".to_string()
     }
@@ -413,6 +425,7 @@ impl Default for ColorsConfig {
             volume: Self::default_volume(),
             volume_empty: Self::default_volume_empty(),
             mode: Self::default_mode(),
+            track_duration: Self::default_track_duration(),
         }
     }
 }

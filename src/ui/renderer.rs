@@ -2,7 +2,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     style::{Style, Stylize},
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, BorderType, Borders, ListState},
 };
 
@@ -349,11 +349,16 @@ fn render_tracks_mode(
                                 .saturating_sub(song_title_width + song_duration_width + 3);
                             let filler = " ".repeat(filler_width.max(0));
 
-                            let song_text =
-                                format!("   {}{}{}", song_title, filler, song_duration_str);
-                            ratatui::widgets::ListItem::new(vec![Line::from(song_text).style(
-                                Style::default().fg(config.colors.queue_song_title_color()),
-                            )])
+                            let song_text = format!("   {}{}", song_title, filler,);
+                            let mut spans = vec![Span::styled(
+                                song_text,
+                                config.colors.queue_song_title_color(),
+                            )];
+                            spans.push(Span::styled(
+                                song_duration_str.clone(),
+                                Style::default().fg(config.colors.track_duration_color()),
+                            ));
+                            ratatui::widgets::ListItem::new(vec![Line::from(spans)])
                         }
                     }
                 })
