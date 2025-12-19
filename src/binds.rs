@@ -1,4 +1,4 @@
-use crate::menu::{MenuMode, PanelFocus};
+use crate::ui::menu::{MenuMode, PanelFocus};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use mpd_client::{client::CommandError, commands, responses::PlayState};
 

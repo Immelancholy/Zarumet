@@ -1,7 +1,6 @@
 mod binds;
 mod cli;
 mod config;
-mod menu;
 mod song;
 mod ui;
 
@@ -23,9 +22,9 @@ use tokio::net::TcpStream;
 use binds::{KeyBinds, MPDAction};
 use cli::Args;
 use config::Config;
-use menu::MenuMode;
 use song::{Library, SongInfo};
 use ui::Protocol;
+use ui::menu::{MenuMode, PanelFocus};
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
@@ -70,7 +69,7 @@ pub struct App {
     /// Current menu mode
     menu_mode: MenuMode,
     /// Current panel focus in Tracks mode
-    panel_focus: menu::PanelFocus,
+    panel_focus: PanelFocus,
     /// Music library
     library: Option<Library>,
     /// Expanded albums (tracks which albums are currently expanded)
@@ -99,8 +98,8 @@ impl App {
             album_list_state: ListState::default(),
             album_display_list_state: ListState::default(),
             config,
-            menu_mode: MenuMode::Queue, // Start with queue menu
-            panel_focus: menu::PanelFocus::Artists, // Start with artists panel focused
+            menu_mode: MenuMode::Queue,       // Start with queue menu
+            panel_focus: PanelFocus::Artists, // Start with artists panel focused
             library: None,
             expanded_albums: std::collections::HashSet::new(),
         })
@@ -457,11 +456,11 @@ impl App {
                 }
                 MPDAction::SwitchPanelLeft => {
                     match self.panel_focus {
-                        menu::PanelFocus::Artists => {
+                        PanelFocus::Artists => {
                             // Already at artists panel, can't go left
                         }
-                        menu::PanelFocus::Albums => {
-                            self.panel_focus = menu::PanelFocus::Artists;
+                        PanelFocus::Albums => {
+                            self.panel_focus = PanelFocus::Artists;
                             // Clear album selection when switching to artists panel
                             self.album_list_state.select(None);
                             self.album_display_list_state.select(None);
@@ -470,8 +469,8 @@ impl App {
                 }
                 MPDAction::SwitchPanelRight => {
                     match self.panel_focus {
-                        menu::PanelFocus::Artists => {
-                            self.panel_focus = menu::PanelFocus::Albums;
+                        PanelFocus::Artists => {
+                            self.panel_focus = PanelFocus::Albums;
                             // Initialize album selection when switching to albums panel
                             if let Some(ref library) = self.library {
                                 if let Some(selected_artist_index) =
@@ -489,14 +488,14 @@ impl App {
                                 }
                             }
                         }
-                        menu::PanelFocus::Albums => {
+                        PanelFocus::Albums => {
                             // Already at albums panel, can't go right
                         }
                     }
                 }
                 MPDAction::NavigateUp => {
                     match self.panel_focus {
-                        menu::PanelFocus::Artists => {
+                        PanelFocus::Artists => {
                             // Navigate artists list
                             if let Some(ref library) = self.library {
                                 if !library.artists.is_empty() {
@@ -514,7 +513,7 @@ impl App {
                                 }
                             }
                         }
-                        menu::PanelFocus::Albums => {
+                        PanelFocus::Albums => {
                             // Navigate albums list using display list state
                             if let (Some(library), Some(selected_artist_index)) =
                                 (&self.library, self.artist_list_state.selected())
@@ -542,8 +541,13 @@ impl App {
                                         }
 
                                         // Update the legacy album_list_state to point to the current album if on album
-                                        let wrapped_index = if current > 0 { current - 1 } else { display_items.len().saturating_sub(1) };
-                                        if let Some(display_item) = display_items.get(wrapped_index) {
+                                        let wrapped_index = if current > 0 {
+                                            current - 1
+                                        } else {
+                                            display_items.len().saturating_sub(1)
+                                        };
+                                        if let Some(display_item) = display_items.get(wrapped_index)
+                                        {
                                             if let ui::DisplayItem::Album(_) = display_item {
                                                 // Find which album this corresponds to
                                                 let mut album_count = 0;
@@ -567,7 +571,7 @@ impl App {
                 }
                 MPDAction::NavigateDown => {
                     match self.panel_focus {
-                        menu::PanelFocus::Artists => {
+                        PanelFocus::Artists => {
                             // Navigate artists list
                             if let Some(ref library) = self.library {
                                 if !library.artists.is_empty() {
@@ -584,7 +588,7 @@ impl App {
                                 }
                             }
                         }
-                        menu::PanelFocus::Albums => {
+                        PanelFocus::Albums => {
                             // Navigate albums list using display list state
                             if let (Some(library), Some(selected_artist_index)) =
                                 (&self.library, self.artist_list_state.selected())
@@ -709,7 +713,7 @@ impl App {
                     };
                 }
                 MPDAction::CycleModeRight => {
-                    // Cycle modes right: Queue -> Tracks -> Queue  
+                    // Cycle modes right: Queue -> Tracks -> Queue
                     self.menu_mode = match self.menu_mode {
                         MenuMode::Queue => MenuMode::Tracks,
                         MenuMode::Tracks => MenuMode::Queue,

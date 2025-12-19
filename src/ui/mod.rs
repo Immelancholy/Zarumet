@@ -1,3 +1,4 @@
+pub mod menu;
 pub mod renderer;
 pub mod utils;
 pub mod widgets;

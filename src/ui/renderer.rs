@@ -7,9 +7,9 @@ use ratatui::{
 };
 
 use crate::config::Config;
-use crate::menu::{MenuMode, PanelFocus};
 use crate::song::{Library, SongInfo};
-use crate::ui::utils::{compute_album_display_list, DisplayItem};
+use crate::ui::menu::{MenuMode, PanelFocus};
+use crate::ui::utils::{DisplayItem, compute_album_display_list};
 use crate::ui::widgets::{
     create_empty_box, create_format_widget, create_left_box_bottom, create_left_box_top,
     create_middle_box, create_song_widget, render_image_widget,
@@ -261,9 +261,7 @@ fn render_tracks_mode(
     }
 
     // Show albums for selected artist, or empty tracks box
-    if let (Some(library), Some(selected_artist_index)) =
-        (library, artist_list_state.selected())
-    {
+    if let (Some(library), Some(selected_artist_index)) = (library, artist_list_state.selected()) {
         if let Some(selected_artist) = library.artists.get(selected_artist_index) {
             // Only initialize album selection if albums panel is focused
             if album_list_state.selected().is_none()
@@ -319,9 +317,8 @@ fn render_tracks_mode(
                                 format!("{}{}     {}", album_name, filler, duration_str);
 
                             ratatui::widgets::ListItem::new(vec![
-                                Line::from(display_text).style(
-                                    Style::default().fg(config.colors.album_color()),
-                                ),
+                                Line::from(display_text)
+                                    .style(Style::default().fg(config.colors.album_color())),
                             ])
                         }
                         DisplayItem::Song(song_title, duration, _file_path) => {
