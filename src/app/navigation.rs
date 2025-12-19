@@ -102,13 +102,13 @@ impl Navigation for App {
                         // Move song down in queue (from position `selected` to `selected + 1`)
                         let from_pos: mpd_client::commands::SongPosition = selected.into();
                         let to_pos: mpd_client::commands::SongPosition = (selected + 1).into();
-                        if let Err(_) = client
+                        if let Err(e) = client
                             .command(
                                 mpd_client::commands::Move::position(from_pos).to_position(to_pos),
                             )
                             .await
                         {
-                            eprintln!("");
+                            eprintln!("Error moving song down in queue: {}", e);
                         } else {
                             // Update selected index to follow the moved song
                             self.queue_list_state.select(Some(selected + 1));
