@@ -372,7 +372,7 @@ impl App {
         }
     }
 
-    /// Handle scrolling by 5 items at a time
+    /// Handle scrolling by 15 items at a time
     async fn handle_scroll(&mut self, action: MPDAction) {
         match self.menu_mode {
             MenuMode::Queue => {
@@ -380,17 +380,21 @@ impl App {
                     let current = self.queue_list_state.selected().unwrap_or(0);
                     let new_index = match action {
                         MPDAction::ScrollUp => {
-                            if current < 5 {
-                                // Wrap around to near bottom
+                            let potential = current.saturating_sub(15);
+                            if potential == 0 && current == 0 {
+                                // Already at top, wrap to bottom
                                 self.queue.len().saturating_sub(1)
                             } else {
-                                current - 5
+                                potential
                             }
                         }
                         MPDAction::ScrollDown => {
-                            let potential = current + 5;
-                            if potential >= self.queue.len() {
-                                // Wrap around to top
+                            let potential =
+                                std::cmp::min(current + 15, self.queue.len().saturating_sub(1));
+                            if potential == self.queue.len().saturating_sub(1)
+                                && current == self.queue.len().saturating_sub(1)
+                            {
+                                // Already at bottom, wrap to top
                                 0
                             } else {
                                 potential
@@ -411,17 +415,23 @@ impl App {
                                 let current = self.artist_list_state.selected().unwrap_or(0);
                                 let new_index = match action {
                                     MPDAction::ScrollUp => {
-                                        if current < 5 {
-                                            // Wrap around to near bottom
+                                        let potential = current.saturating_sub(15);
+                                        if potential == 0 && current == 0 {
+                                            // Already at top, wrap to bottom
                                             library.artists.len().saturating_sub(1)
                                         } else {
-                                            current - 5
+                                            potential
                                         }
                                     }
                                     MPDAction::ScrollDown => {
-                                        let potential = current + 5;
-                                        if potential >= library.artists.len() {
-                                            // Wrap around to top
+                                        let potential = std::cmp::min(
+                                            current + 15,
+                                            library.artists.len().saturating_sub(1),
+                                        );
+                                        if potential == library.artists.len().saturating_sub(1)
+                                            && current == library.artists.len().saturating_sub(1)
+                                        {
+                                            // Already at bottom, wrap to top
                                             0
                                         } else {
                                             potential
@@ -453,16 +463,22 @@ impl App {
                                         self.album_display_list_state.selected().unwrap_or(0);
                                     let new_index = match action {
                                         MPDAction::ScrollUp => {
-                                            if current < 5 {
-                                                // Wrap around to near bottom
+                                            let potential = current.saturating_sub(15);
+                                            if potential == 0 && current == 0 {
+                                                // Already at top, wrap to bottom
                                                 display_items.len().saturating_sub(1)
                                             } else {
-                                                current - 5
+                                                potential
                                             }
                                         }
                                         MPDAction::ScrollDown => {
-                                            let potential = current + 5;
-                                            if potential >= display_items.len() {
+                                            let potential = std::cmp::min(
+                                                current + 15,
+                                                display_items.len().saturating_sub(1),
+                                            );
+                                            if potential == display_items.len().saturating_sub(1)
+                                                && current == display_items.len().saturating_sub(1)
+                                            {
                                                 // Wrap around to top
                                                 0
                                             } else {
