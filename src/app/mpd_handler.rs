@@ -1,6 +1,5 @@
+use crate::config::Config;
 use mpd_client::{client::CommandError, commands, responses::PlayState};
-
-
 
 /// Actions that can be performed on MPD
 #[derive(Debug, Clone)]
@@ -18,7 +17,9 @@ pub enum MPDAction {
 
     // Volume
     VolumeUp,
+    VolumeUpFine,
     VolumeDown,
+    VolumeDownFine,
     ToggleMute,
 
     // Seeking
@@ -67,7 +68,11 @@ pub enum MPDAction {
 
 impl MPDAction {
     /// Execute the action on the MPD client
-    pub async fn execute(&self, client: &mpd_client::Client) -> Result<(), CommandError> {
+    pub async fn execute(
+        &self,
+        client: &mpd_client::Client,
+        config: &Config,
+    ) -> Result<(), CommandError> {
         match self {
             MPDAction::TogglePlayPause => {
                 let status = client.command(commands::Status).await?;
@@ -87,13 +92,27 @@ impl MPDAction {
                 client.command(commands::Previous).await?;
             }
             MPDAction::VolumeUp => {
+                let increment = config.mpd.volume_increment as u8;
                 let status = client.command(commands::Status).await?;
-                let new_volume = std::cmp::min(100, status.volume + 5);
+                let new_volume = std::cmp::min(100, status.volume + increment);
+                client.command(commands::SetVolume(new_volume)).await?;
+            }
+            MPDAction::VolumeUpFine => {
+                let increment = config.mpd.volume_increment_fine as u8;
+                let status = client.command(commands::Status).await?;
+                let new_volume = std::cmp::min(100, status.volume + increment);
                 client.command(commands::SetVolume(new_volume)).await?;
             }
             MPDAction::VolumeDown => {
+                let increment = config.mpd.volume_increment as u8;
                 let status = client.command(commands::Status).await?;
-                let new_volume = std::cmp::max(0, status.volume - 5);
+                let new_volume = std::cmp::max(0, status.volume - increment);
+                client.command(commands::SetVolume(new_volume)).await?;
+            }
+            MPDAction::VolumeDownFine => {
+                let increment = config.mpd.volume_increment_fine as u8;
+                let status = client.command(commands::Status).await?;
+                let new_volume = std::cmp::max(0, status.volume - increment);
                 client.command(commands::SetVolume(new_volume)).await?;
             }
             MPDAction::ToggleMute => {

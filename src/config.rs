@@ -16,6 +16,10 @@ pub struct Config {
 pub struct MpdConfig {
     #[serde(default = "MpdConfig::default_address")]
     pub address: String,
+    #[serde(default = "MpdConfig::default_volume_increment")]
+    pub volume_increment: u32,
+    #[serde(default = "MpdConfig::default_volume_increment_fine")]
+    pub volume_increment_fine: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -28,8 +32,12 @@ pub struct BindsConfig {
     pub toggle_play_pause: Vec<String>,
     #[serde(default = "BindsConfig::default_volume_up")]
     pub volume_up: Vec<String>,
+    #[serde(default = "BindsConfig::default_volume_up_fine")]
+    pub volume_up_fine: Vec<String>,
     #[serde(default = "BindsConfig::default_volume_down")]
     pub volume_down: Vec<String>,
+    #[serde(default = "BindsConfig::default_volume_down_fine")]
+    pub volume_down_fine: Vec<String>,
     #[serde(default = "BindsConfig::default_toggle_mute")]
     pub toggle_mute: Vec<String>,
     #[serde(default = "BindsConfig::default_cycle_mode_right")]
@@ -356,12 +364,20 @@ impl MpdConfig {
     fn default_address() -> String {
         "localhost:6600".to_string()
     }
+    fn default_volume_increment() -> u32 {
+        5
+    }
+    fn default_volume_increment_fine() -> u32 {
+        1
+    }
 }
 
 impl Default for MpdConfig {
     fn default() -> Self {
         Self {
             address: Self::default_address(),
+            volume_increment: Self::default_volume_increment(),
+            volume_increment_fine: Self::default_volume_increment_fine(),
         }
     }
 }
@@ -385,10 +401,16 @@ impl BindsConfig {
         vec![" ".to_string(), "p".to_string()]
     }
     fn default_volume_up() -> Vec<String> {
-        vec!["=".to_string(), "+".to_string()]
+        vec!["=".to_string()]
+    }
+    fn default_volume_up_fine() -> Vec<String> {
+        vec!["+".to_string()]
     }
     fn default_volume_down() -> Vec<String> {
-        vec!["-".to_string(), "_".to_string()]
+        vec!["-".to_string()]
+    }
+    fn default_volume_down_fine() -> Vec<String> {
+        vec!["_".to_string()]
     }
     fn default_toggle_mute() -> Vec<String> {
         vec!["m".to_string()]
@@ -607,9 +629,19 @@ impl BindsConfig {
                 map.insert(key, crate::app::mpd_handler::MPDAction::VolumeUp);
             }
         }
+        for key_str in &self.volume_up_fine {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                map.insert(key, crate::app::mpd_handler::MPDAction::VolumeUpFine);
+            }
+        }
         for key_str in &self.volume_down {
             if let Some(key) = self.parse_keybinding(key_str) {
                 map.insert(key, crate::app::mpd_handler::MPDAction::VolumeDown);
+            }
+        }
+        for key_str in &self.volume_down_fine {
+            if let Some(key) = self.parse_keybinding(key_str) {
+                map.insert(key, crate::app::mpd_handler::MPDAction::VolumeDownFine);
             }
         }
         for key_str in &self.toggle_mute {
@@ -798,7 +830,9 @@ impl Default for BindsConfig {
             previous: Self::default_previous(),
             toggle_play_pause: Self::default_toggle_play_pause(),
             volume_up: Self::default_volume_up(),
+            volume_up_fine: Self::default_volume_up_fine(),
             volume_down: Self::default_volume_down(),
+            volume_down_fine: Self::default_volume_down_fine(),
             toggle_mute: Self::default_toggle_mute(),
             cycle_mode_right: Self::default_cycle_mode_right(),
             cycle_mode_left: Self::default_cycle_mode_left(),

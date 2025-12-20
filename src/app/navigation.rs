@@ -216,7 +216,7 @@ impl Navigation for App {
             }
             _ => {
                 // Execute MPD command for other actions
-                if let Err(e) = action.execute(client).await {
+                if let Err(e) = action.execute(client, &self.config).await {
                     eprintln!("Error executing MPD command: {}", e);
                 }
             }
