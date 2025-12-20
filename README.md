@@ -128,6 +128,8 @@ You can override this with the `-c` flag.
 ```Toml
 [mpd]
 address = "localhost:6600"
+volume_increment = 5
+volume_increment_fine = 1
 
 [colors]
 border = "#fae280"
@@ -155,6 +157,100 @@ volume = "#26a0a1"
 volume_empty = "#1b1d0e"
 mode = "fae280"
 track_duration = "#e16a7c"
+
+[binds]
+next = [
+    ">",
+    "shift-j",
+    "shift-down",
+]
+previous = [
+    "<",
+    "shift-k",
+    "shift-up",
+]
+toggle_play_pause = [
+    " ",
+    "p",
+]
+volume_up = ["="]
+volume_up_fine = ["+"]
+volume_down = ["-"]
+volume_down_fine = ["_"]
+toggle_mute = ["m"]
+cycle_mode_right = [
+    "ctrl-l",
+    "ctrl-right",
+]
+cycle_mode_left = [
+    "ctrl-h",
+    "ctrl-left",
+]
+clear_queue = ["d"]
+repeat = ["r"]
+random = ["z"]
+single = ["s"]
+consume = ["c"]
+quit = [
+    "esc",
+    "q",
+    "ctrl-c",
+]
+refresh = ["u"]
+switch_to_queue_menu = ["1"]
+switch_to_tracks = ["2"]
+seek_forward = [
+    "shift-l",
+    "shift-right",
+]
+seek_backward = [
+    "shift-h",
+    "shift-left",
+]
+scroll_up = [
+    "k",
+    "up",
+]
+scroll_down = [
+    "j",
+    "down",
+]
+play_selected = [
+    "enter",
+    "l",
+    "right",
+]
+remove_from_queue = [
+    "x",
+    "backspace",
+]
+move_up_in_queue = [
+    "ctrl-k",
+    "ctrl-up",
+]
+move_down_in_queue = [
+    "ctrl-j",
+    "ctrl-down",
+]
+switch_panel_left = [
+    "h",
+    "left",
+]
+switch_panel_right = [
+    "l",
+    "right",
+]
+toggle_album_expansion = [
+    "l",
+    "right",
+]
+add_song_to_queue = [
+    "a",
+    "enter",
+]
+scroll_up_big = ["ctrl-u"]
+scroll_down_big = ["ctrl-d"]
+
 ```
 
 </details>
