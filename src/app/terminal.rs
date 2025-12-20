@@ -12,7 +12,7 @@ pub fn init_terminal() -> color_eyre::Result<DefaultTerminal> {
 
     let terminal =
         ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(std::io::stdout()))?;
-    
+
     Ok(terminal)
 }
 

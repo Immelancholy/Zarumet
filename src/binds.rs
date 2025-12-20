@@ -18,7 +18,11 @@ impl KeyBinds {
         queue_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
         tracks_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     ) -> Self {
-        Self { global_map, queue_map, tracks_map }
+        Self {
+            global_map,
+            queue_map,
+            tracks_map,
+        }
     }
 
     /// Handle key events and return corresponding MPD commands
@@ -32,7 +36,6 @@ impl KeyBinds {
         if let Some(action) = self.global_map.get(&(key.modifiers, key.code)) {
             // Handle mode-specific logic for certain bindings
             match (action, mode) {
-
                 (MPDAction::PlaySelected, MenuMode::Tracks) => {
                     // Don't allow play_selected in tracks mode - it conflicts with navigation
                     return None;

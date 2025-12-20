@@ -169,7 +169,8 @@ impl Library {
             artist.albums.sort_by(|a, b| a.name.cmp(&b.name));
             for album in &mut artist.albums {
                 album.tracks.sort_by(|a, b| {
-                    a.disc_number.cmp(&b.disc_number)
+                    a.disc_number
+                        .cmp(&b.disc_number)
                         .then(a.track_number.cmp(&b.track_number))
                         .then(a.title.cmp(&b.title))
                 });

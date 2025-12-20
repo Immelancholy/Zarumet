@@ -7,7 +7,10 @@ use ratatui::{
 use crate::config::Config;
 use crate::song::SongInfo;
 
-pub fn create_now_playing_widget<'a>(current_song: &'a Option<SongInfo>, config: &'a Config) -> Paragraph<'a> {
+pub fn create_now_playing_widget<'a>(
+    current_song: &'a Option<SongInfo>,
+    config: &'a Config,
+) -> Paragraph<'a> {
     // Get colors from config
     let album_color = config.colors.album_color();
     let artist_color = config.colors.artist_color();

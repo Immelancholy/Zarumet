@@ -29,7 +29,10 @@ impl EventHandlers for App {
 
     /// Handles the key events and updates the state of [`App`].
     async fn on_key_event(&mut self, key: KeyEvent, client: &Client) -> color_eyre::Result<()> {
-        if let Some(action) = self.key_binds.handle_key(key, &self.menu_mode, &self.panel_focus) {
+        if let Some(action) = self
+            .key_binds
+            .handle_key(key, &self.menu_mode, &self.panel_focus)
+        {
             match action {
                 MPDAction::Quit => self.quit(),
                 MPDAction::Next | MPDAction::Previous => {

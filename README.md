@@ -6,6 +6,8 @@ Zarumet is an mpd client for the terminal written in Rust.
 
 ![Zarumet Screenshot](/assets/screenshots/zarumet.png?raw=true)
 
+![Zarumet Screenshot 2](/assets/screenshots/zarumet_2.png?raw=true)
+
 ## Dependencies
 
 - [mpd](https://musicpd.org)
