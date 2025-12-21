@@ -93,12 +93,16 @@ impl AppMainLoop for App {
                     &self.panel_focus,
                     &self.expanded_albums,
                     &self.mpd_status,
+                    &self.key_binds,
                 )
             })?;
 
             if let Some(ref mut img) = protocol.image {
                 img.last_encoding_result();
             }
+
+            // Update key bindings for timeouts
+            self.key_binds.update();
 
             // Poll for events with a timeout to allow periodic updates
             if event::poll(Duration::from_millis(10))? {

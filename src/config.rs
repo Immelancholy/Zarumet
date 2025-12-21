@@ -439,6 +439,15 @@ impl BindsConfig {
     fn default_quit() -> Vec<String> {
         vec!["esc".to_string(), "q".to_string(), "ctrl-c".to_string()]
     }
+
+    fn default_quit_enhanced() -> Vec<String> {
+        vec![
+            "esc".to_string(),
+            "q".to_string(),
+            "ctrl-c".to_string(),
+            "q q".to_string(),
+        ]
+    }
     fn default_refresh() -> Vec<String> {
         vec!["u".to_string()]
     }
@@ -457,14 +466,26 @@ impl BindsConfig {
     fn default_scroll_up() -> Vec<String> {
         vec!["k".to_string(), "up".to_string()]
     }
+
+    fn default_scroll_up_enhanced() -> Vec<String> {
+        vec!["k".to_string(), "up".to_string(), "g g".to_string()]
+    }
     fn default_scroll_down() -> Vec<String> {
         vec!["j".to_string(), "down".to_string()]
+    }
+
+    fn default_scroll_down_enhanced() -> Vec<String> {
+        vec!["j".to_string(), "down".to_string(), "G".to_string()]
     }
     fn default_play_selected() -> Vec<String> {
         vec!["enter".to_string(), "l".to_string(), "right".to_string()]
     }
     fn default_remove_from_queue() -> Vec<String> {
         vec!["x".to_string(), "backspace".to_string()]
+    }
+
+    fn default_remove_from_queue_enhanced() -> Vec<String> {
+        vec!["x".to_string(), "backspace".to_string(), "d d".to_string()]
     }
     fn default_move_up_in_queue() -> Vec<String> {
         vec!["ctrl-k".to_string(), "ctrl-up".to_string()]
@@ -568,7 +589,20 @@ impl BindsConfig {
         Some((modifiers, code))
     }
 
-    pub fn build_key_maps(
+    /// Parse a binding string that may contain space-separated sequential keys
+    /// Returns a vector of parsed key tuples
+    pub fn parse_binding_string(
+        &self,
+        binding_str: &str,
+    ) -> Vec<(crossterm::event::KeyModifiers, crossterm::event::KeyCode)> {
+        binding_str
+            .split_whitespace()
+            .filter_map(|key_str| self.parse_keybinding(key_str))
+            .collect()
+    }
+
+    /// Build enhanced key maps with sequential key support
+    pub fn build_enhanced_key_maps(
         &self,
     ) -> (
         HashMap<
@@ -583,243 +617,329 @@ impl BindsConfig {
             (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
             crate::app::mpd_handler::MPDAction,
         >,
+        Vec<crate::binds::SequentialKeyBinding>,
+    ) {
+        self.build_enhanced_key_maps_internal()
+    }
+
+    /// Internal implementation for building enhanced key maps
+    fn build_enhanced_key_maps_internal(
+        &self,
+    ) -> (
+        HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+        HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+        HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+        Vec<crate::binds::SequentialKeyBinding>,
     ) {
         let mut global_map = HashMap::new();
         let mut queue_map = HashMap::new();
         let mut tracks_map = HashMap::new();
+        let mut sequential_bindings = Vec::new();
 
         // Global bindings (always available)
-        self.add_global_bindings(&mut global_map);
+        self.add_enhanced_global_bindings(&mut global_map, &mut sequential_bindings);
 
         // Queue mode specific bindings
-        self.add_queue_bindings(&mut queue_map);
+        self.add_enhanced_queue_bindings(&mut queue_map, &mut sequential_bindings);
 
         // Tracks mode specific bindings
-        self.add_tracks_bindings(&mut tracks_map);
+        self.add_enhanced_tracks_bindings(&mut tracks_map, &mut sequential_bindings);
 
-        (global_map, queue_map, tracks_map)
+        (global_map, queue_map, tracks_map, sequential_bindings)
     }
 
-    fn add_global_bindings(
+    fn add_enhanced_global_bindings(
         &self,
-        map: &mut HashMap<
+        single_map: &mut HashMap<
             (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
             crate::app::mpd_handler::MPDAction,
         >,
+        sequential_bindings: &mut Vec<crate::binds::SequentialKeyBinding>,
     ) {
         // Global bindings - these work in all modes
-        // Note: Navigation keys (h,j,k,l,arrows) are NOT included here - they're mode-specific
-        for key_str in &self.next {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::Next);
-            }
-        }
-        for key_str in &self.previous {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::Previous);
-            }
-        }
-        for key_str in &self.toggle_play_pause {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::TogglePlayPause);
-            }
-        }
-        for key_str in &self.volume_up {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::VolumeUp);
-            }
-        }
-        for key_str in &self.volume_up_fine {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::VolumeUpFine);
-            }
-        }
-        for key_str in &self.volume_down {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::VolumeDown);
-            }
-        }
-        for key_str in &self.volume_down_fine {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::VolumeDownFine);
-            }
-        }
-        for key_str in &self.toggle_mute {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::ToggleMute);
-            }
-        }
-        for key_str in &self.cycle_mode_right {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::CycleModeRight);
-            }
-        }
-        for key_str in &self.cycle_mode_left {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::CycleModeLeft);
-            }
-        }
-        for key_str in &self.clear_queue {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::ClearQueue);
-            }
-        }
-        for key_str in &self.repeat {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::Repeat);
-            }
-        }
-        for key_str in &self.random {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::Random);
-            }
-        }
-        for key_str in &self.single {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::Single);
-            }
-        }
-        for key_str in &self.consume {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::Consume);
-            }
-        }
-        for key_str in &self.quit {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::Quit);
-            }
-        }
-        for key_str in &self.refresh {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::Refresh);
-            }
-        }
-        for key_str in &self.switch_to_queue_menu {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::SwitchToQueueMenu);
-            }
-        }
-        for key_str in &self.switch_to_tracks {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::SwitchToTracks);
-            }
-        }
-        for key_str in &self.seek_forward {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::SeekForward);
-            }
-        }
-        for key_str in &self.seek_backward {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::SeekBackward);
+        self.add_enhanced_binding_for_action(
+            &self.next,
+            crate::app::mpd_handler::MPDAction::Next,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.previous,
+            crate::app::mpd_handler::MPDAction::Previous,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.toggle_play_pause,
+            crate::app::mpd_handler::MPDAction::TogglePlayPause,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.volume_up,
+            crate::app::mpd_handler::MPDAction::VolumeUp,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.volume_up_fine,
+            crate::app::mpd_handler::MPDAction::VolumeUpFine,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.volume_down,
+            crate::app::mpd_handler::MPDAction::VolumeDown,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.volume_down_fine,
+            crate::app::mpd_handler::MPDAction::VolumeDownFine,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.toggle_mute,
+            crate::app::mpd_handler::MPDAction::ToggleMute,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.cycle_mode_right,
+            crate::app::mpd_handler::MPDAction::CycleModeRight,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.cycle_mode_left,
+            crate::app::mpd_handler::MPDAction::CycleModeLeft,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.clear_queue,
+            crate::app::mpd_handler::MPDAction::ClearQueue,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.repeat,
+            crate::app::mpd_handler::MPDAction::Repeat,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.random,
+            crate::app::mpd_handler::MPDAction::Random,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.single,
+            crate::app::mpd_handler::MPDAction::Single,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.consume,
+            crate::app::mpd_handler::MPDAction::Consume,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.quit,
+            crate::app::mpd_handler::MPDAction::Quit,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.refresh,
+            crate::app::mpd_handler::MPDAction::Refresh,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.switch_to_queue_menu,
+            crate::app::mpd_handler::MPDAction::SwitchToQueueMenu,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.switch_to_tracks,
+            crate::app::mpd_handler::MPDAction::SwitchToTracks,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.seek_forward,
+            crate::app::mpd_handler::MPDAction::SeekForward,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.seek_backward,
+            crate::app::mpd_handler::MPDAction::SeekBackward,
+            single_map,
+            sequential_bindings,
+        );
+    }
+
+    /// Helper method to add bindings that may be sequential
+    fn add_enhanced_binding_for_action(
+        &self,
+        binding_strings: &[String],
+        action: crate::app::mpd_handler::MPDAction,
+        single_map: &mut HashMap<
+            (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
+            crate::app::mpd_handler::MPDAction,
+        >,
+        sequential_bindings: &mut Vec<crate::binds::SequentialKeyBinding>,
+    ) {
+        for binding_str in binding_strings {
+            let key_sequence = self.parse_binding_string(binding_str);
+
+            if key_sequence.len() == 1 {
+                // Single key binding
+                single_map.insert(key_sequence[0], action.clone());
+            } else if key_sequence.len() > 1 {
+                // Sequential key binding
+                sequential_bindings.push(crate::binds::SequentialKeyBinding {
+                    sequence: key_sequence,
+                    action: action.clone(),
+                });
             }
         }
     }
 
-    fn add_queue_bindings(
+    fn add_enhanced_queue_bindings(
         &self,
-        map: &mut HashMap<
+        single_map: &mut HashMap<
             (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
             crate::app::mpd_handler::MPDAction,
         >,
+        sequential_bindings: &mut Vec<crate::binds::SequentialKeyBinding>,
     ) {
         // Queue mode specific bindings
-        for key_str in &self.scroll_up {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::QueueUp);
-            }
-        }
-        for key_str in &self.scroll_down {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::QueueDown);
-            }
-        }
-        for key_str in &self.play_selected {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::PlaySelected);
-            }
-        }
-        for key_str in &self.remove_from_queue {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::RemoveFromQueue);
-            }
-        }
-        for key_str in &self.move_up_in_queue {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::MoveUpInQueue);
-            }
-        }
-        for key_str in &self.move_down_in_queue {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::MoveDownInQueue);
-            }
-        }
-        for key_str in &self.scroll_up_big {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::ScrollUp);
-            }
-        }
-        for key_str in &self.scroll_down_big {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::ScrollDown);
-            }
-        }
+        self.add_enhanced_binding_for_action(
+            &self.scroll_up,
+            crate::app::mpd_handler::MPDAction::QueueUp,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.scroll_down,
+            crate::app::mpd_handler::MPDAction::QueueDown,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.play_selected,
+            crate::app::mpd_handler::MPDAction::PlaySelected,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.remove_from_queue,
+            crate::app::mpd_handler::MPDAction::RemoveFromQueue,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.move_up_in_queue,
+            crate::app::mpd_handler::MPDAction::MoveUpInQueue,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.move_down_in_queue,
+            crate::app::mpd_handler::MPDAction::MoveDownInQueue,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.scroll_up_big,
+            crate::app::mpd_handler::MPDAction::ScrollUp,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.scroll_down_big,
+            crate::app::mpd_handler::MPDAction::ScrollDown,
+            single_map,
+            sequential_bindings,
+        );
     }
 
-    fn add_tracks_bindings(
+    fn add_enhanced_tracks_bindings(
         &self,
-        map: &mut HashMap<
+        single_map: &mut HashMap<
             (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
             crate::app::mpd_handler::MPDAction,
         >,
+        sequential_bindings: &mut Vec<crate::binds::SequentialKeyBinding>,
     ) {
         // Tracks mode specific bindings
-        for key_str in &self.switch_panel_left {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelLeft);
-            }
-        }
+        self.add_enhanced_binding_for_action(
+            &self.switch_panel_left,
+            crate::app::mpd_handler::MPDAction::SwitchPanelLeft,
+            single_map,
+            sequential_bindings,
+        );
+
         // Note: toggle_album_expansion is added first so switch_panel_right can overwrite it
         // This allows us to use the same keys for both actions with different behavior
-        for key_str in &self.toggle_album_expansion {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(
-                    key,
-                    crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion,
-                );
-            }
-        }
-        for key_str in &self.switch_panel_right {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::SwitchPanelRight);
-            }
-        }
-        for key_str in &self.scroll_up {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::NavigateUp);
-            }
-        }
-        for key_str in &self.scroll_down {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::NavigateDown);
-            }
-        }
-
-        for key_str in &self.add_song_to_queue {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::AddSongToQueue);
-            }
-        }
-        for key_str in &self.scroll_up_big {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::ScrollUp);
-            }
-        }
-        for key_str in &self.scroll_down_big {
-            if let Some(key) = self.parse_keybinding(key_str) {
-                map.insert(key, crate::app::mpd_handler::MPDAction::ScrollDown);
-            }
-        }
+        self.add_enhanced_binding_for_action(
+            &self.toggle_album_expansion,
+            crate::app::mpd_handler::MPDAction::ToggleAlbumExpansion,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.switch_panel_right,
+            crate::app::mpd_handler::MPDAction::SwitchPanelRight,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.scroll_up,
+            crate::app::mpd_handler::MPDAction::NavigateUp,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.scroll_down,
+            crate::app::mpd_handler::MPDAction::NavigateDown,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.add_song_to_queue,
+            crate::app::mpd_handler::MPDAction::AddSongToQueue,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.scroll_up_big,
+            crate::app::mpd_handler::MPDAction::ScrollUp,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.scroll_down_big,
+            crate::app::mpd_handler::MPDAction::ScrollDown,
+            single_map,
+            sequential_bindings,
+        );
     }
 }
 
@@ -841,14 +961,14 @@ impl Default for BindsConfig {
             random: Self::default_random(),
             single: Self::default_single(),
             consume: Self::default_consume(),
-            quit: Self::default_quit(),
+            quit: Self::default_quit_enhanced(),
             refresh: Self::default_refresh(),
             switch_to_queue_menu: Self::default_switch_to_queue_menu(),
             switch_to_tracks: Self::default_switch_to_tracks(),
             seek_forward: Self::default_seek_forward(),
             seek_backward: Self::default_seek_backward(),
             play_selected: Self::default_play_selected(),
-            remove_from_queue: Self::default_remove_from_queue(),
+            remove_from_queue: Self::default_remove_from_queue_enhanced(),
             move_up_in_queue: Self::default_move_up_in_queue(),
             move_down_in_queue: Self::default_move_down_in_queue(),
             switch_panel_left: Self::default_switch_panel_left(),
@@ -857,8 +977,8 @@ impl Default for BindsConfig {
             add_song_to_queue: Self::default_add_song_to_queue(),
             scroll_up_big: Self::default_scroll_up_big(),
             scroll_down_big: Self::default_scroll_down_big(),
-            scroll_up: Self::default_scroll_up(),
-            scroll_down: Self::default_scroll_down(),
+            scroll_up: Self::default_scroll_up_enhanced(),
+            scroll_down: Self::default_scroll_down_enhanced(),
         }
     }
 }

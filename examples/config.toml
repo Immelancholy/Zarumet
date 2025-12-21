@@ -58,15 +58,10 @@ cycle_mode_left = [
     "ctrl-h",
     "ctrl-left",
 ]
-clear_queue = ["d"]
-repeat = ["r"]
-random = ["z"]
-single = ["s"]
-consume = ["c"]
-quit = [
-    "esc",
-    "q",
-    "ctrl-c",
+clear_queue = ["d d"]
+remove_from_queue = [
+    "x",
+    "backspace",
 ]
 refresh = ["u"]
 switch_to_queue_menu = ["1"]
@@ -91,10 +86,6 @@ play_selected = [
     "enter",
     "l",
     "right",
-]
-remove_from_queue = [
-    "x",
-    "backspace",
 ]
 move_up_in_queue = [
     "ctrl-k",

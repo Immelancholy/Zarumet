@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, ListState},
+    widgets::{Block, BorderType, Borders, ListState, Paragraph},
 };
 
 use crate::config::Config;
@@ -15,6 +15,83 @@ use crate::ui::widgets::{
     create_song_widget, create_top_box, render_image_widget,
 };
 use unicode_width::UnicodeWidthStr;
+
+/// Render key sequence status in bottom-right corner
+fn render_key_sequence_status(frame: &mut Frame, key_binds: &crate::binds::KeyBinds, area: Rect) {
+    if !key_binds.is_awaiting_input() {
+        return;
+    }
+
+    let sequence = key_binds.get_current_sequence();
+    if sequence.is_empty() {
+        return;
+    }
+
+    // Convert key sequence to display string
+    let sequence_text: String = sequence
+        .iter()
+        .map(|(modifiers, key_code)| {
+            let key_str = match key_code {
+                crossterm::event::KeyCode::Char(c) => c.to_string(),
+                crossterm::event::KeyCode::Esc => "Esc".to_string(),
+                crossterm::event::KeyCode::Enter => "Enter".to_string(),
+                crossterm::event::KeyCode::Backspace => "Backspace".to_string(),
+                crossterm::event::KeyCode::Tab => "Tab".to_string(),
+                crossterm::event::KeyCode::Delete => "Delete".to_string(),
+                crossterm::event::KeyCode::Insert => "Insert".to_string(),
+                crossterm::event::KeyCode::Home => "Home".to_string(),
+                crossterm::event::KeyCode::End => "End".to_string(),
+                crossterm::event::KeyCode::PageUp => "PageUp".to_string(),
+                crossterm::event::KeyCode::PageDown => "PageDown".to_string(),
+                crossterm::event::KeyCode::Up => "↑".to_string(),
+                crossterm::event::KeyCode::Down => "↓".to_string(),
+                crossterm::event::KeyCode::Left => "←".to_string(),
+                crossterm::event::KeyCode::Right => "→".to_string(),
+                crossterm::event::KeyCode::F(n) => format!("F{}", n),
+                _ => format!("{:?}", key_code),
+            };
+
+            // Add modifier prefixes
+            let mut result = String::new();
+            if modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                result.push_str("Ctrl+");
+            }
+            if modifiers.contains(crossterm::event::KeyModifiers::ALT) {
+                result.push_str("Alt+");
+            }
+            if modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                result.push_str("Shift+");
+            }
+            result.push_str(&key_str);
+            result
+        })
+        .collect::<Vec<_>>()
+        .join(" → ");
+
+    // Create paragraph for key sequence display
+    let paragraph = Paragraph::new(format!("Sequence: {}", sequence_text))
+        .style(Style::default().fg(ratatui::style::Color::Yellow))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Key Sequence")
+                .border_style(Style::default().fg(ratatui::style::Color::White)),
+        );
+
+    // Calculate position for bottom-right corner
+    let text_width = sequence_text.width() + "Sequence: ".width() + 4; // 4 for borders
+    let text_height = 3;
+
+    if area.width >= text_width as u16 && area.height >= text_height as u16 {
+        let popup_area = Rect {
+            x: area.x + area.width.saturating_sub(text_width as u16),
+            y: area.y + area.height.saturating_sub(text_height as u16),
+            width: text_width.min(area.width as usize) as u16,
+            height: text_height.min(area.height as usize) as u16,
+        };
+        frame.render_widget(paragraph, popup_area);
+    }
+}
 
 /// Renders the user interface.
 pub fn render(
@@ -32,6 +109,7 @@ pub fn render(
     panel_focus: &PanelFocus,
     expanded_albums: &std::collections::HashSet<(String, String)>,
     mpd_status: &Option<mpd_client::responses::Status>,
+    key_binds: &crate::binds::KeyBinds,
 ) {
     let area = frame.area();
 
@@ -90,6 +168,9 @@ pub fn render(
             );
         }
     }
+
+    // Render key sequence status overlay
+    render_key_sequence_status(frame, key_binds, area);
 }
 
 fn render_queue_mode(
