@@ -234,7 +234,13 @@ fn render_queue_mode(
     frame.render_widget(format_widget, main_vertical_chunks[0]);
 
     // Render middle box that spans both splits
-    let middle_box = create_top_box(config, mpd_status.as_ref(), menu_mode, bit_perfect_enabled);
+    let middle_box = create_top_box(
+        config,
+        mpd_status.as_ref(),
+        menu_mode,
+        bit_perfect_enabled,
+        config.pipewire.is_available(),
+    );
     frame.render_widget(middle_box, main_vertical_chunks[1]);
 
     // Render widgets in left vertical split
@@ -324,7 +330,13 @@ fn render_tracks_mode(
     frame.render_widget(format_widget, main_vertical_chunks[0]);
 
     // Render middle box that spans both splits
-    let middle_box = create_top_box(config, mpd_status.as_ref(), menu_mode, bit_perfect_enabled);
+    let middle_box = create_top_box(
+        config,
+        mpd_status.as_ref(),
+        menu_mode,
+        bit_perfect_enabled,
+        config.pipewire.is_available(),
+    );
     frame.render_widget(middle_box, main_vertical_chunks[1]);
 
     // Render artists list

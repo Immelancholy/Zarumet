@@ -4,7 +4,6 @@ volume_increment = 5
 volume_increment_fine = 1
 
 [pipewire]
-enabled = true
 allowed_rates = [44100, 48000, 88200, 96000]
 
 [colors]

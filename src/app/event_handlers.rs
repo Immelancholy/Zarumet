@@ -37,10 +37,13 @@ impl EventHandlers for App {
             match action {
                 MPDAction::Quit => self.quit(),
                 MPDAction::ToggleBitPerfect => {
-                    self.bit_perfect_enabled = !self.bit_perfect_enabled;
-                    // If disabling, reset PipeWire sample rate to automatic
-                    if !self.bit_perfect_enabled {
-                        let _ = crate::pipewire::reset_sample_rate();
+                    // Only allow toggling if bit-perfect is available (allowed_rates configured)
+                    if self.config.pipewire.is_available() {
+                        self.bit_perfect_enabled = !self.bit_perfect_enabled;
+                        // If disabling, reset PipeWire sample rate to automatic
+                        if !self.bit_perfect_enabled {
+                            let _ = crate::pipewire::reset_sample_rate();
+                        }
                     }
                 }
                 MPDAction::Next | MPDAction::Previous => {

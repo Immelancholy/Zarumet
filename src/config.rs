@@ -30,7 +30,12 @@ impl PipewireConfig {
     }
 
     fn default_allowed_rates() -> Vec<u32> {
-        vec![44100, 48000, 88200, 96000, 176400, 192000]
+        vec![]
+    }
+
+    /// Check if bit-perfect mode is available (allowed_rates is configured)
+    pub fn is_available(&self) -> bool {
+        !self.allowed_rates.is_empty()
     }
 
     /// Determine the best sample rate to use based on the song's sample rate

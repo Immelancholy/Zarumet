@@ -12,6 +12,7 @@ pub fn create_top_box<'a>(
     mpd_status: Option<&mpd_client::responses::Status>,
     menu_mode: &MenuMode,
     bit_perfect_enabled: bool,
+    bit_perfect_available: bool,
 ) -> Paragraph<'a> {
     let border_color = config.colors.border_color();
     let text_color = config.colors.song_title_color();
@@ -27,6 +28,15 @@ pub fn create_top_box<'a>(
 
     // Playback status indicators
     if let Some(status) = mpd_status {
+        // Bit-perfect mode (󰤽 - high quality audio icon) - only show if available
+        if bit_perfect_available {
+            if bit_perfect_enabled {
+                spans.push(Span::styled("󰟏", Style::default().fg(accent_color).bold()));
+            } else {
+                spans.push(Span::styled("󰟏", Style::default().fg(text_color)));
+            }
+            spans.push(Span::raw(" "));
+        }
         // Repeat (󰑖)
         if status.repeat {
             spans.push(Span::styled("󰑖", Style::default().fg(accent_color).bold()));
@@ -53,21 +63,14 @@ pub fn create_top_box<'a>(
 
         // Consume (󰮝)
         if status.consume {
-            spans.push(Span::styled("󰆴", Style::default().fg(accent_color).bold()));
+            spans.push(Span::styled("", Style::default().fg(accent_color).bold()));
         } else {
-            spans.push(Span::styled("󰆴", Style::default().fg(text_color)));
+            spans.push(Span::styled("", Style::default().fg(text_color)));
         }
         spans.push(Span::raw(" "));
 
-        // Bit-perfect mode (󰤽 - high quality audio icon)
-        if bit_perfect_enabled {
-            spans.push(Span::styled("󰤽", Style::default().fg(accent_color).bold()));
-        } else {
-            spans.push(Span::styled("󰤽", Style::default().fg(text_color)));
-        }
-
         // Playback state and song count
-        spans.push(Span::raw("  │  "));
+        spans.push(Span::raw(" │  "));
 
         // Queue info
         let queue_count = status.playlist_length;
