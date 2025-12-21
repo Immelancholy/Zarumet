@@ -539,7 +539,9 @@ impl App {
                             if !library.artists.is_empty() {
                                 let new_index = match action {
                                     MPDAction::GoToTop => 0,
-                                    MPDAction::GoToBottom => library.artists.len().saturating_sub(1),
+                                    MPDAction::GoToBottom => {
+                                        library.artists.len().saturating_sub(1)
+                                    }
                                     _ => return,
                                 };
                                 self.artist_list_state.select(Some(new_index));
@@ -563,7 +565,9 @@ impl App {
                                 if !display_items.is_empty() {
                                     let new_index = match action {
                                         MPDAction::GoToTop => 0,
-                                        MPDAction::GoToBottom => display_items.len().saturating_sub(1),
+                                        MPDAction::GoToBottom => {
+                                            display_items.len().saturating_sub(1)
+                                        }
                                         _ => return,
                                     };
                                     self.album_display_list_state.select(Some(new_index));

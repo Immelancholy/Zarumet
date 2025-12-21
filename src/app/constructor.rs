@@ -25,8 +25,10 @@ impl AppConstructor for App {
         // Don't select anything initially - will be set when queue is populated
 
         // Build enhanced key maps from config
-        let (global_map, queue_map, tracks_map, sequential_bindings) = config.binds.build_enhanced_key_maps();
-        let key_binds = KeyBinds::new_with_sequential(global_map, queue_map, tracks_map, sequential_bindings);
+        let (global_map, queue_map, tracks_map, sequential_bindings) =
+            config.binds.build_enhanced_key_maps();
+        let key_binds =
+            KeyBinds::new_with_sequential(global_map, queue_map, tracks_map, sequential_bindings);
 
         Ok(Self {
             running: false,
