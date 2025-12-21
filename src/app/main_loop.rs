@@ -146,8 +146,7 @@ impl AppMainLoop for App {
                         if status.state == PlayState::Playing {
                             if let Some(ref song) = self.current_song {
                                 if let Some(song_rate) = song.sample_rate() {
-                                    let target_rate =
-                                        self.config.pipewire.resolve_rate(song_rate);
+                                    let target_rate = self.config.pipewire.resolve_rate(song_rate);
                                     let _ = crate::pipewire::set_sample_rate(target_rate);
                                 }
                             }
@@ -168,8 +167,7 @@ impl AppMainLoop for App {
                             // Started playing - set sample rate to match song
                             if let Some(ref song) = self.current_song {
                                 if let Some(song_rate) = song.sample_rate() {
-                                    let target_rate =
-                                        self.config.pipewire.resolve_rate(song_rate);
+                                    let target_rate = self.config.pipewire.resolve_rate(song_rate);
                                     let _ = crate::pipewire::set_sample_rate(target_rate);
                                 }
                             }

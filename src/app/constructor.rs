@@ -86,7 +86,7 @@ impl AppConstructor for App {
 
         // Determine bit-perfect state: CLI flag takes priority, then saved state
         let bit_perfect_enabled = match args.bit_perfect {
-            Some(value) => value, // CLI explicitly set on/off
+            Some(value) => value,             // CLI explicitly set on/off
             None => load_bit_perfect_state(), // No CLI flag, use saved state
         };
 
