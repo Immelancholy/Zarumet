@@ -154,7 +154,7 @@ queue_duration = "#e16a7c"
 top_accent = "#e16a7c"
 volume = "#26a0a1"
 volume_empty = "#1b1d0e"
-mode = "fae280"
+mode = "#fae280"
 track_duration = "#e16a7c"
 
 [binds]
@@ -194,6 +194,7 @@ quit = [
     "esc",
     "q",
     "ctrl-c",
+    "q q",
 ]
 refresh = ["u"]
 switch_to_queue_menu = ["1"]
@@ -222,6 +223,7 @@ play_selected = [
 remove_from_queue = [
     "x",
     "backspace",
+    "d d",
 ]
 move_up_in_queue = [
     "ctrl-k",
@@ -251,6 +253,19 @@ scroll_up_big = ["ctrl-u"]
 scroll_down_big = ["ctrl-d"]
 go_to_top = ["g g"]
 go_to_bottom = ["shift-g"]
+toggle_bit_perfect = ["b"]
+
+[pipewire]
+allowed_rates = []
+
+[logging]
+enabled = true
+level = "info"
+log_to_console = false
+append_to_file = true
+rotate_logs = true
+rotation_size_mb = 10
+keep_log_files = 5
 ```
 
 </details>

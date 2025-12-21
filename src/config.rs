@@ -18,9 +18,6 @@ pub struct Config {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PipewireConfig {
-    /// Enable PipeWire sample rate matching
-    #[serde(default = "PipewireConfig::default_enabled")]
-    pub enabled: bool,
     /// Allowed sample rates for PipeWire
     #[serde(default = "PipewireConfig::default_allowed_rates")]
     pub allowed_rates: Vec<u32>,
@@ -55,10 +52,6 @@ pub struct LoggingConfig {
 }
 
 impl PipewireConfig {
-    fn default_enabled() -> bool {
-        false
-    }
-
     fn default_allowed_rates() -> Vec<u32> {
         vec![]
     }
@@ -115,7 +108,6 @@ impl PipewireConfig {
 impl Default for PipewireConfig {
     fn default() -> Self {
         Self {
-            enabled: Self::default_enabled(),
             allowed_rates: Self::default_allowed_rates(),
         }
     }
