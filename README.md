@@ -309,6 +309,7 @@ When a song plays, Zarumet will automatically:
 3. Fall back to 44100 Hz if no compatible rate is found
 
 The system supports common sample rates including:
+
 - `44100` - CD quality
 - `48000` - DVD/common digital audio
 - `88200` - 2x CD quality
