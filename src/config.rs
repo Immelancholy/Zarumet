@@ -398,7 +398,7 @@ impl BindsConfig {
         ]
     }
     fn default_toggle_play_pause() -> Vec<String> {
-        vec![" ".to_string(), "p".to_string()]
+        vec!["space".to_string(), "p".to_string()]
     }
     fn default_volume_up() -> Vec<String> {
         vec!["=".to_string()]
@@ -422,7 +422,7 @@ impl BindsConfig {
         vec!["ctrl-h".to_string(), "ctrl-left".to_string()]
     }
     fn default_clear_queue() -> Vec<String> {
-        vec!["d".to_string()]
+        vec!["d d".to_string()]
     }
     fn default_repeat() -> Vec<String> {
         vec!["r".to_string()]

@@ -169,7 +169,7 @@ previous = [
     "shift-up",
 ]
 toggle_play_pause = [
-    " ",
+    "space",
     "p",
 ]
 volume_up = ["="]
@@ -185,7 +185,7 @@ cycle_mode_left = [
     "ctrl-h",
     "ctrl-left",
 ]
-clear_queue = ["d"]
+clear_queue = ["d d"]
 repeat = ["r"]
 random = ["z"]
 single = ["s"]

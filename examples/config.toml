@@ -42,7 +42,7 @@ previous = [
     "shift-up",
 ]
 toggle_play_pause = [
-    " ",
+    "space",
     "p",
 ]
 volume_up = ["="]
