@@ -257,7 +257,6 @@ go_to_bottom = ["shift-g"]
 
 <details>
 <summary>Bit-Perfect Mode (PipeWire)</summary>
-## Bit-Perfect Mode (PipeWire)
 
 Zarumet supports bit-perfect audio playback by automatically adjusting the PipeWire sample rate to match the current song's sample rate. This prevents resampling and ensures the highest quality audio output.
 
