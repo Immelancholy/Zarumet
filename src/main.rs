@@ -54,6 +54,16 @@ async fn main() -> color_eyre::Result<()> {
     // Save logging state before app takes ownership
     let logging_enabled = config.logging.enabled;
 
+    // Initialize PipeWire supported rates cache if on Linux and bit-perfect is enabled
+    #[cfg(target_os = "linux")]
+    {
+        if config.pipewire.bit_perfect_enabled {
+            if let Err(e) = crate::pipewire::initialize_supported_rates() {
+                log::warn!("Failed to initialize PipeWire supported rates: {}", e);
+            }
+        }
+    }
+
     // Create app now that logger is initialized
     let app = App::new_with_config(config, args.clone())?;
 

@@ -12,7 +12,8 @@ use pipewire::{
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Duration;
+use std::sync::OnceLock;
+use std::time::{Duration, SystemTime};
 
 /// The metadata name used by PipeWire for global settings
 const SETTINGS_METADATA_NAME: &str = "settings";
@@ -28,6 +29,12 @@ const SYNC_TIMEOUT: Duration = Duration::from_millis(500);
 
 /// Iteration step for the main loop
 const LOOP_ITERATION_STEP: Duration = Duration::from_millis(10);
+
+/// Cache for supported sample rates to avoid repeated PipeWire queries
+static SUPPORTED_RATES_CACHE: OnceLock<(Vec<u32>, SystemTime)> = OnceLock::new();
+
+/// Cache validity duration (5 minutes)
+const CACHE_VALIDITY_DURATION: Duration = Duration::from_secs(300);
 
 /// Forces PipeWire to use a specific sample rate via the settings metadata.
 ///
@@ -172,6 +179,174 @@ fn set_sample_rate_inner(rate: u32) -> Result<(), String> {
 /// to automatically select the best sample rate.
 pub fn reset_sample_rate() -> Result<(), String> {
     set_sample_rate(0)
+}
+
+/// Initialize the supported rates cache.
+/// Should be called once when the program starts.
+pub fn initialize_supported_rates() -> Result<Vec<u32>, String> {
+    get_supported_rates()
+}
+
+/// Gets the list of supported sample rates from PipeWire.
+///
+/// This function first checks the cache, and only queries PipeWire
+/// if the cache is empty or expired.
+///
+/// # Returns
+/// * `Ok(Vec<u32>)` with the list of supported sample rates
+/// * `Err(String)` with an error message if something went wrong
+pub fn get_supported_rates() -> Result<Vec<u32>, String> {
+    // Check cache first
+    if let Some((rates, timestamp)) = SUPPORTED_RATES_CACHE.get() {
+        let now = SystemTime::now();
+        if now.duration_since(*timestamp).unwrap_or(Duration::MAX) < CACHE_VALIDITY_DURATION {
+            debug!("Using cached supported sample rates: {:?}", rates);
+            return Ok(rates.clone());
+        }
+    }
+    
+    // Cache miss or expired, fetch from PipeWire
+    let result = get_supported_rates_inner();
+    
+    match &result {
+        Ok(rates) => {
+            debug!("Found {} supported sample rates: {:?}", rates.len(), rates);
+            // Cache the result
+            let _ = SUPPORTED_RATES_CACHE.set((rates.clone(), SystemTime::now()));
+        }
+        Err(e) => {
+            warn!("Failed to get supported sample rates: {}", e);
+        }
+    }
+    
+    result
+}
+
+fn get_supported_rates_inner() -> Result<Vec<u32>, String> {
+    // Initialize PipeWire library
+    pipewire::init();
+
+    // Create the main loop
+    let mainloop =
+        MainLoopBox::new(None).map_err(|e| format!("Failed to create PipeWire MainLoop: {e}"))?;
+
+    // Create context from the main loop
+    let context = ContextBox::new(mainloop.loop_(), None)
+        .map_err(|e| format!("Failed to create PipeWire Context: {e}"))?;
+
+    // Connect to the PipeWire server
+    let core = context
+        .connect(None)
+        .map_err(|e| format!("Failed to connect to PipeWire Core: {e}"))?;
+
+    // Get the registry to enumerate objects
+    let registry = core
+        .get_registry()
+        .map_err(|e| format!("Failed to get PipeWire registry: {e}"))?;
+
+    // Store found sample rates
+    let supported_rates: Rc<RefCell<Vec<u32>>> = Rc::new(RefCell::new(Vec::new()));
+    let supported_rates_clone = supported_rates.clone();
+
+    // Register listener for global objects to find devices and nodes
+    let _registry_listener = registry
+        .add_listener_local()
+        .global(move |global| {
+            // Look for device and node objects that might have sample rate info
+            if global.type_ == ObjectType::Device || global.type_ == ObjectType::Node {
+                if let Some(props) = global.props.as_ref() {
+                    // Check for audio devices/nodes
+                    if let Some(media_class) = props.get("media.class") {
+                        if media_class.contains("Audio") {
+                            // Extract sample rates from device properties
+                            if let Some(rates_str) = props.get("device.profile.description") {
+                                // Try to parse sample rates from description (may contain rate info)
+                                extract_rates_from_description(rates_str, &supported_rates_clone);
+                            }
+                            
+                            // Check for common audio format properties
+                            if let Some(formats) = props.get("format.dsp") {
+                                extract_rates_from_format_string(formats, &supported_rates_clone);
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        .register();
+
+    // Run the loop to discover objects
+    let start = std::time::Instant::now();
+    while start.elapsed() < DISCOVERY_TIMEOUT {
+        mainloop.loop_().iterate(LOOP_ITERATION_STEP);
+    }
+
+    // If no rates found, fall back to common rates
+    let mut rates = supported_rates.borrow_mut();
+    if rates.is_empty() {
+        *rates = vec![
+            8000, 11025, 16000, 22050, 32000, 44100, 48000, 
+            88200, 96000, 176400, 192000, 352800, 384000
+        ];
+        info!("Using default common sample rates as fallback");
+    } else {
+        // Sort and deduplicate the rates
+        rates.sort();
+        rates.dedup();
+        rates.extend_from_slice(&[44100, 48000, 88200, 96000, 176400, 192000]);
+        rates.sort();
+        rates.dedup();
+    }
+
+    Ok(rates.clone())
+}
+
+/// Extract sample rates from a description string
+fn extract_rates_from_description(desc: &str, rates: &Rc<RefCell<Vec<u32>>>) {
+    // Look for rate patterns in the description
+    // Common patterns: "48000 Hz", "96kHz", etc.
+    let rate_patterns = [
+        r"(\d+)\s*Hz",
+        r"(\d+)kHz", 
+        r"(\d+)\s*khz",
+    ];
+    
+    for pattern in &rate_patterns {
+        if let Ok(re) = regex::Regex::new(pattern) {
+            for cap in re.captures_iter(desc) {
+                if let Some(rate_str) = cap.get(1) {
+                    if let Ok(rate_val) = rate_str.as_str().parse::<u32>() {
+                        let rate = if pattern.contains("kHz") || pattern.contains("khz") {
+                            rate_val * 1000
+                        } else {
+                            rate_val
+                        };
+                        
+                        // Only add if it's a reasonable sample rate and not already present
+                        if rate >= 8000 && rate <= 384000 && !rates.borrow().contains(&rate) {
+                            rates.borrow_mut().push(rate);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Extract sample rates from format strings
+fn extract_rates_from_format_string(format_str: &str, rates: &Rc<RefCell<Vec<u32>>>) {
+    // Try to parse rates from format specifications
+    // Format strings might contain rate info like "S32LE 48000" etc.
+    let words: Vec<&str> = format_str.split_whitespace().collect();
+    
+    for word in words {
+        if let Ok(rate) = word.parse::<u32>() {
+            // Check if this looks like a valid sample rate
+            if rate >= 8000 && rate <= 384000 && !rates.borrow().contains(&rate) {
+                rates.borrow_mut().push(rate);
+            }
+        }
+    }
 }
 
 #[cfg(test)]

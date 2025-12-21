@@ -359,13 +359,16 @@ fn handle_pipewire_state_change(
             if (state_changed || rate_changed)
                 && let Some(song_rate) = current_sample_rate
             {
-                let target_rate = config.pipewire.resolve_rate(song_rate);
-                log::debug!(
-                    "Setting PipeWire sample rate to {} (song rate: {})",
-                    target_rate,
-                    song_rate
-                );
-                let _ = crate::pipewire::set_sample_rate(target_rate);
+                #[cfg(target_os = "linux")]
+                if let Ok(supported_rates) = crate::pipewire::get_supported_rates() {
+                    let target_rate = crate::config::resolve_bit_perfect_rate(song_rate, &supported_rates);
+                    log::debug!(
+                        "Setting PipeWire sample rate to {} (song rate: {})",
+                        target_rate,
+                        song_rate
+                    );
+                    let _ = crate::pipewire::set_sample_rate(target_rate);
+                }
             }
         }
         Some(PlayState::Paused) | Some(PlayState::Stopped) | None => {

@@ -6,4 +6,4 @@
 #[allow(clippy::module_inception)]
 mod pipewire;
 
-pub use pipewire::{reset_sample_rate, set_sample_rate};
+pub use pipewire::{get_supported_rates, initialize_supported_rates, reset_sample_rate, set_sample_rate};

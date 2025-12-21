@@ -129,7 +129,7 @@ go_to_bottom = ["shift-g"]
 toggle_bit_perfect = ["b"]
 
 [pipewire]
-allowed_rates = []
+bit_perfect_enabled = false
 
 [logging]
 enabled = true

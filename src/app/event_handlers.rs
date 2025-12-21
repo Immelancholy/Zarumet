@@ -68,7 +68,7 @@ impl EventHandlers for App {
             match action {
                 MPDAction::Quit => self.quit(),
                 MPDAction::ToggleBitPerfect => {
-                    // Only allow toggling if bit-perfect is available (allowed_rates configured)
+                    // Only allow toggling if bit-perfect is available (enabled in config)
                     if self.config.pipewire.is_available() {
                         self.bit_perfect_enabled = !self.bit_perfect_enabled;
                         #[cfg(target_os = "linux")]
@@ -79,8 +79,14 @@ impl EventHandlers for App {
                                 && let Some(ref song) = self.current_song
                                 && let Some(song_rate) = song.sample_rate()
                             {
-                                let target_rate = self.config.pipewire.resolve_rate(song_rate);
-                                let _ = crate::pipewire::set_sample_rate(target_rate);
+                                if let Ok(supported_rates) = crate::pipewire::get_supported_rates()
+                                {
+                                    let target_rate = crate::config::resolve_bit_perfect_rate(
+                                        song_rate,
+                                        &supported_rates,
+                                    );
+                                    let _ = crate::pipewire::set_sample_rate(target_rate);
+                                }
                             }
                         } else {
                             // Disabling - reset PipeWire sample rate to automatic
