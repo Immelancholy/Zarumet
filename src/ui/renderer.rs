@@ -107,6 +107,7 @@ fn render_key_sequence_status(
 }
 
 /// Renders the user interface.
+#[allow(clippy::too_many_arguments)]
 pub fn render(
     frame: &mut Frame<'_>,
     protocol: &mut crate::ui::Protocol,
@@ -186,9 +187,10 @@ pub fn render(
     }
 
     // Render key sequence status overlay
-    render_key_sequence_status(frame, key_binds, area, &config);
+    render_key_sequence_status(frame, key_binds, area, config);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_queue_mode(
     frame: &mut Frame<'_>,
     protocol: &mut crate::ui::Protocol,
@@ -274,6 +276,7 @@ fn render_queue_mode(
     frame.render_widget(song_widget, right_vertical_chunks[1]);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_tracks_mode(
     frame: &mut Frame<'_>,
     protocol: &mut crate::ui::Protocol,
@@ -344,8 +347,7 @@ fn render_tracks_mode(
         let artists_list: Vec<ratatui::widgets::ListItem> = library
             .artists
             .iter()
-            .enumerate()
-            .map(|(_i, artist)| {
+            .map(|artist| {
                 // Calculate available width for artist name (subtract borders and padding)
                 let available_width = left_horizontal_chunks[0].width.saturating_sub(4) as usize;
                 let truncated_name = if artist.name.width() > available_width {
@@ -353,7 +355,7 @@ fn render_tracks_mode(
                 } else {
                     artist.name.clone()
                 };
-                let display_text = format!("{}", truncated_name);
+                let display_text = truncated_name.to_string();
                 ratatui::widgets::ListItem::new(vec![Line::from(display_text)])
             })
             .collect();
@@ -403,8 +405,7 @@ fn render_tracks_mode(
 
             let albums_list: Vec<ratatui::widgets::ListItem> = display_items
                 .iter()
-                .enumerate()
-                .map(|(_display_index, item)| {
+                .map(|item| {
                     match item {
                         DisplayItem::Album(album_name) => {
                             // Find the actual album to get duration

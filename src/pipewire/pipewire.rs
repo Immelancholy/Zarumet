@@ -53,14 +53,14 @@ pub fn set_sample_rate(rate: u32) -> Result<(), String> {
         .add_listener_local()
         .global(move |global| {
             // Look for metadata objects
-            if global.type_ == ObjectType::Metadata {
-                if let Some(props) = global.props.as_ref() {
-                    let name = props.get("metadata.name");
-                    // Check if this is the "settings" metadata
-                    if name == Some("settings") {
-                        // Store an owned copy of the global for later binding
-                        *found_global_clone.borrow_mut() = Some(global.to_owned());
-                    }
+            if global.type_ == ObjectType::Metadata
+                && let Some(props) = global.props.as_ref()
+            {
+                let name = props.get("metadata.name");
+                // Check if this is the "settings" metadata
+                if name == Some("settings") {
+                    // Store an owned copy of the global for later binding
+                    *found_global_clone.borrow_mut() = Some(global.to_owned());
                 }
             }
         })

@@ -69,11 +69,11 @@ impl SongInfo {
     }
     pub async fn load_cover(&self, client: &Client) -> Option<Vec<u8>> {
         let uri = self.file_path.to_str()?;
-        let art_data_result = client.album_art(&uri).await.ok()?;
+        let art_data_result = client.album_art(uri).await.ok()?;
 
         let (raw_data, _mime_type_option) = art_data_result?;
 
-        return Some(raw_data.to_vec());
+        Some(raw_data.to_vec())
     }
 
     pub fn update_playback_info(&mut self, play_state: Option<PlayState>, progress: Option<f64>) {
@@ -153,10 +153,8 @@ impl Library {
             let artist_name = song_info.album_artist.clone();
             let album_name = song_info.album.clone();
 
-            let artist_entry = artists_map
-                .entry(artist_name)
-                .or_insert_with(std::collections::HashMap::new);
-            let album_entry = artist_entry.entry(album_name).or_insert_with(Vec::new);
+            let artist_entry = artists_map.entry(artist_name).or_default();
+            let album_entry = artist_entry.entry(album_name).or_default();
             album_entry.push(song_info);
         }
 

@@ -189,15 +189,13 @@ impl KeyBinds {
         matches!(self.current_state, KeyState::Awaiting { .. })
     }
 
-    /// Reset key state (called on timeout or mode change)
-
     /// Update method to handle timeouts (call this regularly)
     pub fn update(&mut self) -> Option<MPDAction> {
-        if let KeyState::Awaiting { timeout, .. } = &self.current_state {
-            if *timeout < Instant::now() {
-                self.current_state = KeyState::Idle;
-                // No action on timeout, just reset
-            }
+        if let KeyState::Awaiting { timeout, .. } = &self.current_state
+            && *timeout < Instant::now()
+        {
+            self.current_state = KeyState::Idle;
+            // No action on timeout, just reset
         }
         None
     }

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub mpd: MpdConfig,
@@ -65,7 +65,7 @@ impl PipewireConfig {
         let best_rate = self
             .allowed_rates
             .iter()
-            .filter(|&&rate| song_rate % rate == 0)
+            .filter(|&&rate| song_rate.is_multiple_of(rate))
             .max()
             .copied();
 
@@ -439,17 +439,6 @@ impl ColorsConfig {
     }
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            mpd: MpdConfig::default(),
-            colors: ColorsConfig::default(),
-            binds: BindsConfig::default(),
-            pipewire: PipewireConfig::default(),
-        }
-    }
-}
-
 impl MpdConfig {
     fn default_address() -> String {
         "localhost:6600".to_string()
@@ -701,6 +690,7 @@ impl BindsConfig {
     }
 
     /// Build enhanced key maps with sequential key support
+    #[allow(clippy::type_complexity)]
     pub fn build_enhanced_key_maps(
         &self,
     ) -> (
@@ -722,6 +712,7 @@ impl BindsConfig {
     }
 
     /// Internal implementation for building enhanced key maps
+    #[allow(clippy::type_complexity)]
     fn build_enhanced_key_maps_internal(
         &self,
     ) -> (

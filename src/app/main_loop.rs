@@ -39,10 +39,10 @@ impl AppMainLoop for App {
         self.library = Some(crate::song::Library::load_library(&client).await?);
 
         // Initialize artist selection if library has artists
-        if let Some(ref library) = self.library {
-            if !library.artists.is_empty() {
-                self.artist_list_state.select(Some(0));
-            }
+        if let Some(ref library) = self.library
+            && !library.artists.is_empty()
+        {
+            self.artist_list_state.select(Some(0));
         }
 
         // Set up the image picker and protocol
@@ -143,17 +143,15 @@ impl AppMainLoop for App {
 
                 // Update PipeWire sample rate if bit-perfect mode enabled, available, and playing
                 #[cfg(target_os = "linux")]
-                if self.bit_perfect_enabled && self.config.pipewire.is_available() {
-                    if let Some(ref status) = self.mpd_status {
-                        if status.state == PlayState::Playing {
-                            if let Some(ref song) = self.current_song {
-                                if let Some(song_rate) = song.sample_rate() {
-                                    let target_rate = self.config.pipewire.resolve_rate(song_rate);
-                                    let _ = crate::pipewire::set_sample_rate(target_rate);
-                                }
-                            }
-                        }
-                    }
+                if self.bit_perfect_enabled
+                    && self.config.pipewire.is_available()
+                    && let Some(ref status) = self.mpd_status
+                    && status.state == PlayState::Playing
+                    && let Some(ref song) = self.current_song
+                    && let Some(song_rate) = song.sample_rate()
+                {
+                    let target_rate = self.config.pipewire.resolve_rate(song_rate);
+                    let _ = crate::pipewire::set_sample_rate(target_rate);
                 }
 
                 current_song_file = new_song_file;
@@ -168,11 +166,11 @@ impl AppMainLoop for App {
                     match current_play_state {
                         Some(PlayState::Playing) => {
                             // Started playing - set sample rate to match song
-                            if let Some(ref song) = self.current_song {
-                                if let Some(song_rate) = song.sample_rate() {
-                                    let target_rate = self.config.pipewire.resolve_rate(song_rate);
-                                    let _ = crate::pipewire::set_sample_rate(target_rate);
-                                }
+                            if let Some(ref song) = self.current_song
+                                && let Some(song_rate) = song.sample_rate()
+                            {
+                                let target_rate = self.config.pipewire.resolve_rate(song_rate);
+                                let _ = crate::pipewire::set_sample_rate(target_rate);
                             }
                         }
                         Some(PlayState::Paused) | Some(PlayState::Stopped) | None => {

@@ -3,6 +3,7 @@
 //! Provides functionality to control PipeWire sample rate based on
 //! the currently playing song in MPD.
 
+#[allow(clippy::module_inception)]
 mod pipewire;
 
 pub use pipewire::{reset_sample_rate, set_sample_rate};
