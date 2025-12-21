@@ -361,7 +361,8 @@ fn handle_pipewire_state_change(
             {
                 #[cfg(target_os = "linux")]
                 if let Ok(supported_rates) = crate::pipewire::get_supported_rates() {
-                    let target_rate = crate::config::resolve_bit_perfect_rate(song_rate, &supported_rates);
+                    let target_rate =
+                        crate::config::resolve_bit_perfect_rate(song_rate, &supported_rates);
                     log::debug!(
                         "Setting PipeWire sample rate to {} (song rate: {})",
                         target_rate,

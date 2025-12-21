@@ -204,10 +204,10 @@ pub fn get_supported_rates() -> Result<Vec<u32>, String> {
             return Ok(rates.clone());
         }
     }
-    
+
     // Cache miss or expired, fetch from PipeWire
     let result = get_supported_rates_inner();
-    
+
     match &result {
         Ok(rates) => {
             debug!("Found {} supported sample rates: {:?}", rates.len(), rates);
@@ -218,7 +218,7 @@ pub fn get_supported_rates() -> Result<Vec<u32>, String> {
             warn!("Failed to get supported sample rates: {}", e);
         }
     }
-    
+
     result
 }
 
@@ -263,7 +263,7 @@ fn get_supported_rates_inner() -> Result<Vec<u32>, String> {
                                 // Try to parse sample rates from description (may contain rate info)
                                 extract_rates_from_description(rates_str, &supported_rates_clone);
                             }
-                            
+
                             // Check for common audio format properties
                             if let Some(formats) = props.get("format.dsp") {
                                 extract_rates_from_format_string(formats, &supported_rates_clone);
@@ -285,8 +285,8 @@ fn get_supported_rates_inner() -> Result<Vec<u32>, String> {
     let mut rates = supported_rates.borrow_mut();
     if rates.is_empty() {
         *rates = vec![
-            8000, 11025, 16000, 22050, 32000, 44100, 48000, 
-            88200, 96000, 176400, 192000, 352800, 384000
+            8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000, 352800,
+            384000,
         ];
         info!("Using default common sample rates as fallback");
     } else {
@@ -305,12 +305,8 @@ fn get_supported_rates_inner() -> Result<Vec<u32>, String> {
 fn extract_rates_from_description(desc: &str, rates: &Rc<RefCell<Vec<u32>>>) {
     // Look for rate patterns in the description
     // Common patterns: "48000 Hz", "96kHz", etc.
-    let rate_patterns = [
-        r"(\d+)\s*Hz",
-        r"(\d+)kHz", 
-        r"(\d+)\s*khz",
-    ];
-    
+    let rate_patterns = [r"(\d+)\s*Hz", r"(\d+)kHz", r"(\d+)\s*khz"];
+
     for pattern in &rate_patterns {
         if let Ok(re) = regex::Regex::new(pattern) {
             for cap in re.captures_iter(desc) {
@@ -321,7 +317,7 @@ fn extract_rates_from_description(desc: &str, rates: &Rc<RefCell<Vec<u32>>>) {
                         } else {
                             rate_val
                         };
-                        
+
                         // Only add if it's a reasonable sample rate and not already present
                         if rate >= 8000 && rate <= 384000 && !rates.borrow().contains(&rate) {
                             rates.borrow_mut().push(rate);
@@ -338,7 +334,7 @@ fn extract_rates_from_format_string(format_str: &str, rates: &Rc<RefCell<Vec<u32
     // Try to parse rates from format specifications
     // Format strings might contain rate info like "S32LE 48000" etc.
     let words: Vec<&str> = format_str.split_whitespace().collect();
-    
+
     for word in words {
         if let Ok(rate) = word.parse::<u32>() {
             // Check if this looks like a valid sample rate
