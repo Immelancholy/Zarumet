@@ -33,9 +33,16 @@ impl PipewireConfig {
         vec![]
     }
 
-    /// Check if bit-perfect mode is available (allowed_rates is configured)
+    /// Check if bit-perfect mode is available (allowed_rates is configured and on Linux)
     pub fn is_available(&self) -> bool {
-        !self.allowed_rates.is_empty()
+        #[cfg(target_os = "linux")]
+        {
+            !self.allowed_rates.is_empty()
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            false
+        }
     }
 
     /// Determine the best sample rate to use based on the song's sample rate
@@ -225,16 +232,20 @@ pub struct ColorsConfig {
 }
 
 impl Config {
+    /// Returns the default config file path based on the platform:
+    /// - Linux: ~/.config/zarumet/config.toml (XDG_CONFIG_HOME)
+    /// - macOS: ~/Library/Application Support/zarumet/config.toml
+    /// - Windows: C:\Users\<User>\AppData\Roaming\zarumet\config.toml
+    fn default_config_path() -> color_eyre::Result<PathBuf> {
+        let config_dir = dirs::config_dir()
+            .ok_or_else(|| color_eyre::eyre::eyre!("Could not determine config directory"))?;
+        Ok(config_dir.join("zarumet").join("config.toml"))
+    }
+
     pub fn load(config_path: Option<PathBuf>) -> color_eyre::Result<Self> {
         let config_path = match config_path {
             Some(path) => path,
-            None => {
-                let home = std::env::var("HOME")?;
-                PathBuf::from(home)
-                    .join(".config")
-                    .join("zarumet")
-                    .join("config.toml")
-            }
+            None => Self::default_config_path()?,
         };
 
         // Check if config file exists

@@ -14,15 +14,13 @@ pub trait AppConstructor {
 }
 
 /// Get the path to the state file
+/// - Linux: ~/.local/state/zarumet/state.toml (XDG_STATE_HOME)
+/// - macOS: ~/Library/Application Support/zarumet/state.toml
+/// - Windows: C:\Users\<User>\AppData\Roaming\zarumet\state.toml
 fn get_state_path() -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok()?;
-    Some(
-        PathBuf::from(home)
-            .join(".local")
-            .join("state")
-            .join("zarumet")
-            .join("state.toml"),
-    )
+    // Use state_dir on Linux (XDG_STATE_HOME), fall back to data_dir on other platforms
+    let base_dir = dirs::state_dir().or_else(dirs::data_dir)?;
+    Some(base_dir.join("zarumet").join("state.toml"))
 }
 
 /// Load bit-perfect state from state file

@@ -41,6 +41,7 @@ impl EventHandlers for App {
                     if self.config.pipewire.is_available() {
                         self.bit_perfect_enabled = !self.bit_perfect_enabled;
                         // If disabling, reset PipeWire sample rate to automatic
+                        #[cfg(target_os = "linux")]
                         if !self.bit_perfect_enabled {
                             let _ = crate::pipewire::reset_sample_rate();
                         }

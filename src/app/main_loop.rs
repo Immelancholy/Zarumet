@@ -59,6 +59,7 @@ impl AppMainLoop for App {
             .map(|song| song.file_path.clone());
 
         // Track playback state for PipeWire sample rate control
+        #[allow(unused_variables)]
         let mut last_play_state: Option<PlayState> = None;
 
         // Try to get initial image
@@ -141,6 +142,7 @@ impl AppMainLoop for App {
                     .map(|dyn_img| picker.new_resize_protocol(dyn_img));
 
                 // Update PipeWire sample rate if bit-perfect mode enabled, available, and playing
+                #[cfg(target_os = "linux")]
                 if self.bit_perfect_enabled && self.config.pipewire.is_available() {
                     if let Some(ref status) = self.mpd_status {
                         if status.state == PlayState::Playing {
@@ -158,6 +160,7 @@ impl AppMainLoop for App {
             }
 
             // Handle PipeWire sample rate based on playback state changes
+            #[cfg(target_os = "linux")]
             if self.bit_perfect_enabled && self.config.pipewire.is_available() {
                 let current_play_state = self.mpd_status.as_ref().map(|s| s.state);
 

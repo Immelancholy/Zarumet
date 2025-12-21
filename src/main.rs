@@ -2,6 +2,7 @@
 mod app;
 mod binds;
 mod config;
+#[cfg(target_os = "linux")]
 mod pipewire;
 mod song;
 mod ui;
