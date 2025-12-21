@@ -126,7 +126,6 @@ pub fn reset_sample_rate() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_set_and_reset_rate() {
