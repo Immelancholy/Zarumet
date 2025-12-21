@@ -1,6 +1,6 @@
 [package]
 name = "zarumet"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2024"
 authors = ["Immelancholy <lenalowes0@gmail.com>"]
 license = "MIT"
