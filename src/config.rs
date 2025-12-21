@@ -90,6 +90,10 @@ pub struct BindsConfig {
     pub scroll_up_big: Vec<String>,
     #[serde(default = "BindsConfig::default_scroll_down_big")]
     pub scroll_down_big: Vec<String>,
+    #[serde(default = "BindsConfig::default_go_to_top")]
+    pub go_to_top: Vec<String>,
+    #[serde(default = "BindsConfig::default_go_to_bottom")]
+    pub go_to_bottom: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -468,14 +472,14 @@ impl BindsConfig {
     }
 
     fn default_scroll_up_enhanced() -> Vec<String> {
-        vec!["k".to_string(), "up".to_string(), "g g".to_string()]
+        vec!["k".to_string(), "up".to_string()]
     }
     fn default_scroll_down() -> Vec<String> {
         vec!["j".to_string(), "down".to_string()]
     }
 
     fn default_scroll_down_enhanced() -> Vec<String> {
-        vec!["j".to_string(), "down".to_string(), "G".to_string()]
+        vec!["j".to_string(), "down".to_string()]
     }
     fn default_play_selected() -> Vec<String> {
         vec!["enter".to_string(), "l".to_string(), "right".to_string()]
@@ -510,6 +514,12 @@ impl BindsConfig {
     }
     fn default_scroll_down_big() -> Vec<String> {
         vec!["ctrl-d".to_string()]
+    }
+    fn default_go_to_top() -> Vec<String> {
+        vec!["g g".to_string()]
+    }
+    fn default_go_to_bottom() -> Vec<String> {
+        vec!["shift-g".to_string()]
     }
 
     pub fn parse_keybinding(
@@ -878,6 +888,18 @@ impl BindsConfig {
             single_map,
             sequential_bindings,
         );
+        self.add_enhanced_binding_for_action(
+            &self.go_to_top,
+            crate::app::mpd_handler::MPDAction::GoToTop,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.go_to_bottom,
+            crate::app::mpd_handler::MPDAction::GoToBottom,
+            single_map,
+            sequential_bindings,
+        );
     }
 
     fn add_enhanced_tracks_bindings(
@@ -940,6 +962,18 @@ impl BindsConfig {
             single_map,
             sequential_bindings,
         );
+        self.add_enhanced_binding_for_action(
+            &self.go_to_top,
+            crate::app::mpd_handler::MPDAction::GoToTop,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.go_to_bottom,
+            crate::app::mpd_handler::MPDAction::GoToBottom,
+            single_map,
+            sequential_bindings,
+        );
     }
 }
 
@@ -979,6 +1013,8 @@ impl Default for BindsConfig {
             scroll_down_big: Self::default_scroll_down_big(),
             scroll_up: Self::default_scroll_up_enhanced(),
             scroll_down: Self::default_scroll_down_enhanced(),
+            go_to_top: Self::default_go_to_top(),
+            go_to_bottom: Self::default_go_to_bottom(),
         }
     }
 }

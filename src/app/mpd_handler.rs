@@ -64,6 +64,10 @@ pub enum MPDAction {
     // Scrolling
     ScrollUp,
     ScrollDown,
+
+    // Jump to top/bottom
+    GoToTop,
+    GoToBottom,
 }
 
 impl MPDAction {
@@ -184,7 +188,9 @@ impl MPDAction {
             | MPDAction::CycleModeLeft
             | MPDAction::CycleModeRight
             | MPDAction::ScrollUp
-            | MPDAction::ScrollDown => {
+            | MPDAction::ScrollDown
+            | MPDAction::GoToTop
+            | MPDAction::GoToBottom => {
                 // These are handled by the main application
             }
         }

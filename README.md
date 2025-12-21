@@ -249,6 +249,8 @@ add_song_to_queue = [
 ]
 scroll_up_big = ["ctrl-u"]
 scroll_down_big = ["ctrl-d"]
+go_to_top = ["g g"]
+go_to_bottom = ["shift-g"]
 ```
 
 </details>

@@ -191,6 +191,9 @@ impl Navigation for App {
             MPDAction::NavigateUp | MPDAction::NavigateDown => {
                 self.handle_panel_navigation(action).await;
             }
+            MPDAction::GoToTop | MPDAction::GoToBottom => {
+                self.handle_go_to_edge(action).await;
+            }
             MPDAction::ToggleAlbumExpansion => {
                 self.handle_album_toggle(client).await?;
             }
@@ -493,6 +496,81 @@ impl App {
                                     if let Some(display_item) = display_items.get(new_index) {
                                         if let DisplayItem::Album(_) = display_item {
                                             // Find which album this corresponds to
+                                            let mut album_count = 0;
+                                            for (i, item) in display_items.iter().enumerate() {
+                                                if matches!(item, DisplayItem::Album(_)) {
+                                                    if i == new_index {
+                                                        self.album_list_state
+                                                            .select(Some(album_count));
+                                                        break;
+                                                    }
+                                                    album_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Handle jumping to the top or bottom of the current list
+    async fn handle_go_to_edge(&mut self, action: MPDAction) {
+        match self.menu_mode {
+            MenuMode::Queue => {
+                if !self.queue.is_empty() {
+                    let new_index = match action {
+                        MPDAction::GoToTop => 0,
+                        MPDAction::GoToBottom => self.queue.len().saturating_sub(1),
+                        _ => return,
+                    };
+                    self.queue_list_state.select(Some(new_index));
+                    self.selected_queue_index = self.queue_list_state.selected();
+                }
+            }
+            MenuMode::Tracks => {
+                match self.panel_focus {
+                    PanelFocus::Artists => {
+                        if let Some(ref library) = self.library {
+                            if !library.artists.is_empty() {
+                                let new_index = match action {
+                                    MPDAction::GoToTop => 0,
+                                    MPDAction::GoToBottom => library.artists.len().saturating_sub(1),
+                                    _ => return,
+                                };
+                                self.artist_list_state.select(Some(new_index));
+                                // Clear album selection when jumping in artists list
+                                self.album_list_state.select(None);
+                                self.album_display_list_state.select(None);
+                            }
+                        }
+                    }
+                    PanelFocus::Albums => {
+                        if let (Some(library), Some(selected_artist_index)) =
+                            (&self.library, self.artist_list_state.selected())
+                        {
+                            if let Some(selected_artist) =
+                                library.artists.get(selected_artist_index)
+                            {
+                                let (display_items, _album_indices) = compute_album_display_list(
+                                    selected_artist,
+                                    &self.expanded_albums,
+                                );
+                                if !display_items.is_empty() {
+                                    let new_index = match action {
+                                        MPDAction::GoToTop => 0,
+                                        MPDAction::GoToBottom => display_items.len().saturating_sub(1),
+                                        _ => return,
+                                    };
+                                    self.album_display_list_state.select(Some(new_index));
+
+                                    // Update the legacy album_list_state if on an album
+                                    if let Some(display_item) = display_items.get(new_index) {
+                                        if let DisplayItem::Album(_) = display_item {
                                             let mut album_count = 0;
                                             for (i, item) in display_items.iter().enumerate() {
                                                 if matches!(item, DisplayItem::Album(_)) {
