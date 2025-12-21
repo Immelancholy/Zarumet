@@ -17,7 +17,12 @@ use crate::ui::widgets::{
 use unicode_width::UnicodeWidthStr;
 
 /// Render key sequence status in bottom-right corner
-fn render_key_sequence_status(frame: &mut Frame, key_binds: &crate::binds::KeyBinds, area: Rect) {
+fn render_key_sequence_status(
+    frame: &mut Frame,
+    key_binds: &crate::binds::KeyBinds,
+    area: Rect,
+    config: &Config,
+) {
     if !key_binds.is_awaiting_input() {
         return;
     }
@@ -68,28 +73,36 @@ fn render_key_sequence_status(frame: &mut Frame, key_binds: &crate::binds::KeyBi
         .collect::<Vec<_>>()
         .join(" → ");
 
-    // Create paragraph for key sequence display
-    let paragraph = Paragraph::new(format!("Sequence: {}", sequence_text))
-        .style(Style::default().fg(ratatui::style::Color::Yellow))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title("Key Sequence")
-                .border_style(Style::default().fg(ratatui::style::Color::White)),
+    // Calculate position for top-right corner (alongside format info)
+    let text_width = sequence_text.width() + "Seq: ".width();
+
+    if area.width >= text_width as u16 + 5 && area.height >= 1 {
+        let x = area.x + area.width.saturating_sub(text_width as u16 + 5);
+        let y = area.y;
+
+        // Display as simple text string like format info (no box, just right-aligned)
+        let sequence_spans = vec![
+            Span::styled(
+                "Seq: ",
+                Style::default().fg(config.colors.top_accent_color()),
+            ),
+            Span::styled(
+                sequence_text.as_str(),
+                Style::default().fg(config.colors.song_title_color()),
+            ),
+        ];
+
+        let sequence_line = Line::from(sequence_spans);
+
+        frame.render_widget(
+            Paragraph::new(sequence_line).style(Style::default().fg(ratatui::style::Color::Yellow)),
+            Rect {
+                x,
+                y,
+                width: text_width.min(area.width as usize) as u16,
+                height: 1,
+            },
         );
-
-    // Calculate position for bottom-right corner
-    let text_width = sequence_text.width() + "Sequence: ".width() + 4; // 4 for borders
-    let text_height = 3;
-
-    if area.width >= text_width as u16 && area.height >= text_height as u16 {
-        let popup_area = Rect {
-            x: area.x + area.width.saturating_sub(text_width as u16),
-            y: area.y + area.height.saturating_sub(text_height as u16),
-            width: text_width.min(area.width as usize) as u16,
-            height: text_height.min(area.height as usize) as u16,
-        };
-        frame.render_widget(paragraph, popup_area);
     }
 }
 
@@ -170,7 +183,7 @@ pub fn render(
     }
 
     // Render key sequence status overlay
-    render_key_sequence_status(frame, key_binds, area);
+    render_key_sequence_status(frame, key_binds, area, &config);
 }
 
 fn render_queue_mode(

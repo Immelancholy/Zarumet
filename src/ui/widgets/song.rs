@@ -55,8 +55,9 @@ pub fn create_format_widget<'a>(
     config: &'a Config,
 ) -> Paragraph<'a> {
     let format_color = config.colors.song_title_color();
+    let accent_color = config.colors.top_accent_color();
 
-    let format_text = match format {
+    let line = match format {
         Some(f) => {
             // Parse format string like "44100:24:2" to extract sample rate
             if let Some(sample_rate_part) = f.split(':').next() {
@@ -75,18 +76,28 @@ pub fn create_format_widget<'a>(
                         "unknown".to_string()
                     };
 
-                    format!("{}: {:.1}kHz", file_type, sample_rate_khz)
+                    // Use yellow accent for consistency with sequence display
+                    let file_type_span = Span::styled(
+                        format!("{}: ", file_type),
+                        Style::default().fg(accent_color),
+                    );
+                    let sample_rate_span = Span::styled(
+                        format!("{:.1}kHz", sample_rate_khz),
+                        Style::default().fg(format_color),
+                    );
+
+                    Line::from(vec![file_type_span, sample_rate_span])
                 } else {
-                    f.clone()
+                    Line::from(f.clone())
                 }
             } else {
-                f.clone()
+                Line::from(f.clone())
             }
         }
-        None => "--".to_string(),
+        None => Line::from("--"),
     };
 
-    Paragraph::new(format_text)
+    Paragraph::new(line)
         .style(Style::default().fg(format_color))
         .left_aligned()
 }
