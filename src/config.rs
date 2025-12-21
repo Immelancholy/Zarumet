@@ -10,6 +10,78 @@ pub struct Config {
     pub colors: ColorsConfig,
     #[serde(default)]
     pub binds: BindsConfig,
+    #[serde(default)]
+    pub pipewire: PipewireConfig,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PipewireConfig {
+    /// Enable PipeWire sample rate matching
+    #[serde(default = "PipewireConfig::default_enabled")]
+    pub enabled: bool,
+    /// Allowed sample rates for PipeWire
+    #[serde(default = "PipewireConfig::default_allowed_rates")]
+    pub allowed_rates: Vec<u32>,
+}
+
+impl PipewireConfig {
+    fn default_enabled() -> bool {
+        false
+    }
+
+    fn default_allowed_rates() -> Vec<u32> {
+        vec![44100, 48000, 88200, 96000, 176400, 192000]
+    }
+
+    /// Determine the best sample rate to use based on the song's sample rate
+    /// and the allowed rates.
+    ///
+    /// Logic:
+    /// 1. If rate is in allowed_rates, use it directly
+    /// 2. If rate is a multiple of 44100, use 44100 if available
+    /// 3. If rate is a multiple of 48000, use 48000 if available
+    /// 4. Fallback to 44100
+    pub fn resolve_rate(&self, song_rate: u32) -> u32 {
+        // If the song rate is directly allowed, use it
+        if self.allowed_rates.contains(&song_rate) {
+            return song_rate;
+        }
+
+        // Check if rate is in the 44.1kHz family (multiples of 44100)
+        let is_44100_family = song_rate % 44100 == 0;
+        // Check if rate is in the 48kHz family (multiples of 48000)
+        let is_48000_family = song_rate % 48000 == 0;
+
+        if is_44100_family {
+            // Prefer 44100 for 44.1kHz family rates
+            if self.allowed_rates.contains(&44100) {
+                return 44100;
+            }
+        }
+
+        if is_48000_family {
+            // Use 48000 for 48kHz family rates
+            if self.allowed_rates.contains(&48000) {
+                return 48000;
+            }
+        }
+
+        // Fallback: prefer 44100 if available, otherwise first allowed rate or 44100
+        if self.allowed_rates.contains(&44100) {
+            44100
+        } else {
+            self.allowed_rates.first().copied().unwrap_or(44100)
+        }
+    }
+}
+
+impl Default for PipewireConfig {
+    fn default() -> Self {
+        Self {
+            enabled: Self::default_enabled(),
+            allowed_rates: Self::default_allowed_rates(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -360,6 +432,7 @@ impl Default for Config {
             mpd: MpdConfig::default(),
             colors: ColorsConfig::default(),
             binds: BindsConfig::default(),
+            pipewire: PipewireConfig::default(),
         }
     }
 }

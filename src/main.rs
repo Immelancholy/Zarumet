@@ -2,6 +2,7 @@
 mod app;
 mod binds;
 mod config;
+mod pipewire;
 mod song;
 mod ui;
 

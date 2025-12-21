@@ -32,9 +32,12 @@
     packages = forAllSystems (pkgs: {
       default = mkZarumet pkgs;
     });
-    devShells = forAllSystems (pkgs: {
+    devShells = forAllSystems (pkgs: let
+      rustBin = rust-overlay.lib.mkRustBin {} pkgs;
+      rustToolchain = rustBin.fromRustupToolchainFile ./rust-toolchain.toml;
+    in {
       default = pkgs.callPackage ./nix/shell.nix {
-        zarumet = packages.${pkgs.stdenv.hostPlatform.system}.default;
+        inherit rustToolchain;
       };
     });
     formatter = forAllSystems (pkgs: pkgs.alejandra);

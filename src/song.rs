@@ -89,6 +89,16 @@ impl SongInfo {
         self.elapsed = elapsed;
         self.duration = duration;
     }
+
+    /// Extract sample rate from the MPD format string.
+    ///
+    /// MPD returns format as "samplerate:bits:channels" (e.g., "44100:16:2").
+    /// Returns None if format is not available or cannot be parsed.
+    pub fn sample_rate(&self) -> Option<u32> {
+        self.format
+            .as_ref()
+            .and_then(|f| f.split(':').next()?.parse().ok())
+    }
 }
 
 #[derive(Debug, Clone)]

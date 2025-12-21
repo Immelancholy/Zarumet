@@ -5,6 +5,7 @@ use std::time::Duration;
 use crossterm::event;
 use futures::executor::block_on;
 use mpd_client::Client;
+use mpd_client::responses::PlayState;
 use ratatui::DefaultTerminal;
 use ratatui_image::picker::Picker;
 use tokio::net::TcpStream;
@@ -56,6 +57,9 @@ impl AppMainLoop for App {
             .current_song
             .as_ref()
             .map(|song| song.file_path.clone());
+
+        // Track playback state for PipeWire sample rate control
+        let mut last_play_state: Option<PlayState> = None;
 
         // Try to get initial image
         let initial_image = self
@@ -135,7 +139,65 @@ impl AppMainLoop for App {
                     .and_then(|reader| reader.decode().ok())
                     .map(|dyn_img| picker.new_resize_protocol(dyn_img));
 
+                // Update PipeWire sample rate if enabled and playing
+                if self.config.pipewire.enabled {
+                    if let Some(ref status) = self.mpd_status {
+                        if status.state == PlayState::Playing {
+                            if let Some(ref song) = self.current_song {
+                                if let Some(song_rate) = song.sample_rate() {
+                                    let target_rate =
+                                        self.config.pipewire.resolve_rate(song_rate);
+                                    if let Err(e) = crate::pipewire::set_sample_rate(target_rate) {
+                                        eprintln!("Failed to set PipeWire sample rate: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 current_song_file = new_song_file;
+            }
+
+            // Handle PipeWire sample rate based on playback state changes
+            if self.config.pipewire.enabled {
+                let current_play_state = self.mpd_status.as_ref().map(|s| s.state);
+
+                if current_play_state != last_play_state {
+                    match current_play_state {
+                        Some(PlayState::Playing) => {
+                            // Started playing - set sample rate to match song
+                            if let Some(ref song) = self.current_song {
+                                if let Some(song_rate) = song.sample_rate() {
+                                    let target_rate =
+                                        self.config.pipewire.resolve_rate(song_rate);
+                                    eprintln!(
+                                        "[PipeWire] Song rate: {}, Target rate: {}",
+                                        song_rate, target_rate
+                                    );
+                                    if let Err(e) = crate::pipewire::set_sample_rate(target_rate) {
+                                        eprintln!("Failed to set PipeWire sample rate: {}", e);
+                                    }
+                                } else {
+                                    eprintln!(
+                                        "[PipeWire] No sample rate found in song format: {:?}",
+                                        song.format
+                                    );
+                                }
+                            }
+                        }
+                        Some(PlayState::Paused) | Some(PlayState::Stopped) | None => {
+                            // Paused or stopped - reset to automatic rate
+                            if last_play_state == Some(PlayState::Playing) {
+                                eprintln!("[PipeWire] Resetting sample rate (playback stopped/paused)");
+                                if let Err(e) = crate::pipewire::reset_sample_rate() {
+                                    eprintln!("Failed to reset PipeWire sample rate: {}", e);
+                                }
+                            }
+                        }
+                    }
+                    last_play_state = current_play_state;
+                }
             }
         }
         Ok(())
