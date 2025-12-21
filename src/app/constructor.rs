@@ -115,6 +115,7 @@ impl App {
             mpd_status: None,
             key_binds,
             bit_perfect_enabled,
+            force_update: true, // Force initial update
         })
     }
 }

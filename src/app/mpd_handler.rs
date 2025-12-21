@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::logging::log_mpd_command;
-use mpd_client::{client::CommandError, commands, responses::PlayState};
+use mpd_client::{client::CommandError, commands, responses::{PlayState, Status}};
 use std::fmt;
 
 /// Actions that can be performed on MPD
@@ -144,12 +144,15 @@ impl MPDAction {
     }
 
     /// Execute the action on the MPD client
+    /// 
+    /// Uses the cached status when available to avoid extra MPD round-trips.
     pub async fn execute(
         &self,
         client: &mpd_client::Client,
         config: &Config,
+        cached_status: Option<&Status>,
     ) -> Result<(), CommandError> {
-        let result = self.execute_inner(client, config).await;
+        let result = self.execute_inner(client, config, cached_status).await;
 
         // Log MPD commands (not UI-only actions)
         if self.is_mpd_command() {
@@ -166,11 +169,17 @@ impl MPDAction {
         &self,
         client: &mpd_client::Client,
         config: &Config,
+        cached_status: Option<&Status>,
     ) -> Result<(), CommandError> {
         match self {
             MPDAction::TogglePlayPause => {
-                let status = client.command(commands::Status).await?;
-                match status.state {
+                // Use cached status if available, otherwise fetch
+                let current_state = if let Some(status) = cached_status {
+                    status.state
+                } else {
+                    client.command(commands::Status).await?.state
+                };
+                match current_state {
                     PlayState::Playing => {
                         client.command(commands::SetPause(true)).await?;
                     }
@@ -187,31 +196,52 @@ impl MPDAction {
             }
             MPDAction::VolumeUp => {
                 let increment = config.mpd.volume_increment as u8;
-                let status = client.command(commands::Status).await?;
-                let new_volume = std::cmp::min(100, status.volume + increment);
+                // Use cached status if available
+                let current_volume = if let Some(status) = cached_status {
+                    status.volume
+                } else {
+                    client.command(commands::Status).await?.volume
+                };
+                let new_volume = std::cmp::min(100, current_volume + increment);
                 client.command(commands::SetVolume(new_volume)).await?;
             }
             MPDAction::VolumeUpFine => {
                 let increment = config.mpd.volume_increment_fine as u8;
-                let status = client.command(commands::Status).await?;
-                let new_volume = std::cmp::min(100, status.volume + increment);
+                let current_volume = if let Some(status) = cached_status {
+                    status.volume
+                } else {
+                    client.command(commands::Status).await?.volume
+                };
+                let new_volume = std::cmp::min(100, current_volume + increment);
                 client.command(commands::SetVolume(new_volume)).await?;
             }
             MPDAction::VolumeDown => {
                 let increment = config.mpd.volume_increment as u8;
-                let status = client.command(commands::Status).await?;
-                let new_volume = std::cmp::max(0, status.volume - increment);
+                let current_volume = if let Some(status) = cached_status {
+                    status.volume
+                } else {
+                    client.command(commands::Status).await?.volume
+                };
+                let new_volume = current_volume.saturating_sub(increment);
                 client.command(commands::SetVolume(new_volume)).await?;
             }
             MPDAction::VolumeDownFine => {
                 let increment = config.mpd.volume_increment_fine as u8;
-                let status = client.command(commands::Status).await?;
-                let new_volume = std::cmp::max(0, status.volume - increment);
+                let current_volume = if let Some(status) = cached_status {
+                    status.volume
+                } else {
+                    client.command(commands::Status).await?.volume
+                };
+                let new_volume = current_volume.saturating_sub(increment);
                 client.command(commands::SetVolume(new_volume)).await?;
             }
             MPDAction::ToggleMute => {
-                let status = client.command(commands::Status).await?;
-                if status.volume > 0 {
+                let current_volume = if let Some(status) = cached_status {
+                    status.volume
+                } else {
+                    client.command(commands::Status).await?.volume
+                };
+                if current_volume > 0 {
                     client.command(commands::SetVolume(0)).await?;
                 } else {
                     client.command(commands::SetVolume(50)).await?;
@@ -238,26 +268,42 @@ impl MPDAction {
                 // This is handled by the main application since it needs the selected index
             }
             MPDAction::Random => {
-                let status = client.command(commands::Status).await?;
-                client.command(commands::SetRandom(!status.random)).await?;
+                let random = if let Some(status) = cached_status {
+                    status.random
+                } else {
+                    client.command(commands::Status).await?.random
+                };
+                client.command(commands::SetRandom(!random)).await?;
             }
             MPDAction::Repeat => {
-                let status = client.command(commands::Status).await?;
-                client.command(commands::SetRepeat(!status.repeat)).await?;
+                let repeat = if let Some(status) = cached_status {
+                    status.repeat
+                } else {
+                    client.command(commands::Status).await?.repeat
+                };
+                client.command(commands::SetRepeat(!repeat)).await?;
             }
             MPDAction::Single => {
-                let status = client.command(commands::Status).await?;
+                let single = if let Some(status) = cached_status {
+                    status.single
+                } else {
+                    client.command(commands::Status).await?.single
+                };
                 // Toggle single mode
-                let new_single = match status.single {
+                let new_single = match single {
                     commands::SingleMode::Enabled => commands::SingleMode::Disabled,
                     _ => commands::SingleMode::Enabled,
                 };
                 client.command(commands::SetSingle(new_single)).await?;
             }
             MPDAction::Consume => {
-                let status = client.command(commands::Status).await?;
+                let consume = if let Some(status) = cached_status {
+                    status.consume
+                } else {
+                    client.command(commands::Status).await?.consume
+                };
                 client
-                    .command(commands::SetConsume(!status.consume))
+                    .command(commands::SetConsume(!consume))
                     .await?;
             }
             MPDAction::QueueUp

@@ -47,4 +47,6 @@ pub struct App {
     pub key_binds: KeyBinds,
     /// Bit-perfect mode enabled (PipeWire sample rate matching)
     pub bit_perfect_enabled: bool,
+    /// Flag to force immediate MPD status update (set after user actions)
+    pub force_update: bool,
 }

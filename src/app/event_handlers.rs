@@ -39,6 +39,32 @@ impl EventHandlers for App {
             let context = format!("menu:{:?}, panel:{:?}", self.menu_mode, self.panel_focus);
             log_user_interaction(&action.to_string(), Some(&context));
 
+            // Check if this action modifies MPD state (requires immediate status refresh)
+            let needs_update = matches!(
+                action,
+                MPDAction::TogglePlayPause
+                    | MPDAction::Next
+                    | MPDAction::Previous
+                    | MPDAction::Random
+                    | MPDAction::Repeat
+                    | MPDAction::Single
+                    | MPDAction::Consume
+                    | MPDAction::VolumeUp
+                    | MPDAction::VolumeUpFine
+                    | MPDAction::VolumeDown
+                    | MPDAction::VolumeDownFine
+                    | MPDAction::ToggleMute
+                    | MPDAction::SeekForward
+                    | MPDAction::SeekBackward
+                    | MPDAction::ClearQueue
+                    | MPDAction::RemoveFromQueue
+                    | MPDAction::MoveUpInQueue
+                    | MPDAction::MoveDownInQueue
+                    | MPDAction::PlaySelected
+                    | MPDAction::AddSongToQueue
+                    | MPDAction::ToggleAlbumExpansion
+            );
+
             match action {
                 MPDAction::Quit => self.quit(),
                 MPDAction::ToggleBitPerfect => {
@@ -62,6 +88,11 @@ impl EventHandlers for App {
                     // Handle other actions through navigation trait
                     self.handle_navigation_action(action, client).await?;
                 }
+            }
+
+            // Force immediate MPD status update for actions that modify state
+            if needs_update {
+                self.force_update = true;
             }
         }
         Ok(())

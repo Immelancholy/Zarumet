@@ -1,6 +1,6 @@
 use std::io::Cursor;
 use std::path::PathBuf;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crossterm::event;
 use futures::executor::block_on;
@@ -13,6 +13,9 @@ use tokio::net::TcpStream;
 use super::App;
 use crate::app::{event_handlers::EventHandlers, mpd_updates::MPDUpdates};
 use crate::ui::Protocol;
+
+/// Minimum interval between MPD status polls (in milliseconds)
+const MPD_POLL_INTERVAL_MS: u64 = 200;
 
 /// Trait for main application loop
 pub trait AppMainLoop {
@@ -72,6 +75,9 @@ impl AppMainLoop for App {
         // Track playback state for PipeWire sample rate control
         #[allow(unused_variables)]
         let mut last_play_state: Option<PlayState> = None;
+        
+        // Track last MPD poll time for throttling
+        let mut last_mpd_poll = Instant::now();
 
         // Try to get initial image
         let initial_image = self
@@ -126,8 +132,18 @@ impl AppMainLoop for App {
                 self.handle_crossterm_events(&client).await?;
             }
 
-            // Update song info, queue, and status periodically
-            self.run_updates(&client).await?;
+            // Update song info, queue, and status - throttled to reduce MPD load
+            // Only poll if:
+            // 1. force_update is set (after user action), OR
+            // 2. Enough time has passed since last poll
+            let now = Instant::now();
+            let time_since_poll = now.duration_since(last_mpd_poll);
+            
+            if self.force_update || time_since_poll >= Duration::from_millis(MPD_POLL_INTERVAL_MS) {
+                self.run_updates(&client).await?;
+                last_mpd_poll = now;
+                self.force_update = false;
+            }
 
             // Check if the song changed (not just the image path)
             let new_song_file: Option<PathBuf> = self

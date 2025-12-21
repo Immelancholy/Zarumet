@@ -293,8 +293,8 @@ impl Navigation for App {
                 self.handle_scroll(action).await;
             }
             _ => {
-                // Execute MPD command for other actions
-                if let Err(e) = action.execute(client, &self.config).await {
+                // Execute MPD command for other actions, passing cached status
+                if let Err(e) = action.execute(client, &self.config, self.mpd_status.as_ref()).await {
                     error!("Error executing MPD command: {}", e);
                 }
             }
