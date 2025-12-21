@@ -7,7 +7,9 @@ use mpd_client::client::ConnectionEvent;
 use mpd_client::responses::PlayState;
 use ratatui::DefaultTerminal;
 use ratatui_image::picker::Picker;
-use tokio::net::{TcpStream, UnixStream};
+use tokio::net::TcpStream;
+#[cfg(unix)]
+use tokio::net::UnixStream;
 use tokio::sync::mpsc;
 
 use super::App;
