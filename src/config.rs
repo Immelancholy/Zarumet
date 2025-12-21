@@ -38,32 +38,27 @@ impl PipewireConfig {
     ///
     /// Logic:
     /// 1. If rate is in allowed_rates, use it directly
-    /// 2. If rate is a multiple of 44100, use 44100 if available
-    /// 3. If rate is a multiple of 48000, use 48000 if available
-    /// 4. Fallback to 44100
+    /// 2. Otherwise, find the highest allowed rate that the song's rate is a multiple of
+    ///    (i.e., song_rate % allowed_rate == 0, meaning allowed_rate divides evenly into song_rate)
+    ///    e.g., for 192000 song with allowed [44100, 48000, 96000], pick 96000 since 192000 % 96000 == 0
+    /// 3. Fallback to 44100 if no compatible rate is found
     pub fn resolve_rate(&self, song_rate: u32) -> u32 {
         // If the song rate is directly allowed, use it
         if self.allowed_rates.contains(&song_rate) {
             return song_rate;
         }
 
-        // Check if rate is in the 44.1kHz family (multiples of 44100)
-        let is_44100_family = song_rate % 44100 == 0;
-        // Check if rate is in the 48kHz family (multiples of 48000)
-        let is_48000_family = song_rate % 48000 == 0;
+        // Find the highest allowed rate that divides evenly into the song's rate
+        // (i.e., song_rate % allowed_rate == 0)
+        let best_rate = self
+            .allowed_rates
+            .iter()
+            .filter(|&&rate| song_rate % rate == 0)
+            .max()
+            .copied();
 
-        if is_44100_family {
-            // Prefer 44100 for 44.1kHz family rates
-            if self.allowed_rates.contains(&44100) {
-                return 44100;
-            }
-        }
-
-        if is_48000_family {
-            // Use 48000 for 48kHz family rates
-            if self.allowed_rates.contains(&48000) {
-                return 48000;
-            }
+        if let Some(rate) = best_rate {
+            return rate;
         }
 
         // Fallback: prefer 44100 if available, otherwise first allowed rate or 44100
