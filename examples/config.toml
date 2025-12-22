@@ -1,7 +1,7 @@
 [mpd]
 address = "localhost:6600"
 volume_increment = 5
-olume_increment_fine = 1
+volume_increment_fine = 1
 
 [colors]
 border = "#fae280"
@@ -71,7 +71,7 @@ quit = [
 ]
 refresh = ["u"]
 switch_to_queue_menu = ["1"]
-switch_to_tracks = ["2"]
+switch_to_artists = ["2"]
 switch_to_albums = ["3"]
 seek_forward = [
     "shift-l",
