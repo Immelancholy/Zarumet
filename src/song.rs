@@ -35,12 +35,12 @@ impl SongInfo {
             .first()
             .map(|s| s.to_string())
             .unwrap_or_else(|| "Unknown Artist".to_string());
-        
+
         // Check if albumartist tag is explicitly set
         let explicit_album_artist = song.album_artists().first().map(|s| s.to_string());
         let has_explicit_album_artist = explicit_album_artist.is_some();
         let album_artist = explicit_album_artist.unwrap_or_else(|| artist.clone());
-        
+
         let album = song
             .album()
             .map(|s| s.to_string())
@@ -172,7 +172,10 @@ impl Library {
         for song in &all_songs {
             let song_info = SongInfo::from_song(song);
             let album_name = song_info.album.clone();
-            albums_by_name.entry(album_name).or_default().push(song_info);
+            albums_by_name
+                .entry(album_name)
+                .or_default()
+                .push(song_info);
         }
 
         // For each album, determine the canonical album artist:
