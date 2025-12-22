@@ -123,7 +123,6 @@ impl EventHandlers for App {
     fn quit(&mut self) {
         // Save bit-perfect state before quitting
         let _ = save_bit_perfect_state(self.bit_perfect_enabled);
-        let _ = crate::pipewire::reset_sample_rate();
         self.running = false;
     }
 }
