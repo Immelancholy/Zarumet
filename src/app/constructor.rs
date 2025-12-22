@@ -127,6 +127,8 @@ impl App {
             force_update: true, // Force initial update
             config_warnings: Vec::new(),
             show_config_warnings_popup: false,
+            last_play_state: None,
+            last_sample_rate: None,
         })
     }
 }

@@ -110,12 +110,6 @@ impl AppMainLoop for App {
             .as_ref()
             .map(|song| song.file_path.clone());
 
-        // Track playback state for PipeWire sample rate control
-        #[allow(unused_variables)]
-        let mut last_play_state: Option<PlayState> = None;
-        #[allow(unused_variables)]
-        let mut last_sample_rate: Option<u32> = None;
-
         // Update samplerate on startup if needed
         #[cfg(target_os = "linux")]
         {
@@ -250,8 +244,8 @@ impl AppMainLoop for App {
                                 self.bit_perfect_enabled,
                                 &self.mpd_status,
                                 &self.current_song,
-                                &mut last_play_state,
-                                &mut last_sample_rate,
+                                &mut self.last_play_state,
+                                &mut self.last_sample_rate,
                             );
                         }
                         Some(ConnectionEvent::ConnectionClosed(err)) => {
@@ -412,7 +406,16 @@ fn handle_pipewire_state_change(
     last_play_state: &mut Option<PlayState>,
     last_sample_rate: &mut Option<u32>,
 ) {
+    log::debug!(
+        "handle_pipewire_state_change called: bit_perfect_enabled={}, last_play_state={:?}, last_sample_rate={:?}",
+        bit_perfect_enabled,
+        last_play_state,
+        last_sample_rate
+    );
+    
     if !bit_perfect_enabled || !config.pipewire.is_available() {
+        log::debug!("handle_pipewire_state_change: early return (bit_perfect={}, available={})", 
+            bit_perfect_enabled, config.pipewire.is_available());
         return;
     }
 

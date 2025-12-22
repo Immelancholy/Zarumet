@@ -2,6 +2,7 @@ use crate::binds::KeyBinds;
 use crate::config::Config;
 use crate::song::{Library, SongInfo};
 use crate::ui::menu::{MenuMode, PanelFocus};
+use mpd_client::responses::PlayState;
 use ratatui::widgets::ListState;
 
 // Module declarations
@@ -60,4 +61,8 @@ pub struct App {
     pub config_warnings: Vec<String>,
     /// Whether the config warnings popup is currently showing
     pub show_config_warnings_popup: bool,
+    /// Last play state for PipeWire rate tracking (used to detect state changes)
+    pub last_play_state: Option<PlayState>,
+    /// Last sample rate for PipeWire rate tracking (used to detect song changes)
+    pub last_sample_rate: Option<u32>,
 }

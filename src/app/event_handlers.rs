@@ -77,6 +77,11 @@ impl EventHandlers for App {
                     // Only allow toggling if bit-perfect is available (enabled in config)
                     if self.config.pipewire.is_available() {
                         self.bit_perfect_enabled = !self.bit_perfect_enabled;
+                        // Reset PipeWire state tracking so handle_pipewire_state_change
+                        // will properly detect state changes after toggle
+                        self.last_play_state = None;
+                        self.last_sample_rate = None;
+                        
                         #[cfg(target_os = "linux")]
                         if self.bit_perfect_enabled {
                             // Enabling - set sample rate if currently playing
@@ -95,7 +100,11 @@ impl EventHandlers for App {
                             }
                         } else {
                             // Disabling - reset PipeWire sample rate to automatic
-                            let _ = crate::pipewire::reset_sample_rate();
+                            log::info!("Disabling bit-perfect, calling reset_sample_rate");
+                            match crate::pipewire::reset_sample_rate() {
+                                Ok(()) => log::info!("reset_sample_rate succeeded"),
+                                Err(e) => log::error!("reset_sample_rate failed: {}", e),
+                            }
                         }
                     }
                 }
