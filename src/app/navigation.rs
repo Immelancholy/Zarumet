@@ -288,6 +288,17 @@ impl Navigation for App {
                 self.menu_mode = MenuMode::Albums;
                 // Restore cached panel focus for Albums mode
                 self.panel_focus = self.albums_panel_focus.clone();
+
+                // Preload all albums for Albums mode (lazy load all artists)
+                if let Some(ref mut library) = self.library {
+                    if !library.all_albums_complete {
+                        log::info!("Preloading all albums for Albums view...");
+                        if let Err(e) = library.preload_all_albums(client).await {
+                            log::warn!("Failed to preload all albums: {}", e);
+                        }
+                    }
+                }
+
                 // Initialize album selection if needed (using Albums mode state)
                 if let Some(ref library) = self.library
                     && !library.all_albums.is_empty()
@@ -436,6 +447,17 @@ impl Navigation for App {
                     MenuMode::Queue => {
                         self.menu_mode = MenuMode::Albums;
                         self.panel_focus = self.albums_panel_focus.clone();
+
+                        // Preload all albums for Albums mode
+                        if let Some(ref mut library) = self.library {
+                            if !library.all_albums_complete {
+                                log::info!("Preloading all albums for Albums view...");
+                                if let Err(e) = library.preload_all_albums(client).await {
+                                    log::warn!("Failed to preload all albums: {}", e);
+                                }
+                            }
+                        }
+
                         // Initialize album selection if needed (using Albums mode state)
                         if let Some(ref library) = self.library
                             && !library.all_albums.is_empty()
@@ -469,6 +491,17 @@ impl Navigation for App {
                     MenuMode::Artists => {
                         self.menu_mode = MenuMode::Albums;
                         self.panel_focus = self.albums_panel_focus.clone();
+
+                        // Preload all albums for Albums mode
+                        if let Some(ref mut library) = self.library {
+                            if !library.all_albums_complete {
+                                log::info!("Preloading all albums for Albums view...");
+                                if let Err(e) = library.preload_all_albums(client).await {
+                                    log::warn!("Failed to preload all albums: {}", e);
+                                }
+                            }
+                        }
+
                         // Initialize album selection if needed (using Albums mode state)
                         if let Some(ref library) = self.library
                             && !library.all_albums.is_empty()
@@ -528,11 +561,10 @@ impl App {
                                     self.album_display_list_state.select(None);
 
                                     // Lazy load the newly selected artist's albums
-                                    if let Some(ref mut library) = self.library {
-                                        if let Err(e) = library.load_artist(client, new_index).await
-                                        {
-                                            log::warn!("Failed to load artist: {}", e);
-                                        }
+                                    if let Some(ref mut library) = self.library
+                                        && let Err(e) = library.load_artist(client, new_index).await
+                                    {
+                                        log::warn!("Failed to load artist: {}", e);
                                     }
                                 }
                             }
@@ -668,11 +700,10 @@ impl App {
                                     self.album_display_list_state.select(None);
 
                                     // Lazy load the newly selected artist's albums
-                                    if let Some(ref mut library) = self.library {
-                                        if let Err(e) = library.load_artist(client, new_index).await
-                                        {
-                                            log::warn!("Failed to load artist: {}", e);
-                                        }
+                                    if let Some(ref mut library) = self.library
+                                        && let Err(e) = library.load_artist(client, new_index).await
+                                    {
+                                        log::warn!("Failed to load artist: {}", e);
                                     }
                                 }
                             }
@@ -850,10 +881,10 @@ impl App {
                             self.album_display_list_state.select(None);
 
                             // Lazy load the newly selected artist's albums
-                            if let Some(ref mut library) = self.library {
-                                if let Err(e) = library.load_artist(client, new_index).await {
-                                    log::warn!("Failed to load artist: {}", e);
-                                }
+                            if let Some(ref mut library) = self.library
+                                && let Err(e) = library.load_artist(client, new_index).await
+                            {
+                                log::warn!("Failed to load artist: {}", e);
                             }
                         }
                     }
@@ -1027,10 +1058,10 @@ impl App {
                             self.album_display_list_state.select(None);
 
                             // Lazy load the newly selected artist's albums
-                            if let Some(ref mut library) = self.library {
-                                if let Err(e) = library.load_artist(client, new_index).await {
-                                    log::warn!("Failed to load artist: {}", e);
-                                }
+                            if let Some(ref mut library) = self.library
+                                && let Err(e) = library.load_artist(client, new_index).await
+                            {
+                                log::warn!("Failed to load artist: {}", e);
                             }
                         }
                     }

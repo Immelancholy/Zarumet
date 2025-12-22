@@ -97,10 +97,10 @@ impl AppMainLoop for App {
             self.artist_list_state.select(Some(0));
 
             // Load the first artist's albums immediately for better UX
-            if let Some(ref mut lib) = self.library {
-                if let Err(e) = lib.load_artist(&client, 0).await {
-                    log::warn!("Failed to load first artist: {}", e);
-                }
+            if let Some(ref mut lib) = self.library
+                && let Err(e) = lib.load_artist(&client, 0).await
+            {
+                log::warn!("Failed to load first artist: {}", e);
             }
         }
 

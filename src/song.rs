@@ -211,7 +211,7 @@ impl LazyLibrary {
             .collect();
 
         // Sort alphabetically
-        artist_names.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+        artist_names.sort_by_key(|a| a.to_lowercase());
 
         let artists: Vec<LazyArtist> = artist_names.into_iter().map(LazyArtist::new).collect();
 
@@ -746,90 +746,88 @@ impl Library {
         let empty_filter = Filter::new(Tag::AlbumArtist, Operator::Equal, "");
         let empty_find_cmd = commands::Find::new(empty_filter);
 
-        if let Ok(orphan_songs) = client.command(empty_find_cmd).await {
-            if !orphan_songs.is_empty() {
-                log::debug!(
-                    "Found {} songs without AlbumArtist tag, using Artist tag",
-                    orphan_songs.len()
-                );
-                total_songs += orphan_songs.len();
+        if let Ok(orphan_songs) = client.command(empty_find_cmd).await
+            && !orphan_songs.is_empty()
+        {
+            log::debug!(
+                "Found {} songs without AlbumArtist tag, using Artist tag",
+                orphan_songs.len()
+            );
+            total_songs += orphan_songs.len();
 
-                // Group orphan songs by their Artist tag
-                let mut orphan_artists_map: std::collections::HashMap<
-                    String,
-                    std::collections::HashMap<String, Vec<SongInfo>>,
-                > = std::collections::HashMap::new();
+            // Group orphan songs by their Artist tag
+            let mut orphan_artists_map: std::collections::HashMap<
+                String,
+                std::collections::HashMap<String, Vec<SongInfo>>,
+            > = std::collections::HashMap::new();
 
-                for song in orphan_songs {
-                    let song_info = SongInfo::from_song(&song);
-                    let artist_name = song_info.artist.clone();
-                    let album_name = song_info.album.clone();
+            for song in orphan_songs {
+                let song_info = SongInfo::from_song(&song);
+                let artist_name = song_info.artist.clone();
+                let album_name = song_info.album.clone();
 
-                    orphan_artists_map
-                        .entry(artist_name)
-                        .or_default()
-                        .entry(album_name)
-                        .or_default()
-                        .push(song_info);
-                }
+                orphan_artists_map
+                    .entry(artist_name)
+                    .or_default()
+                    .entry(album_name)
+                    .or_default()
+                    .push(song_info);
+            }
 
-                // Merge orphan artists into main artists list
-                for (artist_name, albums_map) in orphan_artists_map {
-                    // Check if artist already exists
-                    if let Some(existing_artist) =
-                        artists.iter_mut().find(|a| a.name == artist_name)
-                    {
-                        // Merge albums
-                        for (album_name, mut tracks) in albums_map {
-                            if let Some(existing_album) = existing_artist
-                                .albums
-                                .iter_mut()
-                                .find(|a| a.name == album_name)
-                            {
-                                existing_album.tracks.append(&mut tracks);
-                                existing_album.tracks.sort_by(|a, b| {
-                                    a.disc_number
-                                        .cmp(&b.disc_number)
-                                        .then(a.track_number.cmp(&b.track_number))
-                                        .then(a.title.cmp(&b.title))
-                                });
-                            } else {
-                                tracks.sort_by(|a, b| {
-                                    a.disc_number
-                                        .cmp(&b.disc_number)
-                                        .then(a.track_number.cmp(&b.track_number))
-                                        .then(a.title.cmp(&b.title))
-                                });
-                                existing_artist.albums.push(Album {
-                                    name: album_name,
-                                    tracks,
-                                });
-                            }
+            // Merge orphan artists into main artists list
+            for (artist_name, albums_map) in orphan_artists_map {
+                // Check if artist already exists
+                if let Some(existing_artist) = artists.iter_mut().find(|a| a.name == artist_name) {
+                    // Merge albums
+                    for (album_name, mut tracks) in albums_map {
+                        if let Some(existing_album) = existing_artist
+                            .albums
+                            .iter_mut()
+                            .find(|a| a.name == album_name)
+                        {
+                            existing_album.tracks.append(&mut tracks);
+                            existing_album.tracks.sort_by(|a, b| {
+                                a.disc_number
+                                    .cmp(&b.disc_number)
+                                    .then(a.track_number.cmp(&b.track_number))
+                                    .then(a.title.cmp(&b.title))
+                            });
+                        } else {
+                            tracks.sort_by(|a, b| {
+                                a.disc_number
+                                    .cmp(&b.disc_number)
+                                    .then(a.track_number.cmp(&b.track_number))
+                                    .then(a.title.cmp(&b.title))
+                            });
+                            existing_artist.albums.push(Album {
+                                name: album_name,
+                                tracks,
+                            });
                         }
-                        existing_artist.albums.sort_by(|a, b| a.name.cmp(&b.name));
-                    } else {
-                        // Create new artist
-                        let mut albums: Vec<Album> = albums_map
-                            .into_iter()
-                            .map(|(album_name, mut tracks)| {
-                                tracks.sort_by(|a, b| {
-                                    a.disc_number
-                                        .cmp(&b.disc_number)
-                                        .then(a.track_number.cmp(&b.track_number))
-                                        .then(a.title.cmp(&b.title))
-                                });
-                                Album {
-                                    name: album_name,
-                                    tracks,
-                                }
-                            })
-                            .collect();
-                        albums.sort_by(|a, b| a.name.cmp(&b.name));
-                        artists.push(Artist {
-                            name: artist_name,
-                            albums,
-                        });
                     }
+                    existing_artist.albums.sort_by(|a, b| a.name.cmp(&b.name));
+                } else {
+                    // Create new artist
+                    let mut albums: Vec<Album> = albums_map
+                        .into_iter()
+                        .map(|(album_name, mut tracks)| {
+                            tracks.sort_by(|a, b| {
+                                a.disc_number
+                                    .cmp(&b.disc_number)
+                                    .then(a.track_number.cmp(&b.track_number))
+                                    .then(a.title.cmp(&b.title))
+                            });
+                            Album {
+                                name: album_name,
+                                tracks,
+                            }
+                        })
+                        .collect();
+                    albums.sort_by(|a, b| a.name.cmp(&b.name));
+                    artists.push(Artist {
+                        name: artist_name,
+                        albums,
+                    });
                 }
             }
         }
