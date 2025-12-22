@@ -174,6 +174,7 @@ fn set_sample_rate_inner(rate: u32) -> Result<(), String> {
 ///
 /// This clears the `clock.force-rate` property, allowing PipeWire
 /// to automatically select the best sample rate.
+#[cfg(target_os = "linux")]
 pub fn reset_sample_rate() -> Result<(), String> {
     set_sample_rate(0)
 }
