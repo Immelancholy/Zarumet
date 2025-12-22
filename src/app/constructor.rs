@@ -112,6 +112,8 @@ impl App {
             artist_list_state: ListState::default(),
             album_list_state: ListState::default(),
             album_display_list_state: ListState::default(),
+            all_albums_list_state: ListState::default(),
+            album_tracks_list_state: ListState::default(),
             config,
             menu_mode: MenuMode::Queue,       // Start with queue menu
             panel_focus: PanelFocus::Artists, // Start with artists panel focused

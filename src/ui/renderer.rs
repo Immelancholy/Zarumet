@@ -213,6 +213,8 @@ pub fn render(
     artist_list_state: &mut ListState,
     album_list_state: &mut ListState,
     album_display_list_state: &mut ListState,
+    all_albums_list_state: &mut ListState,
+    album_tracks_list_state: &mut ListState,
     panel_focus: &PanelFocus,
     expanded_albums: &std::collections::HashSet<(String, String)>,
     mpd_status: &Option<mpd_client::responses::Status>,
@@ -290,9 +292,8 @@ pub fn render(
                 current_song,
                 config,
                 library,
-                artist_list_state,
-                album_list_state,
-                album_display_list_state,
+                all_albums_list_state,
+                album_tracks_list_state,
                 panel_focus,
                 expanded_albums,
                 &play_state,
@@ -644,6 +645,15 @@ fn render_tracks_mode(
 
             let albums_title_color = config.colors.border_title_color();
 
+            // Only show highlight when albums panel is focused
+            let albums_highlight_style = if panel_focus == &PanelFocus::Albums {
+                Style::default()
+                    .fg(config.colors.queue_selected_text_color())
+                    .bg(config.colors.queue_selected_highlight_color())
+            } else {
+                Style::default()
+            };
+
             let albums_list_widget = ratatui::widgets::List::new(albums_list)
                 .block(
                     Block::default()
@@ -652,11 +662,7 @@ fn render_tracks_mode(
                         .title(Line::from(" Albums ").fg(albums_title_color))
                         .border_style(Style::default().fg(albums_border_color)),
                 )
-                .highlight_style(
-                    Style::default()
-                        .fg(config.colors.queue_selected_text_color())
-                        .bg(config.colors.queue_selected_highlight_color()),
-                );
+                .highlight_style(albums_highlight_style);
             frame.render_stateful_widget(
                 albums_list_widget,
                 left_horizontal_chunks[1],

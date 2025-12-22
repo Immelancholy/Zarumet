@@ -31,6 +31,9 @@ pub struct App {
     pub artist_list_state: ListState,
     pub album_list_state: ListState,
     pub album_display_list_state: ListState, // For handling expanded album navigation
+    /// List states for Albums mode navigation (separate from Artists mode)
+    pub all_albums_list_state: ListState, // For navigating all_albums in Albums mode
+    pub album_tracks_list_state: ListState,  // For navigating tracks within an album in Albums mode
     /// Configuration loaded from TOML file
     pub config: Config,
     /// Current menu mode

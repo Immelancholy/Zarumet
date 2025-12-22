@@ -24,9 +24,8 @@ pub fn render_albums_mode(
     current_song: &Option<SongInfo>,
     config: &Config,
     library: &Option<Library>,
-    artist_list_state: &mut ListState,
-    _album_list_state: &mut ListState,
-    album_display_list_state: &mut ListState,
+    all_albums_list_state: &mut ListState,
+    album_tracks_list_state: &mut ListState,
     panel_focus: &PanelFocus,
     _expanded_albums: &std::collections::HashSet<(String, String)>,
     play_state: &Option<mpd_client::responses::PlayState>,
@@ -125,11 +124,11 @@ pub fn render_albums_mode(
         frame.render_stateful_widget(
             albums_list_widget,
             left_horizontal_chunks[0],
-            artist_list_state, // Using artist_list_state for album list navigation
+            all_albums_list_state, // Using all_albums_list_state for album list navigation in Albums mode
         );
 
         // Show tracks for selected album
-        if let Some(selected_album_index) = artist_list_state.selected() {
+        if let Some(selected_album_index) = all_albums_list_state.selected() {
             if let Some((_artist_name, selected_album)) =
                 library.all_albums.get(selected_album_index)
             {
@@ -206,7 +205,7 @@ pub fn render_albums_mode(
                 frame.render_stateful_widget(
                     tracks_list_widget,
                     left_horizontal_chunks[1],
-                    album_display_list_state, // Using album_display_list_state for tracks navigation
+                    album_tracks_list_state, // Using album_tracks_list_state for tracks navigation in Albums mode
                 );
             } else {
                 let tracks_box = create_empty_box("Tracks", config);
