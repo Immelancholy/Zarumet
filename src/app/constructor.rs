@@ -70,7 +70,7 @@ impl AppConstructor for App {
     fn new(args: Args) -> color_eyre::Result<Self> {
         let config_path = args.config.clone();
         let address = args.address.clone();
-        let mut config = Config::load(config_path)?;
+        let (mut config, _warnings) = Config::load(config_path)?;
 
         if let Some(addr) = address {
             config.mpd.address = addr;
@@ -87,10 +87,15 @@ impl App {
         // Don't select anything initially - will be set when queue is populated
 
         // Build enhanced key maps from config
-        let (global_map, queue_map, tracks_map, sequential_bindings) =
+        let (global_map, queue_map, artists_map, albums_map, sequential_bindings) =
             config.binds.build_enhanced_key_maps();
-        let key_binds =
-            KeyBinds::new_with_sequential(global_map, queue_map, tracks_map, sequential_bindings);
+        let key_binds = KeyBinds::new_with_sequential(
+            global_map,
+            queue_map,
+            artists_map,
+            albums_map,
+            sequential_bindings,
+        );
 
         // Determine bit-perfect state: CLI flag takes priority, then saved state
         let bit_perfect_enabled = match args.bit_perfect {
@@ -110,12 +115,16 @@ impl App {
             config,
             menu_mode: MenuMode::Queue,       // Start with queue menu
             panel_focus: PanelFocus::Artists, // Start with artists panel focused
+            artists_panel_focus: PanelFocus::Artists, // Default for Artists mode
+            albums_panel_focus: PanelFocus::AlbumList, // Default for Albums mode
             library: None,
             expanded_albums: std::collections::HashSet::new(),
             mpd_status: None,
             key_binds,
             bit_perfect_enabled,
             force_update: true, // Force initial update
+            config_warnings: Vec::new(),
+            show_config_warnings_popup: false,
         })
     }
 }

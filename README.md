@@ -197,11 +197,12 @@ quit = [
     "esc",
     "q",
     "ctrl-c",
-    "q q",
+    "shift-z shift-z",
 ]
 refresh = ["u"]
 switch_to_queue_menu = ["1"]
-switch_to_tracks = ["2"]
+switch_to_artists = ["2"]
+switch_to_albums = ["3"]
 seek_forward = [
     "shift-l",
     "shift-right",
@@ -248,7 +249,7 @@ toggle_album_expansion = [
     "l",
     "right",
 ]
-add_song_to_queue = [
+add_to_queue = [
     "a",
     "enter",
 ]

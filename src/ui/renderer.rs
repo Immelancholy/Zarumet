@@ -1,9 +1,9 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     style::{Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, Clear, ListState, Paragraph},
 };
 
 use crate::config::Config;
@@ -106,6 +106,99 @@ fn render_key_sequence_status(
     }
 }
 
+/// Render config warnings popup centered on screen
+fn render_config_warnings_popup(frame: &mut Frame, warnings: &[String], config: &Config) {
+    let area = frame.area();
+
+    // Calculate popup dimensions based on content
+    let title = " Unknown Config Options ";
+    let footer = "Press any key to close";
+
+    // Find max content width needed
+    let max_content_width = warnings
+        .iter()
+        .map(|w| w.width())
+        .max()
+        .unwrap_or(20)
+        .max(title.width())
+        .max(footer.width());
+
+    // Popup width: content + padding (2 on each side) + borders (1 on each side)
+    let inner_width = max_content_width + 4;
+    let popup_width = (inner_width + 2).min(area.width as usize - 4) as u16;
+
+    // Available width for text inside the popup (subtract borders and padding)
+    let text_width = popup_width.saturating_sub(4) as usize;
+
+    // Popup height: warnings + empty line after title + empty line before footer + footer + borders (2)
+    let popup_height = (warnings.len() + 5).min(area.height as usize - 4) as u16;
+
+    // Center the popup
+    let popup_x = (area.width.saturating_sub(popup_width)) / 2;
+    let popup_y = (area.height.saturating_sub(popup_height)) / 2;
+
+    let popup_area = Rect {
+        x: popup_x,
+        y: popup_y,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    // Clear the area behind the popup and fill with background
+    frame.render_widget(Clear, popup_area);
+
+    // Build the warning text - truncate if needed
+    let mut lines: Vec<Line> = Vec::new();
+    lines.push(Line::from("")); // Empty line after title
+
+    for warning in warnings {
+        // Truncate warning if it's too long
+        let display_warning = if warning.width() > text_width {
+            let mut truncated = String::new();
+            let mut width = 0;
+            for c in warning.chars() {
+                let c_width = unicode_width::UnicodeWidthChar::width(c).unwrap_or(0);
+                if width + c_width + 3 > text_width {
+                    truncated.push_str("...");
+                    break;
+                }
+                truncated.push(c);
+                width += c_width;
+            }
+            truncated
+        } else {
+            warning.clone()
+        };
+
+        lines.push(Line::from(Span::styled(
+            format!(" {}", display_warning),
+            Style::default().fg(config.colors.song_title_color()),
+        )));
+    }
+
+    lines.push(Line::from("")); // Empty line before footer
+    lines.push(
+        Line::from(Span::styled(
+            footer,
+            Style::default().fg(config.colors.top_accent_color()),
+        ))
+        .centered(),
+    );
+
+    let popup_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .border_style(Style::default().fg(config.colors.queue_selected_highlight_color()))
+        .title(Line::from(title).fg(config.colors.border_title_color()))
+        .style(Style::default().bg(ratatui::style::Color::Black));
+
+    let popup_text = Paragraph::new(lines)
+        .block(popup_block)
+        .alignment(Alignment::Left);
+
+    frame.render_widget(popup_text, popup_area);
+}
+
 /// Renders the user interface.
 #[allow(clippy::too_many_arguments)]
 pub fn render(
@@ -125,6 +218,8 @@ pub fn render(
     mpd_status: &Option<mpd_client::responses::Status>,
     key_binds: &crate::binds::KeyBinds,
     bit_perfect_enabled: bool,
+    show_config_warnings_popup: bool,
+    config_warnings: &[String],
 ) {
     let area = frame.area();
 
@@ -159,9 +254,10 @@ pub fn render(
                 mpd_status,
                 menu_mode,
                 bit_perfect_enabled,
+                show_config_warnings_popup,
             );
         }
-        MenuMode::Tracks => {
+        MenuMode::Artists => {
             render_tracks_mode(
                 frame,
                 protocol,
@@ -182,12 +278,42 @@ pub fn render(
                 mpd_status,
                 menu_mode,
                 bit_perfect_enabled,
+                show_config_warnings_popup,
+            );
+        }
+        MenuMode::Albums => {
+            crate::ui::albums_renderer::render_albums_mode(
+                frame,
+                protocol,
+                area,
+                &format,
+                current_song,
+                config,
+                library,
+                artist_list_state,
+                album_list_state,
+                album_display_list_state,
+                panel_focus,
+                expanded_albums,
+                &play_state,
+                progress,
+                elapsed,
+                duration,
+                mpd_status,
+                menu_mode,
+                bit_perfect_enabled,
+                show_config_warnings_popup,
             );
         }
     }
 
     // Render key sequence status overlay
     render_key_sequence_status(frame, key_binds, area, config);
+
+    // Render config warnings popup if showing
+    if show_config_warnings_popup && !config_warnings.is_empty() {
+        render_config_warnings_popup(frame, config_warnings, config);
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -207,6 +333,7 @@ fn render_queue_mode(
     mpd_status: &Option<mpd_client::responses::Status>,
     menu_mode: &MenuMode,
     bit_perfect_enabled: bool,
+    skip_image_render: bool,
 ) {
     // Original layout - restore exactly as it was before changes
     // Split the area horizontally: left box, right content
@@ -269,7 +396,7 @@ fn render_queue_mode(
     let image_area = right_vertical_chunks[0];
 
     // Render image or placeholder
-    render_image_widget(frame, protocol, image_area);
+    render_image_widget(frame, protocol, image_area, skip_image_render);
 
     // Render the song information
     let song_widget = create_song_widget(current_song, config);
@@ -297,6 +424,7 @@ fn render_tracks_mode(
     mpd_status: &Option<mpd_client::responses::Status>,
     menu_mode: &MenuMode,
     bit_perfect_enabled: bool,
+    skip_image_render: bool,
 ) {
     // Same as original layout, but replace queue box with 2 side-by-side boxes
     // Split area vertically: top section, middle section, bottom section
@@ -557,7 +685,7 @@ fn render_tracks_mode(
     let image_area = right_vertical_chunks[0];
 
     // Render image or placeholder
-    render_image_widget(frame, protocol, image_area);
+    render_image_widget(frame, protocol, image_area, skip_image_render);
 
     // Render the song information
     let song_widget = create_song_widget(current_song, config);

@@ -2,7 +2,8 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum MenuMode {
     Queue,
-    Tracks,
+    Artists,
+    Albums,
 }
 
 /// Panel focus for Tracks mode
@@ -10,4 +11,6 @@ pub enum MenuMode {
 pub enum PanelFocus {
     Artists,
     Albums,
+    AlbumList,
+    AlbumTracks,
 }

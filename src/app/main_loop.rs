@@ -178,6 +178,8 @@ impl AppMainLoop for App {
                     &self.mpd_status,
                     &self.key_binds,
                     self.bit_perfect_enabled,
+                    self.show_config_warnings_popup,
+                    &self.config_warnings,
                 )
             })?;
 

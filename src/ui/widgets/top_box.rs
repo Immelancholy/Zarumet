@@ -131,7 +131,8 @@ pub fn create_top_box<'a>(
         spans.push(Span::raw("  │  "));
         let mode_text = match menu_mode {
             MenuMode::Queue => (" ", accent_color, "Queue", mode_color),
-            MenuMode::Tracks => ("󰝚 ", accent_color, "Tracks", mode_color),
+            MenuMode::Artists => ("󰠃 ", accent_color, "Artists", mode_color),
+            MenuMode::Albums => ("󰀥 ", accent_color, "Albums", mode_color),
         };
         spans.push(Span::styled(mode_text.0, Style::default().fg(mode_text.1)));
         spans.push(Span::styled(mode_text.2, Style::default().fg(mode_text.3)));

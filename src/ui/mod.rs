@@ -1,3 +1,4 @@
+pub mod albums_renderer;
 pub mod menu;
 pub mod renderer;
 pub mod utils;
