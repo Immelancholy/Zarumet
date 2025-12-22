@@ -223,7 +223,7 @@ pub fn render(
                 bit_perfect_enabled,
             );
         }
-        MenuMode::Tracks => {
+        MenuMode::Artists => {
             render_tracks_mode(
                 frame,
                 protocol,

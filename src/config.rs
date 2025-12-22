@@ -205,8 +205,8 @@ pub struct BindsConfig {
     pub refresh: Vec<String>,
     #[serde(default = "BindsConfig::default_switch_to_queue_menu")]
     pub switch_to_queue_menu: Vec<String>,
-    #[serde(default = "BindsConfig::default_switch_to_tracks")]
-    pub switch_to_tracks: Vec<String>,
+    #[serde(default = "BindsConfig::default_switch_to_artists")]
+    pub switch_to_artists: Vec<String>,
     #[serde(default = "BindsConfig::default_switch_to_albums")]
     pub switch_to_albums: Vec<String>,
     #[serde(default = "BindsConfig::default_seek_forward")]
@@ -408,7 +408,7 @@ impl Config {
             "quit",
             "refresh",
             "switch_to_queue_menu",
-            "switch_to_tracks",
+            "switch_to_artists",
             "switch_to_albums",
             "seek_forward",
             "seek_backward",
@@ -782,7 +782,7 @@ impl BindsConfig {
     fn default_switch_to_queue_menu() -> Vec<String> {
         vec!["1".to_string()]
     }
-    fn default_switch_to_tracks() -> Vec<String> {
+    fn default_switch_to_artists() -> Vec<String> {
         vec!["2".to_string()]
     }
     fn default_switch_to_albums() -> Vec<String> {
@@ -992,7 +992,7 @@ impl BindsConfig {
     ) {
         let mut global_map = HashMap::new();
         let mut queue_map = HashMap::new();
-        let mut tracks_map = HashMap::new();
+        let mut artists_map = HashMap::new();
         let mut albums_map = HashMap::new();
         let mut sequential_bindings = Vec::new();
 
@@ -1002,8 +1002,8 @@ impl BindsConfig {
         // Queue mode specific bindings
         self.add_enhanced_queue_bindings(&mut queue_map, &mut sequential_bindings);
 
-        // Tracks mode specific bindings
-        self.add_enhanced_tracks_bindings(&mut tracks_map, &mut sequential_bindings);
+        // Artists mode specific bindings
+        self.add_enhanced_artists_bindings(&mut artists_map, &mut sequential_bindings);
 
         // Albums mode specific bindings
         self.add_enhanced_albums_bindings(&mut albums_map, &mut sequential_bindings);
@@ -1011,7 +1011,7 @@ impl BindsConfig {
         (
             global_map,
             queue_map,
-            tracks_map,
+            artists_map,
             albums_map,
             sequential_bindings,
         )
@@ -1135,8 +1135,8 @@ impl BindsConfig {
             sequential_bindings,
         );
         self.add_enhanced_binding_for_action(
-            &self.switch_to_tracks,
-            crate::app::mpd_handler::MPDAction::SwitchToTracks,
+            &self.switch_to_artists,
+            crate::app::mpd_handler::MPDAction::SwitchToArtists,
             single_map,
             sequential_bindings,
         );
@@ -1264,7 +1264,7 @@ impl BindsConfig {
         );
     }
 
-    fn add_enhanced_tracks_bindings(
+    fn add_enhanced_artists_bindings(
         &self,
         single_map: &mut HashMap<
             (crossterm::event::KeyModifiers, crossterm::event::KeyCode),
@@ -1272,7 +1272,7 @@ impl BindsConfig {
         >,
         sequential_bindings: &mut Vec<crate::binds::SequentialKeyBinding>,
     ) {
-        // Tracks mode specific bindings
+        // Artists mode specific bindings
         self.add_enhanced_binding_for_action(
             &self.switch_panel_left,
             crate::app::mpd_handler::MPDAction::SwitchPanelLeft,
@@ -1442,7 +1442,7 @@ impl Default for BindsConfig {
             quit: Self::default_quit_enhanced(),
             refresh: Self::default_refresh(),
             switch_to_queue_menu: Self::default_switch_to_queue_menu(),
-            switch_to_tracks: Self::default_switch_to_tracks(),
+            switch_to_artists: Self::default_switch_to_artists(),
             switch_to_albums: Self::default_switch_to_albums(),
             seek_forward: Self::default_seek_forward(),
             seek_backward: Self::default_seek_backward(),

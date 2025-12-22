@@ -38,7 +38,7 @@ impl Navigation for App {
                             self.selected_queue_index = self.queue_list_state.selected();
                         }
                     }
-                    MenuMode::Tracks => {
+                    MenuMode::Artists => {
                         // Navigation is now handled by NavigateUp/Down actions based on panel focus
                     }
                     MenuMode::Albums => {
@@ -60,7 +60,7 @@ impl Navigation for App {
                             self.selected_queue_index = self.queue_list_state.selected();
                         }
                     }
-                    MenuMode::Tracks => {
+                    MenuMode::Artists => {
                         // Navigation is now handled by NavigateUp/Down actions based on panel focus
                     }
                     MenuMode::Albums => {
@@ -89,8 +89,8 @@ impl Navigation for App {
                         // Note: In AlbumList panel, binds.rs maps this to SwitchPanelRight
                         self.handle_add_song_in_album_view(client).await?;
                     }
-                    MenuMode::Tracks => {
-                        // Tracks mode: handled via ToggleAlbumExpansion in binds.rs
+                    MenuMode::Artists => {
+                        // Artists mode: handled via ToggleAlbumExpansion in binds.rs
                     }
                 }
             }
@@ -247,28 +247,28 @@ impl Navigation for App {
             MPDAction::SwitchToQueueMenu => {
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Tracks => self.tracks_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Queue => {}
                 }
                 self.menu_mode = MenuMode::Queue;
                 // Queue mode doesn't use panel focus
             }
-            MPDAction::SwitchToTracks => {
+            MPDAction::SwitchToArtists => {
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Tracks => {} // Already in Tracks mode
+                    MenuMode::Artists => {} // Already in Artists mode
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Queue => {}
                 }
-                self.menu_mode = MenuMode::Tracks;
-                // Restore cached panel focus for Tracks mode
-                self.panel_focus = self.tracks_panel_focus.clone();
+                self.menu_mode = MenuMode::Artists;
+                // Restore cached panel focus for Artists mode
+                self.panel_focus = self.artists_panel_focus.clone();
             }
             MPDAction::SwitchToAlbums => {
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Tracks => self.tracks_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => {} // Already in Albums mode
                     MenuMode::Queue => {}
                 }
@@ -285,7 +285,7 @@ impl Navigation for App {
             }
             MPDAction::SwitchPanelLeft => {
                 match self.menu_mode {
-                    MenuMode::Tracks => {
+                    MenuMode::Artists => {
                         match self.panel_focus {
                             PanelFocus::Artists => {
                                 // Already at leftmost panel
@@ -297,7 +297,7 @@ impl Navigation for App {
                                 self.album_display_list_state.select(None);
                             }
                             _ => {
-                                // Invalid panel focus for Tracks mode, reset to Artists
+                                // Invalid panel focus for Artists mode, reset to Artists
                                 self.panel_focus = PanelFocus::Artists;
                             }
                         }
@@ -323,7 +323,7 @@ impl Navigation for App {
             }
             MPDAction::SwitchPanelRight => {
                 match self.menu_mode {
-                    MenuMode::Tracks => {
+                    MenuMode::Artists => {
                         match self.panel_focus {
                             PanelFocus::Artists => {
                                 self.panel_focus = PanelFocus::Albums;
@@ -345,7 +345,7 @@ impl Navigation for App {
                                 // Already at rightmost panel
                             }
                             _ => {
-                                // Invalid panel focus for Tracks mode, reset to Artists
+                                // Invalid panel focus for Artists mode, reset to Artists
                                 self.panel_focus = PanelFocus::Artists;
                             }
                         }
@@ -399,8 +399,8 @@ impl Navigation for App {
                             _ => {}
                         }
                     }
-                    MenuMode::Tracks => {
-                        // Tracks mode: context-aware based on what's selected
+                    MenuMode::Artists => {
+                        // Artists mode: context-aware based on what's selected
                         // If on a song, add the song; if on an album, add the album
                         self.handle_add_to_queue_context_aware(client).await?;
                     }
@@ -410,10 +410,10 @@ impl Navigation for App {
                 }
             }
             MPDAction::CycleModeLeft => {
-                // Cycle modes left: Queue -> Albums -> Tracks -> Queue
+                // Cycle modes left: Queue -> Albums -> Artists -> Queue
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Tracks => self.tracks_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Queue => {}
                 }
@@ -429,29 +429,29 @@ impl Navigation for App {
                             self.artist_list_state.select(Some(0));
                         }
                     }
-                    MenuMode::Tracks => {
+                    MenuMode::Artists => {
                         self.menu_mode = MenuMode::Queue;
                     }
                     MenuMode::Albums => {
-                        self.menu_mode = MenuMode::Tracks;
-                        self.panel_focus = self.tracks_panel_focus.clone();
+                        self.menu_mode = MenuMode::Artists;
+                        self.panel_focus = self.artists_panel_focus.clone();
                     }
                 };
             }
             MPDAction::CycleModeRight => {
-                // Cycle modes right: Queue -> Tracks -> Albums -> Queue
+                // Cycle modes right: Queue -> Artists -> Albums -> Queue
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Tracks => self.tracks_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Queue => {}
                 }
                 match self.menu_mode {
                     MenuMode::Queue => {
-                        self.menu_mode = MenuMode::Tracks;
-                        self.panel_focus = self.tracks_panel_focus.clone();
+                        self.menu_mode = MenuMode::Artists;
+                        self.panel_focus = self.artists_panel_focus.clone();
                     }
-                    MenuMode::Tracks => {
+                    MenuMode::Artists => {
                         self.menu_mode = MenuMode::Albums;
                         self.panel_focus = self.albums_panel_focus.clone();
                         // Initialize album selection if needed
@@ -493,7 +493,7 @@ impl App {
                     MenuMode::Queue => {
                         // Queue navigation is handled elsewhere
                     }
-                    MenuMode::Tracks => {
+                    MenuMode::Artists => {
                         match self.panel_focus {
                             PanelFocus::Artists => {
                                 // Navigate artists list
@@ -565,7 +565,7 @@ impl App {
                                 }
                             }
                             _ => {
-                                // Invalid panel focus for Tracks mode, reset
+                                // Invalid panel focus for Artists mode, reset
                                 self.panel_focus = PanelFocus::Artists;
                             }
                         }
@@ -623,7 +623,7 @@ impl App {
                     MenuMode::Queue => {
                         // Queue navigation is handled elsewhere
                     }
-                    MenuMode::Tracks => {
+                    MenuMode::Artists => {
                         match self.panel_focus {
                             PanelFocus::Artists => {
                                 // Navigate artists list
@@ -687,7 +687,7 @@ impl App {
                                 }
                             }
                             _ => {
-                                // Invalid panel focus for Tracks mode, reset
+                                // Invalid panel focus for Artists mode, reset
                                 self.panel_focus = PanelFocus::Artists;
                             }
                         }
@@ -775,7 +775,7 @@ impl App {
                     self.selected_queue_index = self.queue_list_state.selected();
                 }
             }
-            MenuMode::Tracks => {
+            MenuMode::Artists => {
                 // Handle scrolling based on current panel focus
                 match self.panel_focus {
                     PanelFocus::Artists => {
@@ -872,7 +872,7 @@ impl App {
                         }
                     }
                     PanelFocus::AlbumList | PanelFocus::AlbumTracks => {
-                        // Not applicable in Tracks mode
+                        // Not applicable in Artists mode
                     }
                 }
             }
@@ -968,7 +968,7 @@ impl App {
                     self.selected_queue_index = self.queue_list_state.selected();
                 }
             }
-            MenuMode::Tracks => {
+            MenuMode::Artists => {
                 match self.panel_focus {
                     PanelFocus::Artists => {
                         if let Some(ref library) = self.library
@@ -1018,7 +1018,7 @@ impl App {
                         }
                     }
                     PanelFocus::AlbumList | PanelFocus::AlbumTracks => {
-                        // Not applicable in Tracks mode
+                        // Not applicable in Artists mode
                     }
                 }
             }
@@ -1102,7 +1102,7 @@ impl App {
         Ok(())
     }
 
-    /// Handle adding to queue in Tracks mode - context-aware based on what's selected
+    /// Handle adding to queue in Artists mode - context-aware based on what's selected
     /// If on a song, add the song; if on an album, add the album
     async fn handle_add_to_queue_context_aware(
         &mut self,

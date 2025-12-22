@@ -27,7 +27,7 @@ pub enum KeyState {
 pub struct KeyBinds {
     global_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     queue_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
-    tracks_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
+    artists_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     albums_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     sequential_bindings: Vec<SequentialKeyBinding>,
     current_state: KeyState,
@@ -39,14 +39,14 @@ impl KeyBinds {
     pub fn new_with_sequential(
         global_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
         queue_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
-        tracks_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
+        artists_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
         albums_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
         sequential_bindings: Vec<SequentialKeyBinding>,
     ) -> Self {
         Self {
             global_map,
             queue_map,
-            tracks_map,
+            artists_map,
             albums_map,
             sequential_bindings,
             current_state: KeyState::Idle,
@@ -72,7 +72,7 @@ impl KeyBinds {
         if let Some(action) = self.global_map.get(&key_tuple) {
             // Handle mode-specific logic for certain bindings
             match (action, mode) {
-                (MPDAction::PlaySelected, MenuMode::Tracks) => {
+                (MPDAction::PlaySelected, MenuMode::Artists) => {
                     // Don't allow play_selected in tracks mode - it conflicts with navigation
                     return None;
                 }
@@ -87,8 +87,8 @@ impl KeyBinds {
                     return Some(action.clone());
                 }
             }
-            MenuMode::Tracks => {
-                if let Some(action) = self.tracks_map.get(&key_tuple) {
+            MenuMode::Artists => {
+                if let Some(action) = self.artists_map.get(&key_tuple) {
                     // Handle panel-specific logic for tracks mode
                     match (action, panel_focus) {
                         (MPDAction::SwitchPanelRight, PanelFocus::Artists) => {
@@ -120,8 +120,8 @@ impl KeyBinds {
                         _ => return Some(action.clone()),
                     }
                 }
-                // Fall back to tracks_map for navigation bindings
-                if let Some(action) = self.tracks_map.get(&key_tuple) {
+                // Fall back to artists_map for navigation bindings
+                if let Some(action) = self.artists_map.get(&key_tuple) {
                     match (action, panel_focus) {
                         (MPDAction::SwitchPanelRight, PanelFocus::AlbumList) => {
                             return Some(MPDAction::SwitchPanelRight);

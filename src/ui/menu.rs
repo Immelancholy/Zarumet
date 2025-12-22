@@ -2,7 +2,7 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum MenuMode {
     Queue,
-    Tracks,
+    Artists,
     Albums,
 }
 

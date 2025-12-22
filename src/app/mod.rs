@@ -27,7 +27,7 @@ pub struct App {
     pub selected_queue_index: Option<usize>,
     /// List state for the queue widget
     pub queue_list_state: ListState,
-    /// List states for Tracks navigation
+    /// List states for Artists navigation
     pub artist_list_state: ListState,
     pub album_list_state: ListState,
     pub album_display_list_state: ListState, // For handling expanded album navigation
@@ -35,10 +35,10 @@ pub struct App {
     pub config: Config,
     /// Current menu mode
     pub menu_mode: MenuMode,
-    /// Current panel focus in Tracks mode
+    /// Current panel focus in Artists mode
     pub panel_focus: PanelFocus,
-    /// Cached panel focus for Tracks mode (restored when switching back)
-    pub tracks_panel_focus: PanelFocus,
+    /// Cached panel focus for Artists mode (restored when switching back)
+    pub artists_panel_focus: PanelFocus,
     /// Cached panel focus for Albums mode (restored when switching back)
     pub albums_panel_focus: PanelFocus,
     /// Music library
