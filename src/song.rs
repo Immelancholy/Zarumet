@@ -174,6 +174,8 @@ pub struct LazyLibrary {
     pub all_albums: Vec<(String, Album)>,
     /// Flag to track if all_albums is complete (all artists loaded)
     pub all_albums_complete: bool,
+    /// Flag to track if all_albums is sorted
+    pub all_albums_sorted: bool,
 }
 
 impl LazyLibrary {
@@ -212,6 +214,7 @@ impl LazyLibrary {
             artists,
             all_albums: Vec::new(),
             all_albums_complete: false,
+            all_albums_sorted: false,
         })
     }
 
@@ -296,13 +299,8 @@ impl LazyLibrary {
             }
         }
 
-        // Re-sort all_albums
-        self.all_albums.sort_by(|a, b| {
-            a.1.name
-                .to_lowercase()
-                .cmp(&b.1.name.to_lowercase())
-                .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
-        });
+        // Mark as needing sort (defer sorting until all artists loaded or accessed)
+        self.all_albums_sorted = false;
 
         // Store the loaded albums
         self.artists[artist_index].albums = Some(albums);
@@ -326,6 +324,20 @@ impl LazyLibrary {
     /// If the artist's albums haven't been loaded, returns an Artist with empty albums.
     pub fn get_artist(&self, artist_index: usize) -> Option<Artist> {
         self.artists.get(artist_index).map(|a| a.to_artist())
+    }
+
+    /// Ensure all_albums is sorted before access.
+    /// This is a lazy sort: only sorts when needed.
+    pub fn ensure_albums_sorted(&mut self) {
+        if !self.all_albums_sorted {
+            self.all_albums.sort_by(|a, b| {
+                a.1.name
+                    .to_lowercase()
+                    .cmp(&b.1.name.to_lowercase())
+                    .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
+            });
+            self.all_albums_sorted = true;
+        }
     }
 
     /// Preload all albums for the Albums view.
@@ -416,6 +428,7 @@ impl LazyLibrary {
                 .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
         });
 
+        self.all_albums_sorted = true;
         self.all_albums_complete = true;
 
         let duration = start_time.elapsed();

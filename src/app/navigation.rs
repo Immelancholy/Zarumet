@@ -299,6 +299,11 @@ impl Navigation for App {
                     }
                 }
 
+                // Ensure albums are sorted (in case they were loaded individually)
+                if let Some(ref mut library) = self.library {
+                    library.ensure_albums_sorted();
+                }
+
                 // Initialize album selection if needed (using Albums mode state)
                 if let Some(ref library) = self.library
                     && !library.all_albums.is_empty()
@@ -458,6 +463,11 @@ impl Navigation for App {
                             }
                         }
 
+                        // Ensure albums are sorted (in case they were loaded individually)
+                        if let Some(ref mut library) = self.library {
+                            library.ensure_albums_sorted();
+                        }
+
                         // Initialize album selection if needed (using Albums mode state)
                         if let Some(ref library) = self.library
                             && !library.all_albums.is_empty()
@@ -500,6 +510,11 @@ impl Navigation for App {
                             if let Err(e) = library.preload_all_albums(client).await {
                                 log::warn!("Failed to preload all albums: {}", e);
                             }
+                        }
+
+                        // Ensure albums are sorted (in case they were loaded individually)
+                        if let Some(ref mut library) = self.library {
+                            library.ensure_albums_sorted();
                         }
 
                         // Initialize album selection if needed (using Albums mode state)
