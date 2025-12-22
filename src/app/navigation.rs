@@ -290,14 +290,13 @@ impl Navigation for App {
                 self.panel_focus = self.albums_panel_focus.clone();
 
                 // Preload all albums for Albums mode (lazy load all artists)
-                if let Some(ref mut library) = self.library {
-                    if !library.all_albums_complete {
+                if let Some(ref mut library) = self.library
+                    && !library.all_albums_complete {
                         log::info!("Preloading all albums for Albums view...");
                         if let Err(e) = library.preload_all_albums(client).await {
                             log::warn!("Failed to preload all albums: {}", e);
                         }
                     }
-                }
 
                 // Initialize album selection if needed (using Albums mode state)
                 if let Some(ref library) = self.library
@@ -449,14 +448,13 @@ impl Navigation for App {
                         self.panel_focus = self.albums_panel_focus.clone();
 
                         // Preload all albums for Albums mode
-                        if let Some(ref mut library) = self.library {
-                            if !library.all_albums_complete {
+                        if let Some(ref mut library) = self.library
+                            && !library.all_albums_complete {
                                 log::info!("Preloading all albums for Albums view...");
                                 if let Err(e) = library.preload_all_albums(client).await {
                                     log::warn!("Failed to preload all albums: {}", e);
                                 }
                             }
-                        }
 
                         // Initialize album selection if needed (using Albums mode state)
                         if let Some(ref library) = self.library
@@ -493,14 +491,13 @@ impl Navigation for App {
                         self.panel_focus = self.albums_panel_focus.clone();
 
                         // Preload all albums for Albums mode
-                        if let Some(ref mut library) = self.library {
-                            if !library.all_albums_complete {
+                        if let Some(ref mut library) = self.library
+                            && !library.all_albums_complete {
                                 log::info!("Preloading all albums for Albums view...");
                                 if let Err(e) = library.preload_all_albums(client).await {
                                     log::warn!("Failed to preload all albums: {}", e);
                                 }
                             }
-                        }
 
                         // Initialize album selection if needed (using Albums mode state)
                         if let Some(ref library) = self.library
