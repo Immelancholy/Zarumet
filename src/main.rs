@@ -24,6 +24,17 @@ async fn main() -> color_eyre::Result<()> {
     // Parse command line arguments
     let args = Args::parse();
 
+    // Handle --generate-config option
+    if let Some(path) = &args.generate_config {
+        let config_path = if path.is_dir() || path.to_str() == Some(".") {
+            path.join("config.toml")
+        } else {
+            path.clone()
+        };
+        Config::generate_default(config_path)?;
+        return Ok(());
+    }
+
     // Determine config path for logging later
     let config_path = args.config.clone().unwrap_or_else(|| {
         dirs::config_dir()

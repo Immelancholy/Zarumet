@@ -18,6 +18,10 @@ pub struct Args {
     /// Set bit-perfect mode (PipeWire sample rate matching): "on" or "off"
     #[arg(short, long, value_parser = parse_on_off)]
     pub bit_perfect: Option<bool>,
+
+    /// Generate default config file at the specified path (or ./config.toml if not specified)
+    #[arg(long, value_name = "PATH", num_args = 0..=1, require_equals = false, default_missing_value = ".")]
+    pub generate_config: Option<PathBuf>,
 }
 
 /// Parse "on" or "off" string to boolean

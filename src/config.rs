@@ -231,8 +231,8 @@ pub struct BindsConfig {
     pub switch_panel_right: Vec<String>,
     #[serde(default = "BindsConfig::default_toggle_album_expansion")]
     pub toggle_album_expansion: Vec<String>,
-    #[serde(default = "BindsConfig::default_add_album_to_queue")]
-    pub add_album_to_queue: Vec<String>,
+    #[serde(default = "BindsConfig::default_add_to_queue")]
+    pub add_to_queue: Vec<String>,
     #[serde(default = "BindsConfig::default_scroll_up_big")]
     pub scroll_up_big: Vec<String>,
     #[serde(default = "BindsConfig::default_scroll_down_big")]
@@ -344,6 +344,32 @@ impl Config {
             Config::default()
         });
         Ok(config)
+    }
+
+    /// Generate a default config file at the specified path
+    pub fn generate_default(path: PathBuf) -> color_eyre::Result<()> {
+        // Ensure parent directory exists
+        if let Some(parent) = path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        // Check if file already exists
+        if path.exists() {
+            return Err(color_eyre::eyre::eyre!(
+                "Config file already exists at: {}",
+                path.display()
+            ));
+        }
+
+        // Create default config and serialize
+        let default_config = Config::default();
+        let toml_string = toml::to_string_pretty(&default_config)?;
+        std::fs::write(&path, &toml_string)?;
+
+        println!("Generated default config at: {}", path.display());
+        Ok(())
     }
 }
 
@@ -653,7 +679,7 @@ impl BindsConfig {
     fn default_toggle_album_expansion() -> Vec<String> {
         vec!["l".to_string(), "right".to_string()]
     }
-    fn default_add_album_to_queue() -> Vec<String> {
+    fn default_add_to_queue() -> Vec<String> {
         vec!["a".to_string(), "enter".to_string()]
     }
     fn default_scroll_up_big() -> Vec<String> {
@@ -1127,7 +1153,7 @@ impl BindsConfig {
             sequential_bindings,
         );
         self.add_enhanced_binding_for_action(
-            &self.add_album_to_queue,
+            &self.add_to_queue,
             crate::app::mpd_handler::MPDAction::AddSongToQueue,
             single_map,
             sequential_bindings,
@@ -1205,7 +1231,7 @@ impl BindsConfig {
 
         // AddSongToQueue - adds entire album to queue (A/Enter keys)
         self.add_enhanced_binding_for_action(
-            &self.add_album_to_queue,
+            &self.add_to_queue,
             crate::app::mpd_handler::MPDAction::AddSongToQueue,
             single_map,
             sequential_bindings,
@@ -1273,7 +1299,7 @@ impl Default for BindsConfig {
             switch_panel_left: Self::default_switch_panel_left(),
             switch_panel_right: Self::default_switch_panel_right(),
             toggle_album_expansion: Self::default_toggle_album_expansion(),
-            add_album_to_queue: Self::default_add_album_to_queue(),
+            add_to_queue: Self::default_add_to_queue(),
             scroll_up_big: Self::default_scroll_up_big(),
             scroll_down_big: Self::default_scroll_down_big(),
             scroll_up: Self::default_scroll_up_enhanced(),
