@@ -22,10 +22,10 @@ const SETTINGS_METADATA_NAME: &str = "settings";
 const CLOCK_FORCE_RATE_KEY: &str = "clock.force-rate";
 
 /// Timeout for discovering PipeWire objects
-const DISCOVERY_TIMEOUT: Duration = Duration::from_secs(2);
+const DISCOVERY_TIMEOUT: Duration = Duration::from_millis(50);
 
 /// Timeout for sync operations
-const SYNC_TIMEOUT: Duration = Duration::from_millis(500);
+const SYNC_TIMEOUT: Duration = Duration::from_millis(25);
 
 /// Iteration step for the main loop
 const LOOP_ITERATION_STEP: Duration = Duration::from_millis(10);
