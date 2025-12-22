@@ -1,6 +1,6 @@
 use crate::binds::KeyBinds;
 use crate::config::Config;
-use crate::song::{Library, SongInfo};
+use crate::song::{LazyLibrary, SongInfo};
 use crate::ui::menu::{MenuMode, PanelFocus};
 use mpd_client::responses::PlayState;
 use ratatui::widgets::ListState;
@@ -45,8 +45,8 @@ pub struct App {
     pub artists_panel_focus: PanelFocus,
     /// Cached panel focus for Albums mode (restored when switching back)
     pub albums_panel_focus: PanelFocus,
-    /// Music library
-    pub library: Option<Library>,
+    /// Music library (lazy-loaded)
+    pub library: Option<LazyLibrary>,
     /// Expanded albums (tracks which albums are currently expanded)
     pub expanded_albums: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
     /// Current MPD status information

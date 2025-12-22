@@ -202,7 +202,7 @@ impl Navigation for App {
 
                 // Now reload the music library from MPD
                 log::info!("Refreshing library...");
-                match crate::song::Library::load_library(client).await {
+                match crate::song::LazyLibrary::init(client).await {
                     Ok(new_library) => {
                         log::info!("Library refreshed successfully");
 
@@ -217,20 +217,33 @@ impl Navigation for App {
 
                         // Try to restore artist selection by name
                         if let Some(prev_name) = previous_artist_name {
-                            if let Some(ref library) = self.library {
+                            if let Some(ref mut library) = self.library {
                                 if let Some(new_idx) =
                                     library.artists.iter().position(|a| a.name == prev_name)
                                 {
                                     self.artist_list_state.select(Some(new_idx));
+                                    // Load the restored artist's albums
+                                    if let Err(e) = library.load_artist(client, new_idx).await {
+                                        log::warn!("Failed to load artist after refresh: {}", e);
+                                    }
                                 } else if !library.artists.is_empty() {
                                     // Artist no longer exists, select first
                                     self.artist_list_state.select(Some(0));
+                                    if let Err(e) = library.load_artist(client, 0).await {
+                                        log::warn!(
+                                            "Failed to load first artist after refresh: {}",
+                                            e
+                                        );
+                                    }
                                 }
                             }
-                        } else if let Some(ref library) = self.library {
+                        } else if let Some(ref mut library) = self.library {
                             // No previous selection, select first if available
                             if !library.artists.is_empty() {
                                 self.artist_list_state.select(Some(0));
+                                if let Err(e) = library.load_artist(client, 0).await {
+                                    log::warn!("Failed to load first artist after refresh: {}", e);
+                                }
                             }
                         }
 
@@ -332,7 +345,7 @@ impl Navigation for App {
                                     && let Some(selected_artist_index) =
                                         self.artist_list_state.selected()
                                     && let Some(selected_artist) =
-                                        library.artists.get(selected_artist_index)
+                                        library.get_artist(selected_artist_index)
                                 {
                                     // Only initialize if not already selected
                                     if self.album_display_list_state.selected().is_none() {
@@ -377,10 +390,10 @@ impl Navigation for App {
                 }
             }
             MPDAction::NavigateUp | MPDAction::NavigateDown => {
-                self.handle_panel_navigation(action).await;
+                self.handle_panel_navigation(action, client).await;
             }
             MPDAction::GoToTop | MPDAction::GoToBottom => {
-                self.handle_go_to_edge(action).await;
+                self.handle_go_to_edge(action, client).await;
             }
             MPDAction::ToggleAlbumExpansion => {
                 self.handle_album_toggle(client).await?;
@@ -470,7 +483,7 @@ impl Navigation for App {
                 };
             }
             MPDAction::ScrollUp | MPDAction::ScrollDown => {
-                self.handle_scroll(action).await;
+                self.handle_scroll(action, client).await;
             }
             _ => {
                 // Execute MPD command for other actions, passing cached status
@@ -488,7 +501,7 @@ impl Navigation for App {
 
 impl App {
     /// Handle panel-specific navigation
-    async fn handle_panel_navigation(&mut self, action: MPDAction) {
+    async fn handle_panel_navigation(&mut self, action: MPDAction, client: &Client) {
         match action {
             MPDAction::NavigateUp => {
                 match self.menu_mode {
@@ -503,16 +516,24 @@ impl App {
                                     && !library.artists.is_empty()
                                 {
                                     let current = self.artist_list_state.selected().unwrap_or(0);
-                                    if current > 0 {
-                                        self.artist_list_state.select(Some(current - 1));
+                                    let new_index = if current > 0 {
+                                        current - 1
                                     } else {
                                         // Wrap around to the bottom
-                                        self.artist_list_state
-                                            .select(Some(library.artists.len().saturating_sub(1)));
-                                    }
+                                        library.artists.len().saturating_sub(1)
+                                    };
+                                    self.artist_list_state.select(Some(new_index));
                                     // Clear album selection when navigating artists
                                     self.album_list_state.select(None);
                                     self.album_display_list_state.select(None);
+
+                                    // Lazy load the newly selected artist's albums
+                                    if let Some(ref mut library) = self.library {
+                                        if let Err(e) = library.load_artist(client, new_index).await
+                                        {
+                                            log::warn!("Failed to load artist: {}", e);
+                                        }
+                                    }
                                 }
                             }
                             PanelFocus::Albums => {
@@ -520,12 +541,12 @@ impl App {
                                 if let (Some(library), Some(selected_artist_index)) =
                                     (&self.library, self.artist_list_state.selected())
                                     && let Some(selected_artist) =
-                                        library.artists.get(selected_artist_index)
+                                        library.get_artist(selected_artist_index)
                                 {
                                     // Compute display list to get total count
                                     let (display_items, _album_indices) =
                                         compute_album_display_list(
-                                            selected_artist,
+                                            &selected_artist,
                                             &self.expanded_albums,
                                         );
 
@@ -634,15 +655,25 @@ impl App {
                                     && !library.artists.is_empty()
                                 {
                                     let current = self.artist_list_state.selected().unwrap_or(0);
-                                    if current < library.artists.len().saturating_sub(1) {
-                                        self.artist_list_state.select(Some(current + 1));
-                                    } else {
-                                        // Wrap around to the top
-                                        self.artist_list_state.select(Some(0));
-                                    }
+                                    let new_index =
+                                        if current < library.artists.len().saturating_sub(1) {
+                                            current + 1
+                                        } else {
+                                            // Wrap around to the top
+                                            0
+                                        };
+                                    self.artist_list_state.select(Some(new_index));
                                     // Clear album selection when navigating artists
                                     self.album_list_state.select(None);
                                     self.album_display_list_state.select(None);
+
+                                    // Lazy load the newly selected artist's albums
+                                    if let Some(ref mut library) = self.library {
+                                        if let Err(e) = library.load_artist(client, new_index).await
+                                        {
+                                            log::warn!("Failed to load artist: {}", e);
+                                        }
+                                    }
                                 }
                             }
                             PanelFocus::Albums => {
@@ -650,12 +681,12 @@ impl App {
                                 if let (Some(library), Some(selected_artist_index)) =
                                     (&self.library, self.artist_list_state.selected())
                                     && let Some(selected_artist) =
-                                        library.artists.get(selected_artist_index)
+                                        library.get_artist(selected_artist_index)
                                 {
                                     // Compute display list to get total count
                                     let (display_items, _album_indices) =
                                         compute_album_display_list(
-                                            selected_artist,
+                                            &selected_artist,
                                             &self.expanded_albums,
                                         );
 
@@ -746,7 +777,7 @@ impl App {
     }
 
     /// Handle scrolling by 15 items at a time
-    async fn handle_scroll(&mut self, action: MPDAction) {
+    async fn handle_scroll(&mut self, action: MPDAction, client: &Client) {
         match self.menu_mode {
             MenuMode::Queue => {
                 if !self.queue.is_empty() {
@@ -817,17 +848,23 @@ impl App {
                             // Clear album selection when scrolling artists
                             self.album_list_state.select(None);
                             self.album_display_list_state.select(None);
+
+                            // Lazy load the newly selected artist's albums
+                            if let Some(ref mut library) = self.library {
+                                if let Err(e) = library.load_artist(client, new_index).await {
+                                    log::warn!("Failed to load artist: {}", e);
+                                }
+                            }
                         }
                     }
                     PanelFocus::Albums => {
                         if let (Some(library), Some(selected_artist_index)) =
                             (&self.library, self.artist_list_state.selected())
-                            && let Some(selected_artist) =
-                                library.artists.get(selected_artist_index)
+                            && let Some(selected_artist) = library.get_artist(selected_artist_index)
                         {
                             // Compute display list to get total count
                             let (display_items, _album_indices) =
-                                compute_album_display_list(selected_artist, &self.expanded_albums);
+                                compute_album_display_list(&selected_artist, &self.expanded_albums);
                             if !display_items.is_empty() {
                                 let current = self.album_display_list_state.selected().unwrap_or(0);
                                 let new_index = match action {
@@ -960,7 +997,7 @@ impl App {
     }
 
     /// Handle jumping to the top or bottom of the current list
-    async fn handle_go_to_edge(&mut self, action: MPDAction) {
+    async fn handle_go_to_edge(&mut self, action: MPDAction, client: &Client) {
         match self.menu_mode {
             MenuMode::Queue => {
                 if !self.queue.is_empty() {
@@ -988,16 +1025,22 @@ impl App {
                             // Clear album selection when jumping in artists list
                             self.album_list_state.select(None);
                             self.album_display_list_state.select(None);
+
+                            // Lazy load the newly selected artist's albums
+                            if let Some(ref mut library) = self.library {
+                                if let Err(e) = library.load_artist(client, new_index).await {
+                                    log::warn!("Failed to load artist: {}", e);
+                                }
+                            }
                         }
                     }
                     PanelFocus::Albums => {
                         if let (Some(library), Some(selected_artist_index)) =
                             (&self.library, self.artist_list_state.selected())
-                            && let Some(selected_artist) =
-                                library.artists.get(selected_artist_index)
+                            && let Some(selected_artist) = library.get_artist(selected_artist_index)
                         {
                             let (display_items, _album_indices) =
-                                compute_album_display_list(selected_artist, &self.expanded_albums);
+                                compute_album_display_list(&selected_artist, &self.expanded_albums);
                             if !display_items.is_empty() {
                                 let new_index = match action {
                                     MPDAction::GoToTop => 0,
@@ -1069,11 +1112,11 @@ impl App {
     async fn handle_album_toggle(&mut self, client: &Client) -> color_eyre::Result<()> {
         if let (Some(library), Some(selected_artist_index)) =
             (&self.library, self.artist_list_state.selected())
-            && let Some(selected_artist) = library.artists.get(selected_artist_index)
+            && let Some(selected_artist) = library.get_artist(selected_artist_index)
             && let Some(display_index) = self.album_display_list_state.selected()
         {
             let (display_items, _album_indices) =
-                compute_album_display_list(selected_artist, &self.expanded_albums);
+                compute_album_display_list(&selected_artist, &self.expanded_albums);
 
             if let Some(display_item) = display_items.get(display_index) {
                 match display_item {
@@ -1116,11 +1159,11 @@ impl App {
     ) -> color_eyre::Result<()> {
         if let (Some(library), Some(selected_artist_index)) =
             (&self.library, self.artist_list_state.selected())
-            && let Some(selected_artist) = library.artists.get(selected_artist_index)
+            && let Some(selected_artist) = library.get_artist(selected_artist_index)
             && let Some(display_index) = self.album_display_list_state.selected()
         {
             let (display_items, _album_indices) =
-                compute_album_display_list(selected_artist, &self.expanded_albums);
+                compute_album_display_list(&selected_artist, &self.expanded_albums);
 
             if let Some(display_item) = display_items.get(display_index) {
                 match display_item {

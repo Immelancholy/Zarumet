@@ -87,14 +87,21 @@ impl AppMainLoop for App {
             }
         }
 
-        // Load library
-        self.library = Some(crate::song::Library::load_library(&client).await?);
+        // Load library (lazy - only artist names initially)
+        self.library = Some(crate::song::LazyLibrary::init(&client).await?);
 
         // Initialize artist selection if library has artists
         if let Some(ref library) = self.library
             && !library.artists.is_empty()
         {
             self.artist_list_state.select(Some(0));
+
+            // Load the first artist's albums immediately for better UX
+            if let Some(ref mut lib) = self.library {
+                if let Err(e) = lib.load_artist(&client, 0).await {
+                    log::warn!("Failed to load first artist: {}", e);
+                }
+            }
         }
 
         // Set up the image picker and protocol
