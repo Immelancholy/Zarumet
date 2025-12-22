@@ -310,14 +310,23 @@ impl AppMainLoop for App {
                         }
                     }
                 }
+            }
 
-                // Unix signal handlers for graceful shutdown
-                _ = sigint.recv() => {
+            // Check for Unix signals outside of select! to avoid conditional compilation issues
+            #[cfg(unix)]
+            {
+                use std::pin::Pin;
+                use std::task::Poll;
+
+                let waker = futures::task::noop_waker();
+                let mut cx = std::task::Context::from_waker(&waker);
+
+                if let Poll::Ready(Some(())) = Pin::new(&mut sigint).poll_recv(&mut cx) {
                     log::info!("Received SIGINT, shutting down gracefully");
                     self.quit();
                 }
 
-                _ = sigterm.recv() => {
+                if let Poll::Ready(Some(())) = Pin::new(&mut sigterm).poll_recv(&mut cx) {
                     log::info!("Received SIGTERM, shutting down gracefully");
                     self.quit();
                 }
