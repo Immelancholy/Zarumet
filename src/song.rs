@@ -12,6 +12,7 @@ pub struct SongInfo {
     pub title: String,
     pub artist: String,
     pub album_artist: String,
+    pub has_explicit_album_artist: bool,
     pub album: String,
     pub file_path: PathBuf,
     pub format: Option<String>,
@@ -34,11 +35,12 @@ impl SongInfo {
             .first()
             .map(|s| s.to_string())
             .unwrap_or_else(|| "Unknown Artist".to_string());
-        let album_artist = song
-            .album_artists()
-            .first()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| artist.clone());
+        
+        // Check if albumartist tag is explicitly set
+        let explicit_album_artist = song.album_artists().first().map(|s| s.to_string());
+        let has_explicit_album_artist = explicit_album_artist.is_some();
+        let album_artist = explicit_album_artist.unwrap_or_else(|| artist.clone());
+        
         let album = song
             .album()
             .map(|s| s.to_string())
@@ -53,6 +55,7 @@ impl SongInfo {
             title,
             artist,
             album_artist,
+            has_explicit_album_artist,
             album,
             file_path,
             format,
@@ -160,15 +163,66 @@ impl Library {
         let total_songs = all_songs.len();
         log::debug!("Loaded {} songs from MPD", total_songs);
 
+        // PASS 1: Group all songs by album name to find the canonical album artist
+        // This handles cases where some tracks in an album have explicit albumartist
+        // tags while others fall back to the track artist.
+        let mut albums_by_name: std::collections::HashMap<String, Vec<SongInfo>> =
+            std::collections::HashMap::new();
+
+        for song in &all_songs {
+            let song_info = SongInfo::from_song(song);
+            let album_name = song_info.album.clone();
+            albums_by_name.entry(album_name).or_default().push(song_info);
+        }
+
+        // For each album, determine the canonical album artist:
+        // - If any track has an explicit albumartist, use that
+        // - Otherwise, use the most common artist among tracks
+        let mut canonical_album_artist: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
+
+        for (album_name, tracks) in &albums_by_name {
+            // First, try to find any track with an explicit album artist
+            let explicit_artist = tracks
+                .iter()
+                .find(|t| t.has_explicit_album_artist)
+                .map(|t| t.album_artist.clone());
+
+            let resolved_artist = if let Some(artist) = explicit_artist {
+                artist
+            } else {
+                // Fall back to most common artist among tracks
+                let mut artist_counts: std::collections::HashMap<&str, usize> =
+                    std::collections::HashMap::new();
+                for track in tracks {
+                    *artist_counts.entry(&track.album_artist).or_insert(0) += 1;
+                }
+                artist_counts
+                    .into_iter()
+                    .max_by_key(|(_, count)| *count)
+                    .map(|(artist, _)| artist.to_string())
+                    .unwrap_or_else(|| "Unknown Artist".to_string())
+            };
+
+            canonical_album_artist.insert(album_name.clone(), resolved_artist);
+        }
+
+        // PASS 2: Build the artists map using the canonical album artist
         let mut artists_map: std::collections::HashMap<
             String,
             std::collections::HashMap<String, Vec<SongInfo>>,
         > = std::collections::HashMap::new();
 
         for song in all_songs {
-            let song_info = SongInfo::from_song(&song);
-            let artist_name = song_info.album_artist.clone();
+            let mut song_info = SongInfo::from_song(&song);
             let album_name = song_info.album.clone();
+
+            // Use the canonical album artist for this album
+            if let Some(canonical_artist) = canonical_album_artist.get(&album_name) {
+                song_info.album_artist = canonical_artist.clone();
+            }
+
+            let artist_name = song_info.album_artist.clone();
 
             let artist_entry = artists_map.entry(artist_name).or_default();
             let album_entry = artist_entry.entry(album_name).or_default();
