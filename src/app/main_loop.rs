@@ -168,6 +168,9 @@ impl AppMainLoop for App {
         log::info!("Entering event-driven main loop");
 
         while self.running {
+            // Increment spinner frame for loading animation
+            self.spinner_frame = self.spinner_frame.wrapping_add(1);
+
             // Render the UI
             terminal.draw(|frame| {
                 crate::ui::render(
@@ -191,6 +194,7 @@ impl AppMainLoop for App {
                     self.bit_perfect_enabled,
                     self.show_config_warnings_popup,
                     &self.config_warnings,
+                    self.spinner_frame,
                 )
             })?;
 

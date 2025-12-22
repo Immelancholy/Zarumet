@@ -129,6 +129,7 @@ impl App {
             show_config_warnings_popup: false,
             last_play_state: None,
             last_sample_rate: None,
+            spinner_frame: 0,
         })
     }
 }

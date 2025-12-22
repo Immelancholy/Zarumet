@@ -65,4 +65,6 @@ pub struct App {
     pub last_play_state: Option<PlayState>,
     /// Last sample rate for PipeWire rate tracking (used to detect song changes)
     pub last_sample_rate: Option<u32>,
+    /// Frame counter for spinner animation (wraps around)
+    pub spinner_frame: u8,
 }
