@@ -599,11 +599,7 @@ fn render_tracks_mode(
                             let filler_width =
                                 max_album_name_width.saturating_sub(album_display_width);
                             let filler = RENDER_CACHE.with(|cache| {
-                                cache
-                                    .borrow()
-                                    .fillers
-                                    .dashes(filler_width)
-                                    .to_owned()
+                                cache.borrow().fillers.dashes(filler_width).to_owned()
                             });
                             let display_text =
                                 format!(" {}{}   {}", truncated_album_name, filler, duration_str);
