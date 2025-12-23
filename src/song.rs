@@ -418,7 +418,8 @@ impl LazyLibrary {
 
         // Update each artist's albums
         for artist in &mut self.artists {
-            if artist.is_loaded() {
+            // Skip if already loaded or currently loading to prevent concurrent access
+            if artist.is_loaded() || artist.is_loading() {
                 continue;
             }
 
