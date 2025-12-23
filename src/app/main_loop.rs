@@ -207,7 +207,7 @@ impl AppMainLoop for App {
             let counter = CACHE_LOG_COUNTER.fetch_add(1, Ordering::Relaxed);
 
             // Log every ~600 iterations (about every 30 seconds at 20 FPS)
-            if counter % 600 == 0 && counter > 0 {
+            if counter.is_multiple_of(600) && counter > 0 {
                 crate::ui::WIDTH_CACHE.with(|cache| {
                     let cache = cache.borrow();
                     if cache.total_accesses() > 100 {

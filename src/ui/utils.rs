@@ -33,15 +33,14 @@ pub fn truncate_by_width_cached(cache: &mut WidthCache, s: &str, max_width: usiz
     }
 
     // Check if we can use the cached width to avoid full traversal
-    if let Some(cached_width) = cache.peek_width(s) {
-        if cached_width <= max_width {
+    if let Some(cached_width) = cache.peek_width(s)
+        && cached_width <= max_width {
             // String fits, just pad it
             let mut result = s.to_string();
             let padding_needed = max_width.saturating_sub(cached_width);
             result.push_str(&" ".repeat(padding_needed));
             return result;
         }
-    }
 
     // Fall back to full calculation with caching
     let mut result = String::new();
