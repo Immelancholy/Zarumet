@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::config::Config;
-use crate::song::{Library, SongInfo};
+use crate::song::{LazyLibrary, SongInfo};
 use crate::ui::menu::{MenuMode, PanelFocus};
 use crate::ui::utils::{DisplayItem, compute_album_display_list};
 use crate::ui::widgets::{
@@ -17,19 +17,20 @@ use crate::ui::widgets::{
 use unicode_width::UnicodeWidthStr;
 
 /// Render key sequence status in bottom-right corner
+/// Returns true if something was rendered (so loading indicator can skip)
 fn render_key_sequence_status(
     frame: &mut Frame,
     key_binds: &crate::binds::KeyBinds,
     area: Rect,
     config: &Config,
-) {
+) -> bool {
     if !key_binds.is_awaiting_input() {
-        return;
+        return false;
     }
 
     let sequence = key_binds.get_current_sequence();
     if sequence.is_empty() {
-        return;
+        return false;
     }
 
     // Convert key sequence to display string
@@ -103,7 +104,9 @@ fn render_key_sequence_status(
                 height: 1,
             },
         );
+        return true;
     }
+    false
 }
 
 /// Render config warnings popup centered on screen
@@ -209,7 +212,7 @@ pub fn render(
     queue_list_state: &mut ListState,
     config: &Config,
     menu_mode: &MenuMode,
-    library: &Option<Library>,
+    library: &Option<LazyLibrary>,
     artist_list_state: &mut ListState,
     album_list_state: &mut ListState,
     album_display_list_state: &mut ListState,
@@ -412,7 +415,7 @@ fn render_tracks_mode(
     format: &Option<String>,
     current_song: &Option<SongInfo>,
     config: &Config,
-    library: &Option<Library>,
+    library: &Option<LazyLibrary>,
     artist_list_state: &mut ListState,
     album_list_state: &mut ListState,
     album_display_list_state: &mut ListState,
@@ -520,7 +523,7 @@ fn render_tracks_mode(
 
     // Show albums for selected artist, or empty tracks box
     if let (Some(library), Some(selected_artist_index)) = (library, artist_list_state.selected()) {
-        if let Some(selected_artist) = library.artists.get(selected_artist_index) {
+        if let Some(selected_artist) = library.get_artist(selected_artist_index) {
             // Only initialize album selection if albums panel is focused
             if album_list_state.selected().is_none()
                 && panel_focus == &PanelFocus::Albums
@@ -530,7 +533,7 @@ fn render_tracks_mode(
             }
 
             let (display_items, _album_indices) =
-                compute_album_display_list(selected_artist, expanded_albums);
+                compute_album_display_list(&selected_artist, expanded_albums);
 
             let albums_list: Vec<ratatui::widgets::ListItem> = display_items
                 .iter()

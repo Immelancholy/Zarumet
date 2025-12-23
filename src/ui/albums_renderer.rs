@@ -7,7 +7,7 @@ use ratatui::{
 };
 
 use crate::config::Config;
-use crate::song::{Library, SongInfo};
+use crate::song::{LazyLibrary, SongInfo};
 use crate::ui::menu::{MenuMode, PanelFocus};
 use crate::ui::widgets::{
     create_empty_box, create_format_widget, create_left_box_bottom, create_song_widget,
@@ -23,7 +23,7 @@ pub fn render_albums_mode(
     format: &Option<String>,
     current_song: &Option<SongInfo>,
     config: &Config,
-    library: &Option<Library>,
+    library: &Option<LazyLibrary>,
     all_albums_list_state: &mut ListState,
     album_tracks_list_state: &mut ListState,
     panel_focus: &PanelFocus,

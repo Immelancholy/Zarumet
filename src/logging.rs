@@ -141,32 +141,6 @@ pub fn log_mpd_connection(address: &str, success: bool, error: Option<&str>) {
     }
 }
 
-/// Log library loading attempts with statistics
-pub fn log_library_loading(
-    total_songs: usize,
-    total_artists: usize,
-    total_albums: usize,
-    duration: std::time::Duration,
-    success: bool,
-    error: Option<&str>,
-) {
-    if success {
-        log::info!(
-            "Library loaded successfully: {} songs, {} artists, {} albums in {:.2}s",
-            total_songs,
-            total_artists,
-            total_albums,
-            duration.as_secs_f64()
-        );
-    } else {
-        log::error!(
-            "Failed to load library after {:.2}s - {}",
-            duration.as_secs_f64(),
-            error.unwrap_or("Unknown error")
-        );
-    }
-}
-
 /// Log MPD command execution
 pub fn log_mpd_command(command: &str, success: bool, error: Option<&str>) {
     if success {
