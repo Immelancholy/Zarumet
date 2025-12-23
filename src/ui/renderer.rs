@@ -575,22 +575,34 @@ fn render_tracks_mode(
                                 available_width.saturating_sub(duration_width + 4); // 6 for " " before/after and "     " between name and duration
 
                             // Truncate album name if needed to keep duration aligned
-                            let truncated_album_name = crate::ui::WIDTH_CACHE.with(|cache| {
-                                let mut cache = cache.borrow_mut();
-                                crate::ui::utils::truncate_by_width_cached(
-                                    &mut cache,
-                                    album_name,
-                                    max_album_name_width,
-                                )
-                            });
+                            // Note: truncate_by_width_cached pads with spaces, so we trim and calculate filler separately
+                            let (truncated_album_name, album_display_width) =
+                                crate::ui::WIDTH_CACHE.with(|cache| {
+                                    let mut cache = cache.borrow_mut();
+                                    let album_width = cache.get_width(album_name);
+                                    if album_width <= max_album_name_width {
+                                        // Album name fits, use as-is
+                                        (album_name.to_string(), album_width)
+                                    } else {
+                                        // Need to truncate - get truncated version without padding
+                                        let truncated = crate::ui::utils::truncate_by_width_cached(
+                                            &mut cache,
+                                            album_name,
+                                            max_album_name_width,
+                                        );
+                                        let trimmed = truncated.trim_end().to_string();
+                                        let width = cache.get_width(&trimmed);
+                                        (trimmed, width)
+                                    }
+                                });
 
                             let filler_width =
-                                max_album_name_width.saturating_sub(truncated_album_name.width());
+                                max_album_name_width.saturating_sub(album_display_width);
                             let filler = RENDER_CACHE.with(|cache| {
                                 cache
                                     .borrow()
                                     .fillers
-                                    .dashes(filler_width.max(0))
+                                    .dashes(filler_width)
                                     .to_owned()
                             });
                             let display_text =
