@@ -403,4 +403,120 @@ mod tests {
         // Note: improvement may be modest for truncation since we still iterate chars
         // The main benefit is avoiding repeated full-width calculations for fits-check
     }
+
+    #[test]
+    fn stress_test_large_library() {
+        use crate::ui::utils::left_align_cached;
+        use std::time::Instant;
+
+        // Simulate a large music library with diverse Unicode content
+        let artists = vec![
+            "The Beatles",
+            "Miles Davis",
+            "Johann Sebastian Bach",
+            "Björk",
+            "坂本龍一", // Ryuichi Sakamoto
+            "Sigur Rós",
+            "Ólafur Arnalds",
+            "Café Tacvba",
+            "Мумий Тролль", // Russian
+            "久石譲", // Joe Hisaishi
+            "ישראל קטורזה", // Hebrew
+            "محمد عبد الوهاب", // Arabic
+            "🎵 Electronic Artist 🎶",
+        ];
+
+        let albums = vec![
+            "Abbey Road",
+            "Kind of Blue",
+            "The Well-Tempered Clavier",
+            "Homogenic",
+            "千と千尋の神隠し",
+            "Takk...",
+            "Island Songs",
+            "Re",
+            "Точка невозврата",
+            "菊次郎の夏",
+            "Greatest Hits Vol. 1",
+            "🌍 World Music Collection 🌎",
+        ];
+
+        let song_titles = vec![
+            "Come Together",
+            "So What",
+            "Prelude in C Major",
+            "Jóga",
+            "One Summer's Day (あの夏へ)",
+            "Hoppípolla",
+            "Near Light",
+            "La Ingrata",
+            "Владивосток 2000",
+            "Summer (菊次郎の夏)",
+            "Track #01 - Introduction",
+            "🎼 Symphony No. 5 🎻",
+        ];
+
+        // Generate a large dataset simulating 5000 songs
+        let mut test_data: Vec<String> = Vec::with_capacity(5000);
+        for i in 0..5000 {
+            let artist = artists[i % artists.len()];
+            let album = albums[i % albums.len()];
+            let title = song_titles[i % song_titles.len()];
+            test_data.push(format!("{} - {} - {}", artist, album, title));
+        }
+
+        // Simulate rendering a queue/list view (common operation)
+        let field_width = 40;
+        let visible_items = 50; // Typical visible items in a terminal
+        let frame_count = 100; // Simulate 100 frame renders
+
+        // Benchmark without cache (simulating old behavior with direct width calculation)
+        let start = Instant::now();
+        for _frame in 0..frame_count {
+            // Simulate scrolling through different parts of the list
+            for i in 0..visible_items {
+                let idx = (i * 100) % test_data.len();
+                let s = &test_data[idx];
+                // Simulate left_align without cache
+                let display_width = s.width();
+                let _result = if display_width >= field_width {
+                    crate::ui::utils::truncate_by_width(s, field_width)
+                } else {
+                    format!("{}{}", s, " ".repeat(field_width - display_width))
+                };
+            }
+        }
+        let uncached_duration = start.elapsed();
+
+        // Benchmark with cache
+        let mut cache = WidthCache::new();
+        let start = Instant::now();
+        for _frame in 0..frame_count {
+            // Same scrolling pattern
+            for i in 0..visible_items {
+                let idx = (i * 100) % test_data.len();
+                let _result = left_align_cached(&mut cache, &test_data[idx], field_width);
+            }
+        }
+        let cached_duration = start.elapsed();
+
+        let improvement = uncached_duration.as_nanos() as f64 / cached_duration.as_nanos() as f64;
+        let hit_rate = cache.hit_rate();
+
+        println!("\nLarge Library Stress Test Results:");
+        println!("  Simulated: 5000 songs, {} visible items, {} frames", visible_items, frame_count);
+        println!("  Uncached: {:?}", uncached_duration);
+        println!("  Cached:   {:?}", cached_duration);
+        println!("  Speedup:  {:.2}x", improvement);
+        println!("  Hit rate: {:.1}%", hit_rate * 100.0);
+        println!("  Cache entries: {}", cache.len());
+        println!("  Total accesses: {}", cache.total_accesses());
+
+        // With repeated access patterns, we should see good cache hit rates
+        // Cache entries should be limited (not all 5000 songs cached, just viewed ones)
+        assert!(
+            cache.len() <= 100,
+            "Cache should only contain recently viewed items, not entire library"
+        );
+    }
 }
