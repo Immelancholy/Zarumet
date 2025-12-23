@@ -187,7 +187,7 @@ impl Navigation for App {
                         self.set_status_message(StatusMessage {
                             text: String::new(),
                             created_at: std::time::Instant::now(),
-                            message_type: MessageType::UpdateInProgress,
+                            message_type: MessageType::InProgress,
                         })
                     }
                     Err(e) => {
@@ -197,7 +197,7 @@ impl Navigation for App {
                         self.set_status_message(StatusMessage {
                             text: String::new(),
                             created_at: std::time::Instant::now(),
-                            message_type: MessageType::UpdateError,
+                            message_type: MessageType::Error,
                         })
                     }
                 }

@@ -29,17 +29,17 @@ fn render_top_right_status(
     config: &Config,
 ) -> bool {
     // Prioritize key sequence if awaiting input
-    if key_binds.is_awaiting_input() {
-        if let Some(text) = get_key_sequence_text(key_binds) {
-            return render_right_aligned_text(frame, &text, "Seq: ", area, config);
-        }
+    if key_binds.is_awaiting_input()
+        && let Some(text) = get_key_sequence_text(key_binds)
+    {
+        return render_right_aligned_text(frame, &text, "Seq: ", area, config);
     }
 
     // Otherwise show status message if present
-    if let Some(msg) = status_message {
-        if let Some(text) = get_status_message_text(msg) {
-            return render_right_aligned_text(frame, &text, "", area, config);
-        }
+    if let Some(msg) = status_message
+        && let Some(text) = get_status_message_text(msg)
+    {
+        return render_right_aligned_text(frame, &text, "", area, config);
     }
 
     false
@@ -47,9 +47,9 @@ fn render_top_right_status(
 
 fn get_status_message_text(msg: &crate::app::StatusMessage) -> Option<String> {
     let text = match msg.message_type {
-        MessageType::UpdateInProgress => "Updating...",
-        MessageType::UpdateSuccess => "Updated!",
-        MessageType::UpdateError => &msg.text,
+        MessageType::InProgress => "Updating...",
+        MessageType::Success => "Updated!",
+        MessageType::Error => &msg.text,
     };
     Some(text.to_string())
 }

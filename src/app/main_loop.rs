@@ -363,7 +363,7 @@ impl AppMainLoop for App {
                                                     self.set_status_message(StatusMessage {
                                                         text: String::new(),
                                                         created_at: std::time::Instant::now(),
-                                                        message_type: MessageType::UpdateSuccess,
+                                                        message_type: MessageType::Success,
                                                     });
                                                 }
                                             }
@@ -375,7 +375,7 @@ impl AppMainLoop for App {
                                                     self.set_status_message(StatusMessage {
                                                         text: e.to_string(),
                                                         created_at: std::time::Instant::now(),
-                                                        message_type: MessageType::UpdateError,
+                                                        message_type: MessageType::Error,
                                                     });
                                                 }
                                             }

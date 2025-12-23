@@ -26,9 +26,9 @@ pub struct StatusMessage {
 
 #[derive(Debug, Clone)]
 pub enum MessageType {
-    UpdateInProgress,
-    UpdateSuccess,
-    UpdateError,
+    InProgress,
+    Success,
+    Error,
 }
 
 /// The main application which holds the state and logic of the application.
@@ -111,7 +111,7 @@ impl App {
     pub fn check_status_message_expiry(&mut self) {
         if let Some(msg) = &self.status_message {
             let duration = match msg.message_type {
-                MessageType::UpdateInProgress => std::time::Duration::from_secs(300), // Longer for in-progress
+                MessageType::InProgress => std::time::Duration::from_secs(300), // Longer for in-progress
                 _ => std::time::Duration::from_secs(5), // Shorter for success/error
             };
             if msg.created_at.elapsed() >= duration {
