@@ -1,9 +1,10 @@
 use std::io::Cursor;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use mpd_client::Client;
-use mpd_client::client::ConnectionEvent;
+use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::responses::PlayState;
 use ratatui::DefaultTerminal;
 use ratatui_image::picker::Picker;
@@ -13,6 +14,9 @@ use tokio::net::UnixStream;
 use tokio::sync::mpsc;
 
 use super::App;
+use super::cover_cache::{
+    SharedCoverCache, find_current_index, get_prefetch_targets, new_shared_cache,
+};
 use crate::app::{event_handlers::EventHandlers, mpd_updates::MPDUpdates};
 use crate::ui::Protocol;
 
@@ -136,18 +140,25 @@ impl AppMainLoop for App {
                     target_rate,
                     song_rate
                 );
-                let _ = crate::pipewire::set_sample_rate(target_rate);
+                let _ = crate::pipewire::set_sample_rate_async(target_rate).await;
             }
         }
 
         // Channel for cover art loading results
         let (cover_tx, mut cover_rx) = mpsc::channel::<CoverArtMessage>(1);
 
+        // Create shared cover art cache
+        let cover_cache = new_shared_cache();
+
         // Load initial cover art in background
         if let Some(ref song) = self.current_song {
             let file_path = song.file_path.clone();
-            spawn_cover_art_loader(&client, file_path, cover_tx.clone());
+            spawn_cover_art_loader(&client, file_path, cover_tx.clone(), cover_cache.clone());
         }
+
+        // Prefetch cover art for adjacent queue items
+        let current_idx = find_current_index(&self.queue, &self.current_song);
+        spawn_prefetch_loaders(&client, &self.queue, current_idx, cover_cache.clone());
 
         // Create protocol with no initial image (will be loaded async)
         let mut protocol = Protocol { image: None };
@@ -168,38 +179,72 @@ impl AppMainLoop for App {
         log::info!("Entering event-driven main loop");
 
         while self.running {
-            // Render the UI
-            terminal.draw(|frame| {
-                crate::ui::render(
-                    frame,
-                    &mut protocol,
-                    &self.current_song,
-                    &self.queue,
-                    &mut self.queue_list_state,
-                    &self.config,
-                    &self.menu_mode,
-                    &self.library,
-                    &mut self.artist_list_state,
-                    &mut self.album_list_state,
-                    &mut self.album_display_list_state,
-                    &mut self.all_albums_list_state,
-                    &mut self.album_tracks_list_state,
-                    &self.panel_focus,
-                    &self.expanded_albums,
-                    &self.mpd_status,
-                    &self.key_binds,
-                    self.bit_perfect_enabled,
-                    self.show_config_warnings_popup,
-                    &self.config_warnings,
-                )
-            })?;
+            // Check terminal size for dirty tracking
+            let term_size = terminal.size()?;
+            self.dirty
+                .check_terminal_size(term_size.width, term_size.height);
 
-            if let Some(ref mut img) = protocol.image {
-                img.last_encoding_result();
+            // Only render if something has changed
+            if self.dirty.any_dirty() {
+                terminal.draw(|frame| {
+                    crate::ui::render(
+                        frame,
+                        &mut protocol,
+                        &self.current_song,
+                        &self.queue,
+                        &mut self.queue_list_state,
+                        &self.config,
+                        &self.menu_mode,
+                        &self.library,
+                        &mut self.artist_list_state,
+                        &mut self.album_list_state,
+                        &mut self.album_display_list_state,
+                        &mut self.all_albums_list_state,
+                        &mut self.album_tracks_list_state,
+                        &self.panel_focus,
+                        &self.expanded_albums,
+                        &self.mpd_status,
+                        &self.key_binds,
+                        self.bit_perfect_enabled,
+                        self.show_config_warnings_popup,
+                        &self.config_warnings,
+                    )
+                })?;
+
+                if let Some(ref mut img) = protocol.image {
+                    img.last_encoding_result();
+                }
+
+                // Clear dirty flags after render
+                self.dirty.clear_all();
             }
 
-            // Update key bindings for timeouts
+            // Update key bindings for timeouts and mark dirty if state changed
+            let was_awaiting = self.key_binds.is_awaiting_input();
             self.key_binds.update();
+            if was_awaiting && !self.key_binds.is_awaiting_input() {
+                // Timeout occurred - need to clear the sequence indicator
+                self.dirty.mark_key_sequence();
+            }
+
+            // Log width cache statistics periodically
+            static CACHE_LOG_COUNTER: AtomicU64 = AtomicU64::new(0);
+            let counter = CACHE_LOG_COUNTER.fetch_add(1, Ordering::Relaxed);
+
+            // Log every ~600 iterations (about every 30 seconds at 20 FPS)
+            if counter.is_multiple_of(600) && counter > 0 {
+                crate::ui::WIDTH_CACHE.with(|cache| {
+                    let cache = cache.borrow();
+                    if cache.total_accesses() > 100 {
+                        // Only log if there's meaningful activity
+                        cache.log_stats();
+                    }
+                });
+
+                // Log cover art cache stats
+                let cache_guard = cover_cache.read().await;
+                cache_guard.log_stats();
+            }
 
             // Event-driven loop using tokio::select!
             tokio::select! {
@@ -218,9 +263,11 @@ impl AppMainLoop for App {
                             check_song_change(
                                 &mut current_song_file,
                                 &self.current_song,
+                                &self.queue,
                                 &client,
                                 &cover_tx,
                                 &mut protocol,
+                                cover_cache.clone(),
                             );
                         }
                     }
@@ -232,16 +279,58 @@ impl AppMainLoop for App {
                         Some(ConnectionEvent::SubsystemChange(subsystem)) => {
                             log::debug!("MPD subsystem change: {:?}", subsystem);
 
-                            // Update state based on what changed
-                            self.run_updates(&client).await?;
+                            // Optimize updates based on which subsystem changed
+                            match subsystem {
+                                // Player state changes (play/pause/stop/seek) - need status + maybe current song
+                                Subsystem::Player => {
+                                    self.run_optimized_updates(&client, false, true).await?;
+                                }
+                                // Mixer changes (volume) - only need status
+                                Subsystem::Mixer => {
+                                    self.update_status_only(&client).await?;
+                                }
+                                // Options changes (repeat, random, etc.) - only need status
+                                Subsystem::Options => {
+                                    self.update_status_only(&client).await?;
+                                }
+                                // Queue/playlist changes - need full update
+                                Subsystem::Queue => {
+                                    self.run_updates(&client).await?;
+                                }
+                                // Stored playlist changes - may affect queue if current playlist modified
+                                Subsystem::StoredPlaylist => {
+                                    self.run_updates(&client).await?;
+                                }
+                                // Database, output, sticker, etc. - typically don't affect current playback
+                                Subsystem::Database
+                                | Subsystem::Output
+                                | Subsystem::Sticker
+                                | Subsystem::Subscription
+                                | Subsystem::Message
+                                | Subsystem::Partition
+                                | Subsystem::Neighbor
+                                | Subsystem::Mount
+                                | Subsystem::Update
+                                | Subsystem::Other(_) => {
+                                    // These don't typically require UI updates
+                                    log::debug!("Ignoring subsystem change: {:?}", subsystem);
+                                }
+                                // Catch-all for any future subsystem types
+                                _ => {
+                                    log::debug!("Unknown subsystem change: {:?}, doing full update", subsystem);
+                                    self.run_updates(&client).await?;
+                                }
+                            }
 
                             // Check for song change
                             check_song_change(
                                 &mut current_song_file,
                                 &self.current_song,
+                                &self.queue,
                                 &client,
                                 &cover_tx,
                                 &mut protocol,
+                                cover_cache.clone(),
                             );
 
                             // Handle PipeWire sample rate changes
@@ -286,6 +375,9 @@ impl AppMainLoop for App {
                                 song.update_time_info(new_status.elapsed, new_status.duration);
                             }
                             self.mpd_status = Some(new_status);
+
+                            // Mark progress as dirty to trigger redraw
+                            self.dirty.mark_progress();
                         }
                     }
                 }
@@ -306,6 +398,8 @@ impl AppMainLoop for App {
                                     .and_then(|reader| reader.decode().ok())
                                     .map(|dyn_img| picker.new_resize_protocol(dyn_img));
 
+                                // Mark cover art as dirty to trigger redraw
+                                self.dirty.mark_cover_art();
                                 log::debug!("Cover art loaded for {:?}", file_path);
                             }
                         }
@@ -340,19 +434,49 @@ impl AppMainLoop for App {
         #[cfg(target_os = "linux")]
         if self.bit_perfect_enabled && self.config.pipewire.is_available() {
             log::debug!("Resetting PipeWire sample rate on exit");
-            let _ = crate::pipewire::reset_sample_rate();
+            let _ = crate::pipewire::reset_sample_rate_async().await;
         }
 
         Ok(())
     }
 }
 
-/// Spawn a background task to load cover art
-fn spawn_cover_art_loader(client: &Client, file_path: PathBuf, tx: mpsc::Sender<CoverArtMessage>) {
+/// Spawn a background task to load cover art with cache support
+fn spawn_cover_art_loader(
+    client: &Client,
+    file_path: PathBuf,
+    tx: mpsc::Sender<CoverArtMessage>,
+    cache: SharedCoverCache,
+) {
     let client = client.clone();
     let file_path_clone = file_path.clone();
 
     tokio::spawn(async move {
+        // Check cache first
+        {
+            let mut cache_guard = cache.write().await;
+            if let Some(cached) = cache_guard.get(&file_path_clone) {
+                log::debug!("Cover art cache hit: {:?}", file_path_clone);
+                let _ = tx
+                    .send(CoverArtMessage::Loaded(
+                        cached.data.clone(),
+                        file_path_clone,
+                    ))
+                    .await;
+                return;
+            }
+
+            // Check if already being fetched
+            if cache_guard.is_pending(&file_path_clone) {
+                log::debug!("Cover art already pending: {:?}", file_path_clone);
+                return;
+            }
+
+            // Mark as pending
+            cache_guard.mark_pending(file_path_clone.clone());
+        }
+
+        // Fetch from MPD
         let uri = file_path_clone.to_string_lossy();
         let result = client.album_art(&uri).await;
 
@@ -365,6 +489,12 @@ fn spawn_cover_art_loader(client: &Client, file_path: PathBuf, tx: mpsc::Sender<
             }
         };
 
+        // Store in cache
+        {
+            let mut cache_guard = cache.write().await;
+            cache_guard.insert(file_path_clone.clone(), data.clone());
+        }
+
         // Send result back (ignore error if receiver dropped)
         let _ = tx
             .send(CoverArtMessage::Loaded(data, file_path_clone))
@@ -372,13 +502,61 @@ fn spawn_cover_art_loader(client: &Client, file_path: PathBuf, tx: mpsc::Sender<
     });
 }
 
+/// Spawn background tasks to prefetch cover art for adjacent queue items
+fn spawn_prefetch_loaders(
+    client: &Client,
+    queue: &[crate::song::SongInfo],
+    current_index: Option<usize>,
+    cache: SharedCoverCache,
+) {
+    let targets = get_prefetch_targets(queue, current_index);
+
+    for file_path in targets {
+        let client = client.clone();
+        let cache = cache.clone();
+
+        tokio::spawn(async move {
+            // Check if already cached or pending
+            {
+                let mut cache_guard = cache.write().await;
+                if cache_guard.contains(&file_path) || cache_guard.is_pending(&file_path) {
+                    return;
+                }
+                cache_guard.mark_pending(file_path.clone());
+            }
+
+            // Fetch from MPD
+            let uri = file_path.to_string_lossy();
+            let result = client.album_art(&uri).await;
+
+            let data = match result {
+                Ok(Some((raw_data, _mime))) => Some(raw_data.to_vec()),
+                Ok(None) => None,
+                Err(e) => {
+                    log::debug!("Failed to prefetch cover art: {}", e);
+                    None
+                }
+            };
+
+            // Store in cache (no need to send to channel - it's a prefetch)
+            {
+                let mut cache_guard = cache.write().await;
+                cache_guard.insert(file_path.clone(), data);
+                log::debug!("Prefetched cover art: {:?}", file_path);
+            }
+        });
+    }
+}
+
 /// Check if the song changed and trigger cover art loading if needed
 fn check_song_change(
     current_song_file: &mut Option<PathBuf>,
     current_song: &Option<crate::song::SongInfo>,
+    queue: &[crate::song::SongInfo],
     client: &Client,
     cover_tx: &mpsc::Sender<CoverArtMessage>,
     protocol: &mut crate::ui::Protocol,
+    cache: SharedCoverCache,
 ) {
     let new_song_file: Option<PathBuf> = current_song.as_ref().map(|song| song.file_path.clone());
 
@@ -394,10 +572,14 @@ fn check_song_change(
             protocol.image = None;
         }
 
-        // Start loading cover art in background
+        // Start loading cover art in background (uses cache internally)
         if let Some(ref file_path) = new_song_file {
-            spawn_cover_art_loader(client, file_path.clone(), cover_tx.clone());
+            spawn_cover_art_loader(client, file_path.clone(), cover_tx.clone(), cache.clone());
         }
+
+        // Prefetch adjacent queue items
+        let current_idx = find_current_index(queue, current_song);
+        spawn_prefetch_loaders(client, queue, current_idx, cache);
 
         *current_song_file = new_song_file;
     }
@@ -440,7 +622,10 @@ fn handle_pipewire_state_change(
                         target_rate,
                         song_rate
                     );
-                    let _ = crate::pipewire::set_sample_rate(target_rate);
+                    // Fire-and-forget async call to avoid blocking the UI
+                    tokio::spawn(async move {
+                        let _ = crate::pipewire::set_sample_rate_async(target_rate).await;
+                    });
                 }
             }
         }
@@ -452,7 +637,10 @@ fn handle_pipewire_state_change(
                     "Resetting PipeWire sample rate (playback stopped, last_state={:?})",
                     last_play_state
                 );
-                let _ = crate::pipewire::reset_sample_rate();
+                // Fire-and-forget async call to avoid blocking the UI
+                tokio::spawn(async {
+                    let _ = crate::pipewire::reset_sample_rate_async().await;
+                });
             }
         }
     }

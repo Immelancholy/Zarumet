@@ -106,15 +106,27 @@ impl SongInfo {
 pub struct Album {
     pub name: String,
     pub tracks: Vec<SongInfo>,
+    /// Pre-computed total duration (computed once on construction)
+    cached_total_duration: Option<std::time::Duration>,
 }
 
 impl Album {
-    /// Calculate the total duration of all tracks in the album
-    pub fn total_duration(&self) -> Option<std::time::Duration> {
+    /// Create a new Album with pre-computed total duration
+    pub fn new(name: String, tracks: Vec<SongInfo>) -> Self {
+        let cached_total_duration = Self::compute_total_duration(&tracks);
+        Self {
+            name,
+            tracks,
+            cached_total_duration,
+        }
+    }
+
+    /// Compute total duration from tracks (used during construction)
+    fn compute_total_duration(tracks: &[SongInfo]) -> Option<std::time::Duration> {
         let mut total_secs = 0u64;
         let mut has_duration = false;
 
-        for track in &self.tracks {
+        for track in tracks {
             if let Some(duration) = track.duration {
                 total_secs += duration.as_secs();
                 has_duration = true;
@@ -126,6 +138,11 @@ impl Album {
         } else {
             None
         }
+    }
+
+    /// Get the total duration of all tracks in the album (cached)
+    pub fn total_duration(&self) -> Option<std::time::Duration> {
+        self.cached_total_duration
     }
 }
 
@@ -306,10 +323,7 @@ impl LazyLibrary {
                         .then(a.track_number.cmp(&b.track_number))
                         .then(a.title.cmp(&b.title))
                 });
-                Album {
-                    name: album_name,
-                    tracks,
-                }
+                Album::new(album_name, tracks)
             })
             .collect();
 
@@ -431,10 +445,7 @@ impl LazyLibrary {
                                 .then(a.track_number.cmp(&b.track_number))
                                 .then(a.title.cmp(&b.title))
                         });
-                        Album {
-                            name: album_name,
-                            tracks,
-                        }
+                        Album::new(album_name, tracks)
                     })
                     .collect();
 

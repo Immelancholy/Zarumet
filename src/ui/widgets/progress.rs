@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 use crate::config::Config;
-use crate::ui::utils::*;
+use crate::ui::RENDER_CACHE;
 
 pub fn create_progress_bar(
     play_state: &Option<mpd_client::responses::PlayState>,
@@ -64,29 +64,44 @@ pub fn create_progress_bar(
             let inner = block.inner(area);
             block.render(area, buf);
 
-            // Create styled time spans
-            let time_spans = match (self.elapsed, self.duration) {
-                (Some(elapsed), Some(duration)) => vec![
-                    Span::raw(" "),
-                    Span::styled(format_duration(elapsed), self.time_elapsed_color),
-                    Span::styled("/", self.time_separator_color),
-                    Span::styled(format_duration(duration), self.time_duration_color),
-                    Span::raw(" "),
-                ],
-                (Some(elapsed), None) => vec![
-                    Span::raw(" "),
-                    Span::styled(format_duration(elapsed), self.time_elapsed_color),
-                    Span::styled("/--:--", self.song_title_color),
-                    Span::raw(" "),
-                ],
-                (None, Some(duration)) => vec![
-                    Span::raw(" "),
-                    Span::styled("--:--/", self.song_title_color),
-                    Span::styled(format_duration(duration), self.time_duration_color),
-                    Span::raw(" "),
-                ],
-                (None, None) => vec![Span::styled(" --:--/--:-- ", self.song_title_color)],
-            };
+            // Create styled time spans using cached duration strings
+            let time_spans = RENDER_CACHE.with(|cache| {
+                let mut cache = cache.borrow_mut();
+                match (self.elapsed, self.duration) {
+                    (Some(elapsed), Some(duration)) => vec![
+                        Span::raw(" "),
+                        Span::styled(
+                            cache.durations.format_short(elapsed.as_secs()).to_owned(),
+                            self.time_elapsed_color,
+                        ),
+                        Span::styled("/", self.time_separator_color),
+                        Span::styled(
+                            cache.durations.format_short(duration.as_secs()).to_owned(),
+                            self.time_duration_color,
+                        ),
+                        Span::raw(" "),
+                    ],
+                    (Some(elapsed), None) => vec![
+                        Span::raw(" "),
+                        Span::styled(
+                            cache.durations.format_short(elapsed.as_secs()).to_owned(),
+                            self.time_elapsed_color,
+                        ),
+                        Span::styled("/--:--", self.song_title_color),
+                        Span::raw(" "),
+                    ],
+                    (None, Some(duration)) => vec![
+                        Span::raw(" "),
+                        Span::styled("--:--/", self.song_title_color),
+                        Span::styled(
+                            cache.durations.format_short(duration.as_secs()).to_owned(),
+                            self.time_duration_color,
+                        ),
+                        Span::raw(" "),
+                    ],
+                    (None, None) => vec![Span::styled(" --:--/--:-- ", self.song_title_color)],
+                }
+            });
             let time_width: usize = time_spans.iter().map(|span| span.content.len()).sum();
 
             // Calculate available width for progress bar
@@ -98,11 +113,20 @@ pub fn create_progress_bar(
             let filled = (self.progress_percentage as usize * bar_width / 100).min(bar_width);
             let empty = bar_width.saturating_sub(filled);
 
+            // Use cached progress bar strings
+            let (filled_str, empty_str) = RENDER_CACHE.with(|cache| {
+                let cache = cache.borrow();
+                (
+                    cache.fillers.progress_chars(filled).to_owned(),
+                    cache.fillers.progress_chars(empty).to_owned(),
+                )
+            });
+
             let mut content_spans = vec![
                 Span::styled(&self.state_text, self.state_color),
                 Span::styled(" ", self.state_color),
-                Span::styled("━".repeat(filled), self.progress_filled_color),
-                Span::styled("━".repeat(empty), self.progress_empty_color),
+                Span::styled(filled_str, self.progress_filled_color),
+                Span::styled(empty_str, self.progress_empty_color),
             ];
             content_spans.extend(time_spans);
             let content = Line::from(content_spans);

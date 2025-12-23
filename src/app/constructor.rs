@@ -2,6 +2,7 @@ use super::App;
 use crate::app::cli::Args;
 use crate::binds::KeyBinds;
 use crate::config::Config;
+use crate::ui::DirtyFlags;
 use crate::ui::menu::{MenuMode, PanelFocus};
 use ratatui::widgets::ListState;
 use std::path::PathBuf;
@@ -129,6 +130,9 @@ impl App {
             show_config_warnings_popup: false,
             last_play_state: None,
             last_sample_rate: None,
+            last_playlist_version: None,
+            last_song_id: None,
+            dirty: DirtyFlags::new(),
         })
     }
 }

@@ -37,6 +37,9 @@ impl EventHandlers for App {
             return Ok(());
         }
 
+        // Track whether we were awaiting input before handling the key
+        let was_awaiting = self.key_binds.is_awaiting_input();
+
         if let Some(action) = self
             .key_binds
             .handle_key(key, &self.menu_mode, &self.panel_focus)
@@ -77,6 +80,7 @@ impl EventHandlers for App {
                     // Only allow toggling if bit-perfect is available (enabled in config)
                     if self.config.pipewire.is_available() {
                         self.bit_perfect_enabled = !self.bit_perfect_enabled;
+                        self.dirty.mark_status();
                         // Reset PipeWire state tracking so handle_pipewire_state_change
                         // will properly detect state changes after toggle
                         self.last_play_state = None;
@@ -96,21 +100,24 @@ impl EventHandlers for App {
                                     song_rate,
                                     &supported_rates,
                                 );
-                                let _ = crate::pipewire::set_sample_rate(target_rate);
+                                // Fire-and-forget async call
+                                tokio::spawn(async move {
+                                    let _ =
+                                        crate::pipewire::set_sample_rate_async(target_rate).await;
+                                });
                             }
                         } else {
                             // Disabling - reset PipeWire sample rate to automatic
-                            if crate::pipewire::reset_sample_rate().is_ok() {
-                                // If currently playing, do a quick pause/unpause to force
-                                // PipeWire to renegotiate the sample rate immediately
-                                if let Some(ref status) = self.mpd_status
-                                    && status.state == mpd_client::responses::PlayState::Playing
-                                {
-                                    let _ =
-                                        client.command(mpd_client::commands::SetPause(true)).await;
-                                    let _ =
-                                        client.command(mpd_client::commands::Play::current()).await;
-                                }
+                            // We need to wait for reset before pause/unpause to force renegotiation
+                            let is_playing = self.mpd_status.as_ref().is_some_and(|s| {
+                                s.state == mpd_client::responses::PlayState::Playing
+                            });
+                            if crate::pipewire::reset_sample_rate_async().await.is_ok()
+                                && is_playing
+                            {
+                                // Do a quick pause/unpause to force PipeWire to renegotiate
+                                let _ = client.command(mpd_client::commands::SetPause(true)).await;
+                                let _ = client.command(mpd_client::commands::Play::current()).await;
                             }
                         }
                     }
@@ -131,6 +138,11 @@ impl EventHandlers for App {
             if needs_update {
                 self.force_update = true;
             }
+        }
+
+        // Mark key sequence dirty if awaiting state changed (either started or ended a sequence)
+        if was_awaiting || self.key_binds.is_awaiting_input() {
+            self.dirty.mark_key_sequence();
         }
         Ok(())
     }

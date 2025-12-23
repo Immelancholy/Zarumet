@@ -1,5 +1,6 @@
+use crate::ui::width_cache::WidthCache;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::UnicodeWidthChar;
 
 /// Truncate a string to fit within the given display width, handling Unicode properly
 pub fn truncate_by_width(s: &str, max_width: usize) -> String {
@@ -24,23 +25,55 @@ pub fn truncate_by_width(s: &str, max_width: usize) -> String {
     result
 }
 
-/// Left-align a string within given width, handling Unicode properly
-pub fn left_align(s: &str, width: usize) -> String {
-    let display_width = s.width();
+/// Cached version of truncate_by_width using WidthCache
+pub fn truncate_by_width_cached(cache: &mut WidthCache, s: &str, max_width: usize) -> String {
+    // For short strings, use the original method (cache overhead not worth it)
+    if s.len() < 10 {
+        return truncate_by_width(s, max_width);
+    }
+
+    // Check if we can use the cached width to avoid full traversal
+    if let Some(cached_width) = cache.peek_width(s)
+        && cached_width <= max_width
+    {
+        // String fits, just pad it
+        let mut result = s.to_string();
+        let padding_needed = max_width.saturating_sub(cached_width);
+        result.push_str(&" ".repeat(padding_needed));
+        return result;
+    }
+
+    // Fall back to full calculation with caching
+    let mut result = String::new();
+    let mut current_width = 0;
+
+    for ch in s.chars() {
+        let char_width = ch.width().unwrap_or(0);
+        if current_width + char_width > max_width {
+            break;
+        }
+        result.push(ch);
+        current_width += char_width;
+    }
+
+    // Pad with spaces if needed
+    while current_width < max_width {
+        result.push(' ');
+        current_width += 1;
+    }
+
+    result
+}
+
+/// Cached version of left_align using WidthCache
+pub fn left_align_cached(cache: &mut WidthCache, s: &str, width: usize) -> String {
+    let display_width = cache.get_width(s);
     if display_width >= width {
-        return truncate_by_width(s, width);
+        return truncate_by_width_cached(cache, s, width);
     }
 
     let padding = width - display_width;
     format!("{}{}", s, " ".repeat(padding))
-}
-
-/// Format duration as MM:SS
-pub fn format_duration(duration: std::time::Duration) -> String {
-    let total_seconds = duration.as_secs();
-    let minutes = total_seconds / 60;
-    let seconds = total_seconds % 60;
-    format!("{:02}:{:02}", minutes, seconds)
 }
 
 /// Helper function to center a rect within another rect
@@ -69,6 +102,79 @@ pub struct Protocol {
 pub enum DisplayItem {
     Album(String),                                                 // album name
     Song(String, Option<std::time::Duration>, std::path::PathBuf), // song title, duration, and file path
+}
+
+/// Cache for computed album display lists
+/// Avoids recomputing display lists every frame when artist/expansion state hasn't changed
+#[derive(Debug, Default)]
+pub struct AlbumDisplayCache {
+    /// The artist index this cache was computed for
+    artist_index: Option<usize>,
+    /// Hash of expanded_albums state when cache was computed
+    expanded_count: usize,
+    /// Number of albums in the artist when cached
+    albums_count: usize,
+    /// Cached display items
+    display_items: Vec<DisplayItem>,
+    /// Cached album indices mapping
+    album_indices: Vec<Option<usize>>,
+}
+
+impl AlbumDisplayCache {
+    /// Create a new empty cache
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Get cached display list or compute and cache it
+    /// Returns references to the cached data
+    pub fn get_or_compute(
+        &mut self,
+        artist_index: usize,
+        artist: &crate::song::Artist,
+        expanded_albums: &std::collections::HashSet<(String, String)>,
+    ) -> (&[DisplayItem], &[Option<usize>]) {
+        // Check if cache is still valid
+        let is_valid = self.artist_index == Some(artist_index)
+            && self.expanded_count == expanded_albums.len()
+            && self.albums_count == artist.albums.len();
+
+        if !is_valid {
+            // Recompute and cache
+            let (items, indices) = compute_album_display_list(artist, expanded_albums);
+            self.artist_index = Some(artist_index);
+            self.expanded_count = expanded_albums.len();
+            self.albums_count = artist.albums.len();
+            self.display_items = items;
+            self.album_indices = indices;
+            log::trace!(
+                "AlbumDisplayCache: recomputed for artist {} ({} items)",
+                artist_index,
+                self.display_items.len()
+            );
+        }
+
+        (&self.display_items, &self.album_indices)
+    }
+
+    /// Invalidate the cache (call when expanded_albums changes for current artist)
+    #[allow(dead_code)]
+    pub fn invalidate(&mut self) {
+        self.artist_index = None;
+    }
+
+    /// Check if cache is valid for the given parameters
+    #[allow(dead_code)]
+    pub fn is_valid_for(
+        &self,
+        artist_index: usize,
+        expanded_count: usize,
+        albums_count: usize,
+    ) -> bool {
+        self.artist_index == Some(artist_index)
+            && self.expanded_count == expanded_count
+            && self.albums_count == albums_count
+    }
 }
 
 /// Compute the display list for albums panel considering expanded albums

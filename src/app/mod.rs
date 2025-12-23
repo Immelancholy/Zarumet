@@ -1,6 +1,7 @@
 use crate::binds::KeyBinds;
 use crate::config::Config;
 use crate::song::{LazyLibrary, SongInfo};
+use crate::ui::DirtyFlags;
 use crate::ui::menu::{MenuMode, PanelFocus};
 use mpd_client::responses::PlayState;
 use ratatui::widgets::ListState;
@@ -8,6 +9,7 @@ use ratatui::widgets::ListState;
 // Module declarations
 pub mod cli;
 pub mod constructor;
+pub mod cover_cache;
 pub mod event_handlers;
 pub mod main_loop;
 pub mod mpd_handler;
@@ -65,4 +67,10 @@ pub struct App {
     pub last_play_state: Option<PlayState>,
     /// Last sample rate for PipeWire rate tracking (used to detect song changes)
     pub last_sample_rate: Option<u32>,
+    /// Last known queue/playlist version from MPD (for differential updates)
+    pub last_playlist_version: Option<u32>,
+    /// Last known song ID from MPD (to skip refetching same song)
+    pub last_song_id: Option<mpd_client::commands::SongId>,
+    /// Dirty flags for optimized rendering (tracks which UI regions need redraw)
+    pub dirty: DirtyFlags,
 }

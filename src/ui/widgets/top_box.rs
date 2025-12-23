@@ -5,6 +5,7 @@ use ratatui::{
 };
 
 use crate::config::Config;
+use crate::ui::RENDER_CACHE;
 use crate::ui::menu::MenuMode;
 
 pub fn create_top_box<'a>(
@@ -94,38 +95,41 @@ pub fn create_top_box<'a>(
             Style::default().fg(text_color),
         ));
 
-        // Volume widget
+        // Volume widget using cached strings
         spans.push(Span::raw("  │  "));
 
         // Visual volume display with Nerd Font icons
-        let volume_bars = status.volume / 10;
-        let empty_bars = 10 - volume_bars;
+        let volume = status.volume;
 
         // Volume icon based on level
-        let volume_icon = if status.volume == 0 {
+        let volume_icon = if volume == 0 {
             "󰝟"
-        } else if status.volume < 33 {
+        } else if volume < 33 {
             "󰕿"
-        } else if status.volume < 66 {
+        } else if volume < 66 {
             "󰖀"
         } else {
             "󰕾"
         };
 
+        // Get cached volume bar strings
+        let (filled_str, empty_str, percent_str) = RENDER_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            (
+                cache.volume_bars.filled(volume).to_owned(),
+                cache.volume_bars.empty(volume).to_owned(),
+                cache.volume_bars.percent(volume).to_owned(),
+            )
+        });
+
         spans.push(Span::styled(volume_icon, Style::default().fg(accent_color)));
         spans.push(Span::styled(" ", Style::default().fg(text_color)));
+        spans.push(Span::styled(filled_str, Style::default().fg(volume_color)));
         spans.push(Span::styled(
-            "█".repeat(volume_bars as usize),
-            Style::default().fg(volume_color),
-        ));
-        spans.push(Span::styled(
-            "█".repeat(empty_bars as usize),
+            empty_str,
             Style::default().fg(volume_empty_color),
         ));
-        spans.push(Span::styled(
-            format!(" {}%", status.volume),
-            Style::default().fg(text_color),
-        ));
+        spans.push(Span::styled(percent_str, Style::default().fg(text_color)));
 
         // Menu mode indicator
         spans.push(Span::raw("  │  "));

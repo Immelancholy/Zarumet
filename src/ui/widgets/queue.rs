@@ -7,7 +7,7 @@ use ratatui::{
 
 use crate::config::Config;
 use crate::song::SongInfo;
-use crate::ui::utils::*;
+use crate::ui::RENDER_CACHE;
 
 pub fn create_queue_widget<'a>(
     queue: &[SongInfo],
@@ -31,16 +31,17 @@ pub fn create_queue_widget<'a>(
         vec![]
     } else {
         // First, determine the maximum number width needed for proper alignment
-        let max_num_width = queue
-            .iter()
-            .enumerate()
-            .take(1000) // Reasonable limit for calculation
-            .map(|(i, _)| {
-                let num_str = format!("{}. ", i + 1);
-                unicode_width::UnicodeWidthStr::width(&num_str as &str)
-            })
-            .max()
-            .unwrap_or(3); // fallback to 3 for single digit
+        // Use cached position strings for width calculation
+        let max_num_width = RENDER_CACHE.with(|cache| {
+            let cache = cache.borrow();
+            queue
+                .iter()
+                .enumerate()
+                .take(1000) // Reasonable limit for calculation
+                .map(|(i, _)| unicode_width::UnicodeWidthStr::width(cache.queue_positions.get(i)))
+                .max()
+                .unwrap_or(3) // fallback to 3 for single digit
+        });
 
         queue
             .iter()
@@ -55,22 +56,37 @@ pub fn create_queue_widget<'a>(
                 // Split remaining width into 3 equal parts for title, artist, album
                 let field_width = remaining_width / 3;
 
-                // Format duration if available
-                let duration_str = match song.duration {
+                // Format duration if available using cache
+                let duration_str = RENDER_CACHE.with(|cache| match song.duration {
                     Some(duration) => {
-                        let total_seconds = duration.as_secs();
-                        let minutes = total_seconds / 60;
-                        let seconds = total_seconds % 60;
-                        format!("{}:{:02}", minutes, seconds)
+                        let mut cache = cache.borrow_mut();
+                        cache.durations.format_short(duration.as_secs()).to_owned()
                     }
-                    None => " (--:--)".to_string(),
-                };
+                    None => " (--:--)".to_owned(),
+                });
 
-                // Truncate each field to its allocated width using Unicode-aware width
+                // Truncate each field to its allocated width using Unicode-aware width with caching
                 let field_width_max = field_width.max(8);
-                let title = left_align(&song.title, field_width_max);
-                let artist = left_align(&song.artist, field_width_max);
-                let album = left_align(&song.album, field_width_max);
+                let (title, artist, album) = crate::ui::WIDTH_CACHE.with(|cache| {
+                    let mut cache = cache.borrow_mut();
+                    (
+                        crate::ui::utils::left_align_cached(
+                            &mut cache,
+                            &song.title,
+                            field_width_max,
+                        ),
+                        crate::ui::utils::left_align_cached(
+                            &mut cache,
+                            &song.artist,
+                            field_width_max,
+                        ),
+                        crate::ui::utils::left_align_cached(
+                            &mut cache,
+                            &song.album,
+                            field_width_max,
+                        ),
+                    )
+                });
 
                 // Check if this is the currently playing song
                 let is_currently_playing = current_song
@@ -121,8 +137,11 @@ pub fn create_queue_widget<'a>(
                     pos_color = pos_color.bold().italic();
                 }
 
-                // Create spans with appropriate styling
-                let num_str = format!("{}. ", i + 1);
+                // Create spans with appropriate styling - use cached position string
+                let num_str = RENDER_CACHE.with(|cache| {
+                    let cache = cache.borrow();
+                    cache.queue_positions.get(i).to_owned()
+                });
                 let padded_num_str = format!("{:<width$}", num_str, width = max_num_width);
                 let mut spans = vec![Span::styled(padded_num_str, pos_color)];
 
@@ -138,20 +157,23 @@ pub fn create_queue_widget<'a>(
                 if is_selected {
                     // Calculate the current line width by reconstructing the line content
                     let line_content = format!(
-                        "{}. {} ║ {} ║ {}{}",
-                        i + 1,
+                        "{} ║ {} ║ {}{}",
                         title.clone(),
                         artist.clone(),
                         album.clone(),
                         duration_str.clone()
                     );
                     let current_width =
-                        unicode_width::UnicodeWidthStr::width(&line_content as &str);
+                        unicode_width::UnicodeWidthStr::width(&line_content as &str)
+                            + max_num_width;
                     let remaining_width = area.width.saturating_sub(current_width as u16) as usize;
 
                     if remaining_width > 0 {
                         // Add spaces to fill the remaining width with the selected background color
-                        spans.push(Span::styled(" ".repeat(remaining_width), border_color));
+                        let padding = RENDER_CACHE.with(|cache| {
+                            cache.borrow().fillers.spaces(remaining_width).to_owned()
+                        });
+                        spans.push(Span::styled(padding, border_color));
                     }
                 }
 

@@ -36,6 +36,7 @@ impl Navigation for App {
                                     .select(Some(self.queue.len().saturating_sub(1)));
                             }
                             self.selected_queue_index = self.queue_list_state.selected();
+                            self.dirty.mark_queue_selection();
                         }
                     }
                     MenuMode::Artists => {
@@ -58,6 +59,7 @@ impl Navigation for App {
                                 self.queue_list_state.select(Some(0));
                             }
                             self.selected_queue_index = self.queue_list_state.selected();
+                            self.dirty.mark_queue_selection();
                         }
                     }
                     MenuMode::Artists => {
@@ -111,6 +113,7 @@ impl Navigation for App {
                         // Update selected index to follow the moved song
                         self.queue_list_state.select(Some(selected - 1));
                         self.selected_queue_index = self.queue_list_state.selected();
+                        self.dirty.mark_queue();
                     }
                 }
             }
@@ -130,6 +133,7 @@ impl Navigation for App {
                         // Update selected index to follow the moved song
                         self.queue_list_state.select(Some(selected + 1));
                         self.selected_queue_index = self.queue_list_state.selected();
+                        self.dirty.mark_queue();
                     }
                 }
             }
@@ -154,6 +158,7 @@ impl Navigation for App {
                                 .select(Some(self.queue.len().saturating_sub(1)));
                         }
                         self.selected_queue_index = self.queue_list_state.selected();
+                        self.dirty.mark_queue();
                     }
                 }
             }
@@ -251,6 +256,9 @@ impl Navigation for App {
                         self.album_list_state.select(None);
                         self.album_display_list_state.select(None);
                         self.expanded_albums.clear();
+
+                        // Mark library as dirty for re-render
+                        self.dirty.mark_library();
                     }
                     Err(e) => {
                         error!("Failed to refresh library: {}", e);
@@ -265,6 +273,7 @@ impl Navigation for App {
                     MenuMode::Queue => {}
                 }
                 self.menu_mode = MenuMode::Queue;
+                self.dirty.mark_menu_mode();
                 // Queue mode doesn't use panel focus
             }
             MPDAction::SwitchToArtists => {
@@ -277,6 +286,7 @@ impl Navigation for App {
                 self.menu_mode = MenuMode::Artists;
                 // Restore cached panel focus for Artists mode
                 self.panel_focus = self.artists_panel_focus.clone();
+                self.dirty.mark_menu_mode();
             }
             MPDAction::SwitchToAlbums => {
                 // Save current panel focus before leaving
@@ -288,6 +298,7 @@ impl Navigation for App {
                 self.menu_mode = MenuMode::Albums;
                 // Restore cached panel focus for Albums mode
                 self.panel_focus = self.albums_panel_focus.clone();
+                self.dirty.mark_menu_mode();
 
                 self.preload_albums_for_view(client).await;
             }
@@ -300,12 +311,14 @@ impl Navigation for App {
                             }
                             PanelFocus::Albums => {
                                 self.panel_focus = PanelFocus::Artists;
+                                self.dirty.mark_panel_focus();
                                 // Preserve album selection when switching to artists panel
                                 // (user can return to the same position with SwitchPanelRight)
                             }
                             _ => {
                                 // Invalid panel focus for Artists mode, reset to Artists
                                 self.panel_focus = PanelFocus::Artists;
+                                self.dirty.mark_panel_focus();
                             }
                         }
                     }
@@ -316,10 +329,12 @@ impl Navigation for App {
                             }
                             PanelFocus::AlbumTracks => {
                                 self.panel_focus = PanelFocus::AlbumList;
+                                self.dirty.mark_panel_focus();
                             }
                             _ => {
                                 // Invalid panel focus for Albums mode, reset to AlbumList
                                 self.panel_focus = PanelFocus::AlbumList;
+                                self.dirty.mark_panel_focus();
                             }
                         }
                     }
@@ -334,6 +349,7 @@ impl Navigation for App {
                         match self.panel_focus {
                             PanelFocus::Artists => {
                                 self.panel_focus = PanelFocus::Albums;
+                                self.dirty.mark_panel_focus();
                                 // Initialize album selection when switching to albums panel
                                 // only if not already set (preserve position on return)
                                 if let Some(ref library) = self.library
@@ -357,6 +373,7 @@ impl Navigation for App {
                             _ => {
                                 // Invalid panel focus for Artists mode, reset to Artists
                                 self.panel_focus = PanelFocus::Artists;
+                                self.dirty.mark_panel_focus();
                             }
                         }
                     }
@@ -364,6 +381,7 @@ impl Navigation for App {
                         match self.panel_focus {
                             PanelFocus::AlbumList => {
                                 self.panel_focus = PanelFocus::AlbumTracks;
+                                self.dirty.mark_panel_focus();
                                 // Initialize track selection when switching to tracks panel
                                 if self.album_tracks_list_state.selected().is_none() {
                                     self.album_tracks_list_state.select(Some(0));
@@ -372,10 +390,12 @@ impl Navigation for App {
                             PanelFocus::AlbumTracks => {
                                 // Already at rightmost panel
                                 self.panel_focus = PanelFocus::AlbumList;
+                                self.dirty.mark_panel_focus();
                             }
                             _ => {
                                 // Invalid panel focus for Albums mode, reset to AlbumList
                                 self.panel_focus = PanelFocus::AlbumList;
+                                self.dirty.mark_panel_focus();
                             }
                         }
                     }
@@ -442,6 +462,7 @@ impl Navigation for App {
                         self.panel_focus = self.artists_panel_focus.clone();
                     }
                 };
+                self.dirty.mark_menu_mode();
             }
             MPDAction::CycleModeRight => {
                 // Cycle modes right: Queue -> Artists -> Albums -> Queue
@@ -466,6 +487,7 @@ impl Navigation for App {
                         self.menu_mode = MenuMode::Queue;
                     }
                 };
+                self.dirty.mark_menu_mode();
             }
             MPDAction::ScrollUp | MPDAction::ScrollDown => {
                 self.handle_scroll(action, client).await;
@@ -780,6 +802,8 @@ impl App {
             }
             _ => {}
         }
+        // Mark library dirty for any panel navigation
+        self.dirty.mark_library();
     }
 
     /// Handle scrolling by 15 items at a time
@@ -1000,6 +1024,11 @@ impl App {
                 }
             }
         }
+        // Mark appropriate dirty flags for scrolling
+        match self.menu_mode {
+            MenuMode::Queue => self.dirty.mark_queue_selection(),
+            MenuMode::Artists | MenuMode::Albums => self.dirty.mark_library(),
+        }
     }
 
     /// Handle jumping to the top or bottom of the current list
@@ -1112,6 +1141,11 @@ impl App {
                 }
             }
         }
+        // Mark appropriate dirty flags for go to edge
+        match self.menu_mode {
+            MenuMode::Queue => self.dirty.mark_queue_selection(),
+            MenuMode::Artists | MenuMode::Albums => self.dirty.mark_library(),
+        }
     }
 
     /// Handle album expansion toggle
@@ -1154,6 +1188,8 @@ impl App {
                 }
             }
         }
+        // Mark library dirty for album expansion changes
+        self.dirty.mark_library();
         Ok(())
     }
 

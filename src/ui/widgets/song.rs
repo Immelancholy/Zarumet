@@ -6,6 +6,7 @@ use ratatui::{
 
 use crate::config::Config;
 use crate::song::SongInfo;
+use crate::ui::RENDER_CACHE;
 
 pub fn create_now_playing_widget<'a>(
     current_song: &'a Option<SongInfo>,
@@ -66,14 +67,19 @@ pub fn create_format_widget<'a>(
                     let sample_rate_khz = sample_rate as f32 / 1000.0;
 
                     // Extract file extension from the current song's file path
+                    // Use cached uppercase conversion to avoid allocation each frame
                     let file_type = if let Some(song) = current_song {
-                        song.file_path
+                        let ext = song
+                            .file_path
                             .extension()
                             .and_then(|ext| ext.to_str())
-                            .unwrap_or("unknown")
-                            .to_uppercase()
+                            .unwrap_or("unknown");
+                        RENDER_CACHE.with(|cache| {
+                            let mut cache = cache.borrow_mut();
+                            cache.file_types.get_uppercase(ext).to_owned()
+                        })
                     } else {
-                        "unknown".to_string()
+                        "UNKNOWN".to_string()
                     };
 
                     // Use yellow accent for consistency with sequence display

@@ -8,6 +8,7 @@ use ratatui::{
 
 use crate::config::Config;
 use crate::song::{LazyLibrary, SongInfo};
+use crate::ui::RENDER_CACHE;
 use crate::ui::menu::{MenuMode, PanelFocus};
 use crate::ui::widgets::{
     create_empty_box, create_format_widget, create_left_box_bottom, create_song_widget,
@@ -92,11 +93,14 @@ pub fn render_albums_mode(
 
                 // Create display text with album name and artist
                 let display_text = format!("{} - {}", album.name, artist_name);
-                let truncated_text = if display_text.width() > available_width {
-                    crate::ui::utils::truncate_by_width(&display_text, available_width)
-                } else {
-                    display_text
-                };
+                let truncated_text = crate::ui::WIDTH_CACHE.with(|cache| {
+                    let mut cache = cache.borrow_mut();
+                    crate::ui::utils::truncate_by_width_cached(
+                        &mut cache,
+                        &display_text,
+                        available_width,
+                    )
+                });
 
                 ratatui::widgets::ListItem::new(vec![Line::from(truncated_text)])
             })
@@ -136,15 +140,13 @@ pub fn render_albums_mode(
                     .tracks
                     .iter()
                     .map(|track| {
-                        let track_duration_str = match track.duration {
+                        let track_duration_str = RENDER_CACHE.with(|cache| match track.duration {
                             Some(duration) => {
-                                let total_seconds = duration.as_secs();
-                                let minutes = total_seconds / 60;
-                                let seconds = total_seconds % 60;
-                                format!("  {}:{:02}", minutes, seconds)
+                                let mut cache = cache.borrow_mut();
+                                format!("  {}", cache.durations.format_short(duration.as_secs()))
                             }
-                            None => "  --:--".to_string(),
-                        };
+                            None => "  --:--".to_owned(),
+                        });
 
                         let available_width =
                             left_horizontal_chunks[1].width.saturating_sub(4) as usize;
@@ -153,15 +155,24 @@ pub fn render_albums_mode(
                             available_width.saturating_sub(track_duration_width + 3);
 
                         // Truncate track title if needed to keep duration aligned
-                        let truncated_track_title = if track.title.width() > max_track_title_width {
-                            crate::ui::utils::truncate_by_width(&track.title, max_track_title_width)
-                        } else {
-                            track.title.clone()
-                        };
+                        let truncated_track_title = crate::ui::WIDTH_CACHE.with(|cache| {
+                            let mut cache = cache.borrow_mut();
+                            crate::ui::utils::truncate_by_width_cached(
+                                &mut cache,
+                                &track.title,
+                                max_track_title_width,
+                            )
+                        });
 
                         let filler_width =
                             max_track_title_width.saturating_sub(truncated_track_title.width());
-                        let filler = " ".repeat(filler_width.max(0));
+                        let filler = RENDER_CACHE.with(|cache| {
+                            cache
+                                .borrow()
+                                .fillers
+                                .spaces(filler_width.max(0))
+                                .to_owned()
+                        });
 
                         let track_text = format!("   {}{}", truncated_track_title, filler,);
                         let mut spans = vec![Span::styled(
