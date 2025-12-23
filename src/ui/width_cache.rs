@@ -419,9 +419,9 @@ mod tests {
             "Sigur Rós",
             "Ólafur Arnalds",
             "Café Tacvba",
-            "Мумий Тролль", // Russian
-            "久石譲", // Joe Hisaishi
-            "ישראל קטורזה", // Hebrew
+            "Мумий Тролль",    // Russian
+            "久石譲",          // Joe Hisaishi
+            "ישראל קטורזה",    // Hebrew
             "محمد عبد الوهاب", // Arabic
             "🎵 Electronic Artist 🎶",
         ];
@@ -504,7 +504,10 @@ mod tests {
         let hit_rate = cache.hit_rate();
 
         println!("\nLarge Library Stress Test Results:");
-        println!("  Simulated: 5000 songs, {} visible items, {} frames", visible_items, frame_count);
+        println!(
+            "  Simulated: 5000 songs, {} visible items, {} frames",
+            visible_items, frame_count
+        );
         println!("  Uncached: {:?}", uncached_duration);
         println!("  Cached:   {:?}", cached_duration);
         println!("  Speedup:  {:.2}x", improvement);
