@@ -37,6 +37,9 @@ impl EventHandlers for App {
             return Ok(());
         }
 
+        // Track whether we were awaiting input before handling the key
+        let was_awaiting = self.key_binds.is_awaiting_input();
+
         if let Some(action) = self
             .key_binds
             .handle_key(key, &self.menu_mode, &self.panel_focus)
@@ -134,6 +137,11 @@ impl EventHandlers for App {
             if needs_update {
                 self.force_update = true;
             }
+        }
+
+        // Mark key sequence dirty if awaiting state changed (either started or ended a sequence)
+        if was_awaiting || self.key_binds.is_awaiting_input() {
+            self.dirty.mark_key_sequence();
         }
         Ok(())
     }

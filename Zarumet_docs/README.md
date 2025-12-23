@@ -4,6 +4,8 @@ This documentation covers the middle-to-advanced performance optimizations and b
 
 ## Document Index
 
+### Performance Optimizations
+
 1. **[Unicode Width Caching](./01_unicode_width_caching.md)** - LRU caching for expensive Unicode width calculations
 2. **[Render Caching & String Interning](./02_render_caching.md)** - Pre-computed display strings and string deduplication
 3. **[Dirty Region Rendering](./03_dirty_region_rendering.md)** - Conditional rendering based on state changes
@@ -12,6 +14,13 @@ This documentation covers the middle-to-advanced performance optimizations and b
 6. **[Thread-Local vs Shared State](./06_thread_local_vs_shared.md)** - Choosing the right synchronization primitive
 7. **[MPD Protocol Optimization](./07_mpd_protocol_optimization.md)** - Reducing network round-trips
 8. **[Memory-Efficient Data Structures](./08_memory_efficient_structures.md)** - Choosing appropriate collections
+
+### Features & Architecture
+
+9. **[Sequential Key Bindings](./09_sequential_key_bindings.md)** - Vim-style multi-key command sequences
+10. **[Configuration Validation](./10_configuration_validation.md)** - Fuzzy matching for "did you mean?" suggestions
+11. **[Terminal Graphics Protocols](./11_terminal_graphics_protocols.md)** - Cover art rendering with Kitty/Sixel/iTerm2
+12. **[Logging Architecture](./12_logging_architecture.md)** - Structured file logging with rotation
 
 ## Architecture Overview
 

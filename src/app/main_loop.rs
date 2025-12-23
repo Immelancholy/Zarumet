@@ -219,8 +219,13 @@ impl AppMainLoop for App {
                 self.dirty.clear_all();
             }
 
-            // Update key bindings for timeouts
+            // Update key bindings for timeouts and mark dirty if state changed
+            let was_awaiting = self.key_binds.is_awaiting_input();
             self.key_binds.update();
+            if was_awaiting && !self.key_binds.is_awaiting_input() {
+                // Timeout occurred - need to clear the sequence indicator
+                self.dirty.mark_key_sequence();
+            }
 
             // Log width cache statistics periodically
             static CACHE_LOG_COUNTER: AtomicU64 = AtomicU64::new(0);

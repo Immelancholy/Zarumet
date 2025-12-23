@@ -35,6 +35,8 @@ pub struct DirtyFlags {
     terminal_size: Cell<bool>,
     /// Force full redraw (initial render, etc.)
     force_full: Cell<bool>,
+    /// Key sequence indicator needs update
+    key_sequence: Cell<bool>,
     /// Last known terminal width
     last_width: Cell<u16>,
     /// Last known terminal height
@@ -57,6 +59,7 @@ impl DirtyFlags {
             panel_focus: Cell::new(true),
             terminal_size: Cell::new(true),
             force_full: Cell::new(true),
+            key_sequence: Cell::new(false),
             last_width: Cell::new(0),
             last_height: Cell::new(0),
         }
@@ -122,6 +125,12 @@ impl DirtyFlags {
     #[inline]
     pub fn mark_full_redraw(&self) {
         self.force_full.set(true);
+    }
+
+    /// Mark key sequence indicator as dirty
+    #[inline]
+    pub fn mark_key_sequence(&self) {
+        self.key_sequence.set(true);
     }
 
     /// Check and update terminal size, marking dirty if changed
@@ -204,6 +213,7 @@ impl DirtyFlags {
             || self.library.get()
             || self.menu_mode.get()
             || self.panel_focus.get()
+            || self.key_sequence.get()
     }
 
     /// Check if a full redraw is needed (terminal resize, mode change, etc.)
@@ -228,6 +238,7 @@ impl DirtyFlags {
         self.panel_focus.set(false);
         self.terminal_size.set(false);
         self.force_full.set(false);
+        self.key_sequence.set(false);
     }
 
     /// Clear only progress dirty flag (for high-frequency progress updates)
