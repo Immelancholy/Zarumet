@@ -34,7 +34,7 @@ This documentation covers the middle-to-advanced performance optimizations and b
 │         ▼                ▼                     ▼               │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │                    Dirty Flags                          │   │
-│  │  queue | status | progress | cover_art | library | ...  │   │
+│  │  queue | status | progress | cover_art | key_sequence   │   │
 │  └─────────────────────────┬───────────────────────────────┘   │
 │                            │                                   │
 │                            ▼                                   │

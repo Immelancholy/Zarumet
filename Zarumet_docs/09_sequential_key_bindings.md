@@ -390,8 +390,69 @@ fn test_sequence_timeout() {
 }
 ```
 
+## Dirty Flag Integration
+
+The UI uses dirty flags to know when to re-render (see `03_dirty_region_rendering.md`). The key sequence indicator requires special handling to ensure it appears/disappears promptly.
+
+### Marking Dirty on Key Press
+
+```rust
+// In event_handlers.rs - on_key_event()
+let was_awaiting = self.key_binds.is_awaiting_input();
+
+if let Some(action) = self.key_binds.handle_key(key, &self.menu_mode, &self.panel_focus) {
+    // ... handle action
+}
+
+// Mark key sequence dirty if awaiting state changed
+if was_awaiting || self.key_binds.is_awaiting_input() {
+    self.dirty.mark_key_sequence();
+}
+```
+
+This triggers a re-render when:
+- Sequence **starts**: `was_awaiting=false`, `is_awaiting=true` → show indicator
+- Sequence **completes**: `was_awaiting=true`, `is_awaiting=false` → hide indicator  
+- Sequence **continues**: `was_awaiting=true`, `is_awaiting=true` → update indicator
+
+### Marking Dirty on Timeout
+
+```rust
+// In main_loop.rs - main loop iteration
+let was_awaiting = self.key_binds.is_awaiting_input();
+self.key_binds.update();
+if was_awaiting && !self.key_binds.is_awaiting_input() {
+    // Timeout occurred - need to clear the sequence indicator
+    self.dirty.mark_key_sequence();
+}
+```
+
+Without this, the indicator would remain visible until the next unrelated UI update.
+
+### The Dirty Flag
+
+```rust
+// In dirty.rs
+pub struct DirtyFlags {
+    // ... other flags
+    key_sequence: Cell<bool>,
+}
+
+impl DirtyFlags {
+    pub fn mark_key_sequence(&self) {
+        self.key_sequence.set(true);
+    }
+    
+    pub fn any_dirty(&self) -> bool {
+        // ... || self.key_sequence.get()
+    }
+}
+```
+
 ## Related Files
 
 - `src/binds.rs` - KeyBinds state machine
 - `src/config.rs` - Binding configuration and parsing
 - `src/app/event_handlers.rs` - Integration with event loop
+- `src/app/main_loop.rs` - Timeout handling and dirty flag marking
+- `src/ui/dirty.rs` - Dirty flag definitions

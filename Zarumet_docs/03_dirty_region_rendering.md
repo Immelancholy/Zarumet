@@ -42,22 +42,26 @@ Track which UI regions have changed since last render:
 ```rust
 pub struct DirtyFlags {
     // Individual region flags
-    queue: bool,
-    queue_selection: bool,
-    current_song: bool,
-    status: bool,
-    progress: bool,
-    cover_art: bool,
-    library: bool,
-    menu_mode: bool,
-    panel_focus: bool,
+    queue: Cell<bool>,
+    queue_selection: Cell<bool>,
+    current_song: Cell<bool>,
+    status: Cell<bool>,
+    progress: Cell<bool>,
+    cover_art: Cell<bool>,
+    library: Cell<bool>,
+    menu_mode: Cell<bool>,
+    panel_focus: Cell<bool>,
+    key_sequence: Cell<bool>,  // For sequential key binding indicator
     
     // Terminal state
-    last_width: u16,
-    last_height: u16,
-    force_full: bool,
+    terminal_size: Cell<bool>,
+    force_full: Cell<bool>,
+    last_width: Cell<u16>,
+    last_height: Cell<u16>,
 }
 ```
+
+Note: Uses `Cell<bool>` for interior mutability—allows marking dirty through shared references without requiring `&mut self`.
 
 ### Flag Granularity
 
@@ -65,7 +69,7 @@ Choose granularity based on UI structure:
 
 ```
 ┌────────────────────────────────────────────────┐
-│ Status Bar                    [status]         │
+│ Status Bar              [status] Seq: g [key_sequence]│
 ├──────────────────────┬─────────────────────────┤
 │                      │                         │
 │  Cover Art           │  Queue List             │
@@ -445,3 +449,8 @@ mod tests {
 - `src/app/main_loop.rs` - Conditional render loop
 - `src/app/navigation.rs` - User input marking
 - `src/app/mpd_updates.rs` - Data update marking
+- `src/app/event_handlers.rs` - Key sequence dirty marking
+
+## See Also
+
+- `09_sequential_key_bindings.md` - Details on `key_sequence` flag usage for vim-style bindings
