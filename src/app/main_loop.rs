@@ -375,6 +375,9 @@ impl AppMainLoop for App {
                                 song.update_time_info(new_status.elapsed, new_status.duration);
                             }
                             self.mpd_status = Some(new_status);
+
+                            // Mark progress as dirty to trigger redraw
+                            self.dirty.mark_progress();
                         }
                     }
                 }
