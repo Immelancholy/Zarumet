@@ -389,7 +389,11 @@ impl LazyLibrary {
 
         // Fetch ALL songs in the library at once using find with a filter that matches everything
         // This is faster than per-artist queries and more reliable than listallinfo
-        // MPD command: find "(file != '')"
+        // Fetch ALL songs in the library at once using a filter that matches every song
+        // This is faster than per-artist queries and more reliable than listallinfo.
+        // We do this by requiring that the "file" tag exists:
+        //   Filter::tag_exists(Tag::Other("file".into()))
+        // (Conceptually similar to a raw MPD query like: find "(file != '')")
         let filter = Filter::tag_exists(Tag::Other("file".into()));
         let all_songs = client
             .command(commands::Find::new(filter))
