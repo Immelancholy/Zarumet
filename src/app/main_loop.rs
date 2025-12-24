@@ -371,14 +371,6 @@ impl AppMainLoop for App {
                                                 // Mark library as dirty for re-render
                                                 self.dirty.mark_library();
 
-                                                // Show success message only if user initiated the update
-                                                if self.update_in_progress {
-                                                    self.set_status_message(StatusMessage {
-                                                        text: String::new(),
-                                                        created_at: std::time::Instant::now(),
-                                                        message_type: MessageType::Success,
-                                                    });
-                                                }
                                             }
                                             Err(e) => {
                                                 log::error!("Failed to refresh library: {}", e);
@@ -414,20 +406,11 @@ impl AppMainLoop for App {
                                                     if let Some(ref mut library) = self.library {
                                                         if let Some(new_idx) = library.artists.iter().position(|a| &a.name == name) {
                                                             self.artist_list_state.select(Some(new_idx));
-                                                            if let Err(e) = library.load_artist(&client, new_idx).await {
-                                                                log::warn!("Failed to load artist after refresh: {}", e);
-                                                            }
                                                             // Artist still exists, keep album selections
                                                         } else {
                                                             // Artist no longer exists, select first and clear album selections
                                                             if !library.artists.is_empty() {
                                                                 self.artist_list_state.select(Some(0));
-                                                                if let Err(e) = library.load_artist(&client, 0).await {
-                                                                    log::warn!(
-                                                                        "Failed to load first artist after refresh: {}",
-                                                                        e
-                                                                    );
-                                                                }
                                                             }
                                                             self.album_list_state.select(None);
                                                             self.album_display_list_state.select(None);
