@@ -47,8 +47,17 @@ fn render_top_right_status(
 
 fn get_status_message_text(msg: &crate::app::StatusMessage) -> Option<String> {
     let text = match msg.message_type {
-        MessageType::InProgress => "Updating...",
-        MessageType::Success => "Updated!",
+        MessageType::InProgress => {
+            // Animate dots: "Updating." → "Updating.." → "Updating..." → repeat
+            let elapsed_ms = msg.created_at.elapsed().as_millis() as u64;
+            let frame = (elapsed_ms / 500) % 3; // Cycle through 0, 1, 2
+            match frame {
+                0 => "Updating.  ",
+                1 => "Updating.. ",
+                _ => "Updating...",
+            }
+        }
+        MessageType::Success => "Updated!  ",
         MessageType::Error => &msg.text,
     };
     Some(text.to_string())

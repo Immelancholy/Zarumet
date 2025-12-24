@@ -5,6 +5,7 @@ use crate::config::Config;
 use crate::ui::DirtyFlags;
 use crate::ui::menu::{MenuMode, PanelFocus};
 use ratatui::widgets::ListState;
+use std::cell::Cell;
 use std::path::PathBuf;
 
 /// Trait for App construction
@@ -137,6 +138,8 @@ impl App {
             pending_artist_index: None,
             status_message: None,
             update_in_progress: false,
+            last_animation_frame: Cell::new(0),
+            user_initiated_reload: false,
         })
     }
 }

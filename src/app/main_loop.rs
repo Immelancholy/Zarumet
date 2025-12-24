@@ -231,6 +231,7 @@ impl AppMainLoop for App {
             }
 
             self.check_status_message_expiry();
+            self.check_animation_updates();
 
             // Log width cache statistics periodically
             static CACHE_LOG_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -308,6 +309,18 @@ impl AppMainLoop for App {
                                 }
                                 Subsystem::Update => {
                                     if self.library_reload_pending {
+                                        let was_user_initiated = self.user_initiated_reload;
+                                        self.update_in_progress = false;  // Allow new refreshes
+                                        self.user_initiated_reload = false;  // Clear this flag
+
+                                        // Show success message only if user initiated the update
+                                        if was_user_initiated {  // ← Changed from self.update_in_progress
+                                            self.set_status_message(StatusMessage {
+                                                text: String::new(),
+                                                created_at: std::time::Instant::now(),
+                                                message_type: MessageType::Success,
+                                            });
+                                        }
                                         log::info!("Database update completed, reloading library...");
 
                                         // Now reload the music library from MPD
@@ -371,7 +384,7 @@ impl AppMainLoop for App {
                                                 log::error!("Failed to refresh library: {}", e);
 
                                                 // Show error only if user initiated the update
-                                                if self.update_in_progress {
+                                                if was_user_initiated {  // ← Changed from self.update_in_progress
                                                     self.set_status_message(StatusMessage {
                                                         text: e.to_string(),
                                                         created_at: std::time::Instant::now(),

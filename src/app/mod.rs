@@ -5,6 +5,7 @@ use crate::ui::DirtyFlags;
 use crate::ui::menu::{MenuMode, PanelFocus};
 use mpd_client::responses::PlayState;
 use ratatui::widgets::ListState;
+use std::cell::Cell;
 
 // Module declarations
 pub mod cli;
@@ -95,6 +96,10 @@ pub struct App {
     pub status_message: Option<StatusMessage>,
     /// Track if update is in progress to avoid overlapping updates
     pub update_in_progress: bool,
+    /// Track last rendered animation frame for status messages
+    pub last_animation_frame: Cell<u64>,
+    /// Track if current reload was user-initiated (for status messages)
+    pub user_initiated_reload: bool,
 }
 
 impl App {
@@ -111,11 +116,24 @@ impl App {
     pub fn check_status_message_expiry(&mut self) {
         if let Some(msg) = &self.status_message {
             let duration = match msg.message_type {
-                MessageType::InProgress => std::time::Duration::from_secs(300), // Longer for in-progress
-                _ => std::time::Duration::from_secs(5), // Shorter for success/error
+                _ => std::time::Duration::from_secs(2),
             };
             if msg.created_at.elapsed() >= duration {
                 self.clear_status_message();
+            }
+        }
+    }
+
+    pub fn check_animation_updates(&mut self) {
+        if let Some(msg) = &self.status_message {
+            if matches!(msg.message_type, MessageType::InProgress) {
+                let elapsed_ms = msg.created_at.elapsed().as_millis() as u64;
+                let current_frame = (elapsed_ms / 500) % 3;
+
+                if self.last_animation_frame.get() != current_frame {
+                    self.last_animation_frame.set(current_frame);
+                    self.dirty.mark_status_message();
+                }
             }
         }
     }

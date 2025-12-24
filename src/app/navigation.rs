@@ -170,6 +170,7 @@ impl Navigation for App {
                     return Ok(());
                 }
 
+                self.user_initiated_reload = true; // Set this when user triggers refresh
                 // Trigger MPD database update (equivalent to `mpc update`)
                 log::info!("Updating MPD database...");
                 match client.command(commands::Update::new()).await {
