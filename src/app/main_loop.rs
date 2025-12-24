@@ -399,7 +399,58 @@ impl AppMainLoop for App {
                                         self.library_reload_pending = false;
                                         self.pending_artist_index = None;
                                     } else {
-                                        log::debug!("Database update completed (external), ignoring");
+                                        log::debug!("Database update completed (external), reloading silently...");
+
+                                        // Get current artist name (if any) to try to restore after reload
+                                        let current_artist_name = self.artist_list_state.selected()
+                                            .and_then(|idx| self.library.as_ref()?.artists.get(idx).map(|a| a.name.clone()));
+
+                                        match crate::song::LazyLibrary::init(&client).await {
+                                            Ok(new_library) => {
+                                                self.library = Some(new_library);
+
+                                                // Restore artist selection (find by name to handle removals/renames)
+                                                if let Some(ref name) = current_artist_name {
+                                                    if let Some(ref mut library) = self.library {
+                                                        if let Some(new_idx) = library.artists.iter().position(|a| &a.name == name) {
+                                                            self.artist_list_state.select(Some(new_idx));
+                                                            if let Err(e) = library.load_artist(&client, new_idx).await {
+                                                                log::warn!("Failed to load artist after refresh: {}", e);
+                                                            }
+                                                            // Artist still exists, keep album selections
+                                                        } else {
+                                                            // Artist no longer exists, select first and clear album selections
+                                                            if !library.artists.is_empty() {
+                                                                self.artist_list_state.select(Some(0));
+                                                                if let Err(e) = library.load_artist(&client, 0).await {
+                                                                    log::warn!(
+                                                                        "Failed to load first artist after refresh: {}",
+                                                                        e
+                                                                    );
+                                                                }
+                                                            }
+                                                            self.album_list_state.select(None);
+                                                            self.album_display_list_state.select(None);
+                                                            self.expanded_albums.clear();
+                                                        }
+                                                    }
+                                                } else if let Some(ref mut library) = self.library {
+                                                    // No artist was selected, select first
+                                                    if !library.artists.is_empty() {
+                                                        self.artist_list_state.select(Some(0));
+                                                        if let Err(e) = library.load_artist(&client, 0).await {
+                                                            log::warn!("Failed to load first artist after refresh: {}", e);
+                                                        }
+                                                    }
+                                                }
+
+                                                // Mark library as dirty for re-render
+                                                self.dirty.mark_library();
+                                            }
+                                            Err(e) => {
+                                                log::error!("Failed to reload library after external update: {}", e);
+                                            }
+                                        }
                                     }
                                 }
                                 // Database, output, sticker, etc. - typically don't affect current playback
