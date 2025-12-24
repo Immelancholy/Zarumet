@@ -115,9 +115,7 @@ impl App {
 
     pub fn check_status_message_expiry(&mut self) {
         if let Some(msg) = &self.status_message {
-            let duration = match msg.message_type {
-                _ => std::time::Duration::from_secs(2),
-            };
+            let duration = std::time::Duration::from_secs(2);
             if msg.created_at.elapsed() >= duration {
                 self.clear_status_message();
             }
@@ -125,8 +123,8 @@ impl App {
     }
 
     pub fn check_animation_updates(&mut self) {
-        if let Some(msg) = &self.status_message {
-            if matches!(msg.message_type, MessageType::InProgress) {
+        if let Some(msg) = &self.status_message
+            && matches!(msg.message_type, MessageType::InProgress) {
                 let elapsed_ms = msg.created_at.elapsed().as_millis() as u64;
                 let current_frame = (elapsed_ms / 500) % 3;
 
@@ -135,6 +133,5 @@ impl App {
                     self.dirty.mark_status_message();
                 }
             }
-        }
     }
 }
