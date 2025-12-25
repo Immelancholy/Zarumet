@@ -3,42 +3,37 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
-use mpd_client::Client;
 use mpd_client::client::{ConnectionEvent, Subsystem};
 use mpd_client::responses::PlayState;
 use ratatui::DefaultTerminal;
 use ratatui_image::picker::Picker;
-use tokio::net::TcpStream;
 
 #[cfg(target_os = "linux")]
 use crate::app::audio::pipewire;
 use crate::app::config::pipewire::resolve_bit_perfect_rate;
+use crate::app::main_loop::handle_pipewire_state_change;
 
-#[cfg(unix)]
-use tokio::net::UnixStream;
 use tokio::sync::mpsc;
 
 use crate::App;
-use crate::Config;
 use crate::app::LazyLibrary;
+use crate::app::main_loop::connect_to_mpd;
+
 use crate::app::song::SongInfo;
 use crate::app::ui::Protocol;
 use crate::app::ui::WIDTH_CACHE;
-use crate::app::ui::cache::cover_cache::{
-    SharedCoverCache, find_current_index, get_prefetch_targets, new_shared_cache,
-};
+use crate::app::ui::cache::cover_cache::{find_current_index, new_shared_cache};
 use crate::app::ui::rendering::render;
 use crate::app::{
     MessageType, StatusMessage, event_handlers::EventHandlers, mpd_updates::MPDUpdates,
 };
 
+use crate::app::main_loop::check_song_change;
+
+use crate::app::main_loop::{CoverArtMessage, spawn_cover_art_loader, spawn_prefetch_loaders};
+
 /// Interval for progress bar updates when playing (in milliseconds)
 const PROGRESS_UPDATE_INTERVAL_MS: u64 = 500;
-
-/// Message type for cover art loading results
-enum CoverArtMessage {
-    Loaded(Option<Vec<u8>>, PathBuf),
-}
 
 /// Trait for main application loop
 pub trait AppMainLoop {
@@ -48,28 +43,6 @@ pub trait AppMainLoop {
 }
 
 /// Connect to MPD via Unix socket or TCP based on address format
-async fn connect_to_mpd(
-    address: &str,
-) -> color_eyre::Result<(Client, mpd_client::client::ConnectionEvents)> {
-    let is_unix_socket = address.contains('/');
-
-    if is_unix_socket {
-        #[cfg(unix)]
-        {
-            let connection = UnixStream::connect(address).await?;
-            Ok(Client::connect(connection).await?)
-        }
-        #[cfg(not(unix))]
-        {
-            Err(color_eyre::eyre::eyre!(
-                "Unix sockets are not supported on this platform"
-            ))
-        }
-    } else {
-        let connection = TcpStream::connect(address).await?;
-        Ok(Client::connect(connection).await?)
-    }
-}
 
 impl AppMainLoop for App {
     /// Run the application's main loop.
@@ -596,211 +569,4 @@ impl AppMainLoop for App {
 
         Ok(())
     }
-}
-
-/// Spawn a background task to load cover art with cache support
-fn spawn_cover_art_loader(
-    client: &Client,
-    file_path: PathBuf,
-    tx: mpsc::Sender<CoverArtMessage>,
-    cache: SharedCoverCache,
-) {
-    let client = client.clone();
-    let file_path_clone = file_path.clone();
-
-    tokio::spawn(async move {
-        // Check cache first
-        {
-            let mut cache_guard = cache.write().await;
-            if let Some(cached) = cache_guard.get(&file_path_clone) {
-                log::debug!("Cover art cache hit: {:?}", file_path_clone);
-                let _ = tx
-                    .send(CoverArtMessage::Loaded(
-                        cached.data.clone(),
-                        file_path_clone,
-                    ))
-                    .await;
-                return;
-            }
-
-            // Check if already being fetched
-            if cache_guard.is_pending(&file_path_clone) {
-                log::debug!("Cover art already pending: {:?}", file_path_clone);
-                return;
-            }
-
-            // Mark as pending
-            cache_guard.mark_pending(file_path_clone.clone());
-        }
-
-        // Fetch from MPD
-        let uri = file_path_clone.to_string_lossy();
-        let result = client.album_art(&uri).await;
-
-        let data = match result {
-            Ok(Some((raw_data, _mime))) => Some(raw_data.to_vec()),
-            Ok(None) => None,
-            Err(e) => {
-                log::debug!("Failed to load cover art: {}", e);
-                None
-            }
-        };
-
-        // Store in cache
-        {
-            let mut cache_guard = cache.write().await;
-            cache_guard.insert(file_path_clone.clone(), data.clone());
-        }
-
-        // Send result back (ignore error if receiver dropped)
-        let _ = tx
-            .send(CoverArtMessage::Loaded(data, file_path_clone))
-            .await;
-    });
-}
-
-/// Spawn background tasks to prefetch cover art for adjacent queue items
-fn spawn_prefetch_loaders(
-    client: &Client,
-    queue: &[SongInfo],
-    current_index: Option<usize>,
-    cache: SharedCoverCache,
-) {
-    let targets = get_prefetch_targets(queue, current_index);
-
-    for file_path in targets {
-        let client = client.clone();
-        let cache = cache.clone();
-
-        tokio::spawn(async move {
-            // Check if already cached or pending
-            {
-                let mut cache_guard = cache.write().await;
-                if cache_guard.contains(&file_path) || cache_guard.is_pending(&file_path) {
-                    return;
-                }
-                cache_guard.mark_pending(file_path.clone());
-            }
-
-            // Fetch from MPD
-            let uri = file_path.to_string_lossy();
-            let result = client.album_art(&uri).await;
-
-            let data = match result {
-                Ok(Some((raw_data, _mime))) => Some(raw_data.to_vec()),
-                Ok(None) => None,
-                Err(e) => {
-                    log::debug!("Failed to prefetch cover art: {}", e);
-                    None
-                }
-            };
-
-            // Store in cache (no need to send to channel - it's a prefetch)
-            {
-                let mut cache_guard = cache.write().await;
-                cache_guard.insert(file_path.clone(), data);
-                log::debug!("Prefetched cover art: {:?}", file_path);
-            }
-        });
-    }
-}
-
-/// Check if the song changed and trigger cover art loading if needed
-fn check_song_change(
-    current_song_file: &mut Option<PathBuf>,
-    current_song: &Option<SongInfo>,
-    queue: &[SongInfo],
-    client: &Client,
-    cover_tx: &mpsc::Sender<CoverArtMessage>,
-    protocol: &mut Protocol,
-    cache: SharedCoverCache,
-) {
-    let new_song_file: Option<PathBuf> = current_song.as_ref().map(|song| song.file_path.clone());
-
-    if new_song_file != *current_song_file {
-        log::debug!(
-            "Song changed: {:?} -> {:?}",
-            current_song_file,
-            new_song_file
-        );
-
-        // Clear protocol image when there's no current song
-        if current_song.is_none() {
-            protocol.image = None;
-        }
-
-        // Start loading cover art in background (uses cache internally)
-        if let Some(ref file_path) = new_song_file {
-            spawn_cover_art_loader(client, file_path.clone(), cover_tx.clone(), cache.clone());
-        }
-
-        // Prefetch adjacent queue items
-        let current_idx = find_current_index(queue, current_song);
-        spawn_prefetch_loaders(client, queue, current_idx, cache);
-
-        *current_song_file = new_song_file;
-    }
-}
-
-/// Handle PipeWire sample rate changes based on playback state and song changes
-#[cfg(target_os = "linux")]
-fn handle_pipewire_state_change(
-    config: &Config,
-    bit_perfect_enabled: bool,
-    mpd_status: &Option<mpd_client::responses::Status>,
-    current_song: &Option<SongInfo>,
-    last_play_state: &mut Option<PlayState>,
-    last_sample_rate: &mut Option<u32>,
-) {
-    if !bit_perfect_enabled || !config.pipewire.is_available() {
-        return;
-    }
-
-    let current_play_state = mpd_status.as_ref().map(|s| s.state);
-    let current_sample_rate = current_song.as_ref().and_then(|s| s.sample_rate());
-
-    match current_play_state {
-        Some(PlayState::Playing) => {
-            // Check if we need to update sample rate:
-            // 1. Just started playing (state changed)
-            // 2. Song changed while playing (sample rate changed)
-            let state_changed = current_play_state != *last_play_state;
-            let rate_changed = current_sample_rate != *last_sample_rate;
-
-            if (state_changed || rate_changed)
-                && let Some(song_rate) = current_sample_rate
-            {
-                #[cfg(target_os = "linux")]
-                if let Some(supported_rates) = pipewire::get_supported_rates() {
-                    let target_rate = resolve_bit_perfect_rate(song_rate, &supported_rates);
-                    log::debug!(
-                        "Setting PipeWire sample rate to {} (song rate: {})",
-                        target_rate,
-                        song_rate
-                    );
-                    // Fire-and-forget async call to avoid blocking the UI
-                    tokio::spawn(async move {
-                        let _ = pipewire::set_sample_rate_async(target_rate).await;
-                    });
-                }
-            }
-        }
-        Some(PlayState::Paused) | Some(PlayState::Stopped) | None => {
-            // Paused or stopped - reset to automatic rate
-            // Reset if we were playing, OR if last_play_state is None (unknown state after toggle)
-            if *last_play_state == Some(PlayState::Playing) || last_play_state.is_none() {
-                log::debug!(
-                    "Resetting PipeWire sample rate (playback stopped, last_state={:?})",
-                    last_play_state
-                );
-                // Fire-and-forget async call to avoid blocking the UI
-                tokio::spawn(async {
-                    let _ = pipewire::reset_sample_rate_async().await;
-                });
-            }
-        }
-    }
-
-    *last_play_state = current_play_state;
-    *last_sample_rate = current_sample_rate;
 }
