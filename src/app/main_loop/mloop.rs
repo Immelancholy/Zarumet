@@ -10,7 +10,9 @@ use ratatui_image::picker::Picker;
 
 #[cfg(target_os = "linux")]
 use crate::app::audio::pipewire;
+#[cfg(target_os = "linux")]
 use crate::app::config::pipewire::resolve_bit_perfect_rate;
+#[cfg(target_os = "linux")]
 use crate::app::main_loop::handle_pipewire_state_change;
 
 use tokio::sync::mpsc;
