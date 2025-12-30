@@ -26,11 +26,4 @@ mkShell {
   ];
 
   LIBCLANG_PATH = "${libclang.lib}/lib";
-
-  shellHook = ''
-    read -p "Which shell do you use?: " shell
-
-    $shell
-    exit
-  '';
 }
