@@ -21,6 +21,10 @@ const SETTINGS_METADATA_NAME: &str = "settings";
 /// Property key for forcing the clock rate
 const CLOCK_FORCE_RATE_KEY: &str = "clock.force-rate";
 
+/// Property key for allowed clock rates in settings metadata
+/// Note: In metadata, it's "clock.allowed-rates" (not "default.clock.allowed-rates")
+const CLOCK_ALLOWED_RATES_KEY: &str = "clock.allowed-rates";
+
 /// Timeout for discovering PipeWire objects
 const DISCOVERY_TIMEOUT: Duration = Duration::from_millis(50);
 
@@ -206,130 +210,183 @@ pub fn get_supported_rates() -> Option<Vec<u32>> {
 }
 
 fn get_supported_rates_inner() -> Result<Vec<u32>, String> {
+    // First try to read allowed-rates using pw-metadata command (most reliable)
+    if let Some(rates) = get_allowed_rates_from_pw_metadata() {
+        if !rates.is_empty() {
+            debug!("Got allowed-rates from pw-metadata: {:?}", rates);
+            return Ok(rates);
+        }
+    }
+
+    // Fallback: try to read from PipeWire API directly
+    if let Some(rates) = get_allowed_rates_from_api() {
+        if !rates.is_empty() {
+            debug!("Got allowed-rates from PipeWire API: {:?}", rates);
+            return Ok(rates);
+        }
+    }
+
+    // No allowed-rates configured means PipeWire allows any rate
+    // Use common rates as reasonable defaults
+    debug!("No allowed-rates found in PipeWire, using common rates");
+    Ok(vec![
+        44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000,
+    ])
+}
+
+/// Read allowed-rates from pw-metadata command output
+fn get_allowed_rates_from_pw_metadata() -> Option<Vec<u32>> {
+    use std::process::Command;
+
+    let output = Command::new("pw-metadata")
+        .args(["-n", "settings"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Look for line like: update: id:0 key:'clock.allowed-rates' value:'[ 44100, 48000, 88200, 96000 ]' type:''
+    for line in stdout.lines() {
+        if line.contains("clock.allowed-rates") && line.contains("value:") {
+            // Extract the value between value:' and ' type:
+            if let Some(start) = line.find("value:'") {
+                let value_start = start + 7; // len("value:'")
+                if let Some(end) = line[value_start..].find("' type:") {
+                    let value = &line[value_start..value_start + end];
+                    let rates = parse_allowed_rates(value);
+                    if !rates.is_empty() {
+                        return Some(rates);
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Read allowed-rates from PipeWire API (fallback method)
+fn get_allowed_rates_from_api() -> Option<Vec<u32>> {
     // Initialize PipeWire library
     pipewire::init();
 
     // Create the main loop
-    let mainloop =
-        MainLoopBox::new(None).map_err(|e| format!("Failed to create PipeWire MainLoop: {e}"))?;
+    let mainloop = MainLoopBox::new(None).ok()?;
 
     // Create context from the main loop
-    let context = ContextBox::new(mainloop.loop_(), None)
-        .map_err(|e| format!("Failed to create PipeWire Context: {e}"))?;
+    let context = ContextBox::new(mainloop.loop_(), None).ok()?;
 
     // Connect to the PipeWire server
-    let core = context
-        .connect(None)
-        .map_err(|e| format!("Failed to connect to PipeWire Core: {e}"))?;
+    let core = context.connect(None).ok()?;
 
     // Get the registry to enumerate objects
-    let registry = core
-        .get_registry()
-        .map_err(|e| format!("Failed to get PipeWire registry: {e}"))?;
+    let registry = core.get_registry().ok()?;
 
-    // Start with common rates immediately - we'll discover more if available
-    let mut rates: Vec<u32> = vec![44100, 48000, 88200, 96000, 192000];
+    // Store found metadata global for later binding
+    let found_global: Rc<RefCell<Option<GlobalObject<PropertiesBox>>>> =
+        Rc::new(RefCell::new(None));
+    let found_global_clone = found_global.clone();
 
-    // Store found sample rates
-    let supported_rates: Rc<RefCell<Vec<u32>>> = Rc::new(RefCell::new(Vec::new()));
-    let supported_rates_clone = supported_rates.clone();
+    // Store allowed rates from metadata
+    let allowed_rates: Rc<RefCell<Vec<u32>>> = Rc::new(RefCell::new(Vec::new()));
+    let allowed_rates_clone = allowed_rates.clone();
 
-    // Register listener for global objects to find devices and nodes
+    // Register listener for global objects
     let _registry_listener = registry
         .add_listener_local()
         .global(move |global| {
-            // Look for device and node objects that might have sample rate info
-            if (global.type_ == ObjectType::Device || global.type_ == ObjectType::Node)
+            // Look for metadata objects with name "settings"
+            if global.type_ == ObjectType::Metadata
                 && let Some(props) = global.props.as_ref()
+                && props.get("metadata.name") == Some(SETTINGS_METADATA_NAME)
             {
-                // Check for audio devices/nodes
-                if let Some(media_class) = props.get("media.class")
-                    && media_class.contains("Audio")
-                {
-                    // Extract sample rates from device properties
-                    if let Some(rates_str) = props.get("device.profile.description") {
-                        // Try to parse sample rates from description (may contain rate info)
-                        extract_rates_from_description(rates_str, &supported_rates_clone);
-                    }
-
-                    // Check for common audio format properties
-                    if let Some(formats) = props.get("format.dsp") {
-                        extract_rates_from_format_string(formats, &supported_rates_clone);
-                    }
-                }
+                // Store an owned copy of the global for later binding
+                *found_global_clone.borrow_mut() = Some(global.to_owned());
             }
         })
         .register();
 
-    // Run the loop to discover objects (with very short timeout)
+    // Run the loop to discover objects
     let start = std::time::Instant::now();
-    while start.elapsed() < DISCOVERY_TIMEOUT {
+    while found_global.borrow().is_none() && start.elapsed() < DISCOVERY_TIMEOUT {
         mainloop.loop_().iterate(LOOP_ITERATION_STEP);
     }
 
-    // Always use common rates as base - this ensures we have something quickly
-    let discovered_rates = supported_rates.borrow_mut();
+    // Check if we found the settings metadata
+    let global_ref = found_global.borrow();
+    if let Some(global) = global_ref.as_ref() {
+        // Bind to the metadata object
+        let metadata_result: Result<Metadata, _> = registry.bind(global);
+        if let Ok(metadata) = metadata_result {
+            let allowed_rates_listener = allowed_rates_clone.clone();
 
-    // If we found any additional rates, merge them
-    if !discovered_rates.is_empty() {
-        debug!(
-            "Discovered {} additional sample rates from PipeWire",
-            discovered_rates.len()
-        );
+            // Register listener for metadata properties
+            let _metadata_listener = metadata
+                .add_listener_local()
+                .property(move |_subject, key, _type, value| {
+                    if let Some(key) = key
+                        && key == CLOCK_ALLOWED_RATES_KEY
+                        && let Some(value) = value
+                    {
+                        // Parse the allowed-rates array from JSON format: "[ 44100, 48000 ]"
+                        let rates = parse_allowed_rates(value);
+                        if !rates.is_empty() {
+                            debug!("Found PipeWire allowed-rates: {:?}", rates);
+                            *allowed_rates_listener.borrow_mut() = rates;
+                        }
+                    }
+                    0 // Return 0 to continue iteration
+                })
+                .register();
 
-        // Merge with our base rates and deduplicate
-        rates.extend(discovered_rates.iter().copied());
+            // Run the loop to receive metadata properties (use longer timeout)
+            let prop_start = std::time::Instant::now();
+            while allowed_rates_clone.borrow().is_empty()
+                && prop_start.elapsed() < DISCOVERY_TIMEOUT
+            {
+                mainloop.loop_().iterate(LOOP_ITERATION_STEP);
+            }
+        }
     }
 
-    // Sort and deduplicate the rates
-    rates.sort();
-    rates.dedup();
+    // Drop the borrow before checking results
+    drop(global_ref);
 
-    Ok(rates)
+    // Return the rates if we found any
+    let rates = allowed_rates.borrow().clone();
+    if rates.is_empty() { None } else { Some(rates) }
 }
 
-/// Extract sample rates from a description string
-fn extract_rates_from_description(desc: &str, rates: &Rc<RefCell<Vec<u32>>>) {
-    // Look for rate patterns in the description
-    // Common patterns: "48000 Hz", "96kHz", etc.
-    let rate_patterns = [r"(\d+)\s*Hz", r"(\d+)kHz", r"(\d+)\s*khz"];
+/// Parse allowed-rates from PipeWire's JSON-like format
+/// Examples: "[ 44100, 48000 ]" or "[ 44100 48000 ]"
+fn parse_allowed_rates(value: &str) -> Vec<u32> {
+    let mut rates = Vec::new();
 
-    for pattern in &rate_patterns {
-        if let Ok(re) = regex::Regex::new(pattern) {
-            for cap in re.captures_iter(desc) {
-                if let Some(rate_str) = cap.get(1)
-                    && let Ok(rate_val) = rate_str.as_str().parse::<u32>()
-                {
-                    let rate = if pattern.contains("kHz") || pattern.contains("khz") {
-                        rate_val * 1000
-                    } else {
-                        rate_val
-                    };
+    // Remove brackets and split by comma or whitespace
+    let cleaned = value
+        .trim()
+        .trim_start_matches('[')
+        .trim_end_matches(']')
+        .trim();
 
-                    // Only add if it's a reasonable sample rate and not already present
-                    if (8000..=384000).contains(&rate) && !rates.borrow().contains(&rate) {
-                        rates.borrow_mut().push(rate);
-                    }
+    // Handle both comma-separated and space-separated formats
+    for part in cleaned.split([',', ' ']) {
+        let trimmed = part.trim();
+        if !trimmed.is_empty() {
+            if let Ok(rate) = trimmed.parse::<u32>() {
+                if (8000..=384000).contains(&rate) && !rates.contains(&rate) {
+                    rates.push(rate);
                 }
             }
         }
     }
-}
 
-/// Extract sample rates from format strings
-fn extract_rates_from_format_string(format_str: &str, rates: &Rc<RefCell<Vec<u32>>>) {
-    // Try to parse rates from format specifications
-    // Format strings might contain rate info like "S32LE 48000" etc.
-    let words: Vec<&str> = format_str.split_whitespace().collect();
-
-    for word in words {
-        if let Ok(rate) = word.parse::<u32>() {
-            // Check if this looks like a valid sample rate
-            if (8000..=384000).contains(&rate) && !rates.borrow().contains(&rate) {
-                rates.borrow_mut().push(rate);
-            }
-        }
-    }
+    rates.sort();
+    rates
 }
 
 #[cfg(test)]
