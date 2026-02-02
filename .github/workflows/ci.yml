@@ -28,10 +28,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg libavformat-dev libavcodec-dev libavutil-dev libavdevice-dev libavfilter-dev libswscale-dev libswresample-dev pkg-config
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -49,10 +45,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg libavformat-dev libavcodec-dev libavutil-dev libavdevice-dev libavfilter-dev libswscale-dev libswresample-dev pkg-config
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-dev libclang-dev
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -69,10 +63,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg libavformat-dev libavcodec-dev libavutil-dev libavdevice-dev libavfilter-dev libswscale-dev libswresample-dev pkg-config
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-dev libclang-dev
       - name: Install Rust nightly
         uses: dtolnay/rust-toolchain@nightly
       - name: Cache Cargo dependencies
@@ -96,26 +88,9 @@ jobs:
       # - run: vcpkg install openssl:x64-windows-static-md
       #   if: runner.os == 'Windows'
       - uses: actions/checkout@v6
-      - name: Install FFmpeg (Linux)
+      - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg libavformat-dev libavcodec-dev libavutil-dev libavdevice-dev libavfilter-dev libswscale-dev libswresample-dev pkg-config
-      - name: Install FFmpeg (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install ffmpeg pkg-config
-      - name: Install FFmpeg (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          choco install ffmpeg pkg-config
-          echo "FFMPEG_DIR=C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg" | Out-File -FilePath $env:GITHUB_ENV -Append
-          echo "PKG_CONFIG_PATH=C:\ProgramData\chocolatey\lib\ffmpeg\tools\ffmpeg\lib\pkgconfig" | Out-File -FilePath $env:GITHUB_ENV -Append
-          echo "LIBCLANG_PATH=C:\Program Files\LLVM\lib" | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Install LLVM/Clang (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          choco install llvm
+        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-dev libclang-dev
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo dependencies

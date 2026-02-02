@@ -1,26 +1,29 @@
 {
   mkShell,
-  zarumet,
+  rustToolchain,
   rust-analyzer,
-  rustup,
   cargo-nextest,
   cargo-about,
   alejandra,
+  pkg-config,
+  pipewire,
+  libclang,
+  clang,
 }:
-(mkShell.override {inherit (zarumet) stdenv;}) {
-  inputsFrom = [zarumet];
-  packages = [
+mkShell {
+  nativeBuildInputs = [
+    rustToolchain
     rust-analyzer
-    rustup
     cargo-nextest
     cargo-about
     alejandra
+    pkg-config
+    clang
   ];
 
-  shellHook = ''
-    read -p "Which shell do you use?: " shell
+  buildInputs = [
+    pipewire
+  ];
 
-    $shell
-    exit
-  '';
+  LIBCLANG_PATH = "${libclang.lib}/lib";
 }
