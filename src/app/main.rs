@@ -37,6 +37,12 @@ pub struct App {
     /// List states for Albums mode navigation (separate from Artists mode)
     pub all_albums_list_state: ListState, // For navigating all_albums in Albums mode
     pub album_tracks_list_state: ListState,  // For navigating tracks within an album in Albums mode
+    /// For navigating the year list
+    pub year_list_state: ListState,
+    /// For navigating albums within a year
+    pub year_albums_list_state: ListState,
+    /// Cached panel focus for Years mode
+    pub years_panel_focus: PanelFocus,
     /// Configuration loaded from TOML file
     pub config: Config,
     /// Current menu mode

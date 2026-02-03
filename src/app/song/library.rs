@@ -8,6 +8,7 @@ use mpd_client::{
     filter::{Filter, Operator},
     tag::Tag,
 };
+use std::collections::HashMap;
 
 /// Lazy-loading library that only fetches artist data when needed
 #[derive(Debug, Clone)]
@@ -18,6 +19,7 @@ pub struct LazyLibrary {
     /// This is populated incrementally as artists are loaded.
     /// Each entry is (artist_name, Album).
     pub all_albums: Vec<(String, Album)>,
+    pub albums_by_year: Vec<(String, Vec<(String, Album)>)>,
     /// Flag to track if all_albums is complete (all artists loaded)
     pub all_albums_complete: bool,
     /// Flag to track if all_albums is sorted
@@ -72,7 +74,52 @@ impl LazyLibrary {
             all_albums: Vec::new(),
             all_albums_complete: false,
             all_albums_sorted: false,
+            albums_by_year: Vec::new(),
         })
+    }
+
+    pub fn ensure_albums_by_year_built(&mut self) {
+        if self.albums_by_year.is_empty() {
+            self.albums_by_year = self.build_albums_by_year();
+        }
+    }
+
+    fn build_albums_by_year(&self) -> Vec<(String, Vec<(String, Album)>)> {
+        let mut by_year: HashMap<String, Vec<(String, Album)>> = HashMap::new();
+
+        for (artist, album) in &self.all_albums {
+            let year = album
+                .year
+                .clone()
+                .unwrap_or_else(|| "Unknown Year".to_string());
+            by_year
+                .entry(year)
+                .or_default()
+                .push((artist.clone(), album.clone()));
+        }
+
+        let unknown = by_year.remove("Unknown Year");
+        let mut known: Vec<_> = by_year.into_iter().collect();
+        known.sort_by(|a, b| b.0.cmp(&a.0)); // Sort years descending
+
+        for (_, albums) in &mut known {
+            albums.sort_by(|a, b| {
+                a.0.to_lowercase()
+                    .cmp(&b.0.to_lowercase())
+                    .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
+            });
+        }
+
+        if let Some(mut unknown_albums) = unknown {
+            unknown_albums.sort_by(|a, b| {
+                a.0.to_lowercase()
+                    .cmp(&b.0.to_lowercase())
+                    .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
+            });
+            known.push(("Unknown Year".to_string(), unknown_albums));
+        }
+
+        known
     }
 
     /// Load albums and songs for a specific artist by index.

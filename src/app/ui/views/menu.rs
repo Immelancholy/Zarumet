@@ -4,6 +4,7 @@ pub enum MenuMode {
     Queue,
     Artists,
     Albums,
+    Years,
 }
 
 /// Panel focus for Tracks mode
@@ -13,4 +14,6 @@ pub enum PanelFocus {
     Albums,
     AlbumList,
     AlbumTracks,
+    YearList,
+    YearAlbums,
 }

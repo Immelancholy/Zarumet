@@ -3,6 +3,7 @@ use mpd_client::{
     client::CommandError,
     commands::SetBinaryLimit,
     responses::{PlayState, Song},
+    tag::Tag,
 };
 use std::path::PathBuf;
 
@@ -19,6 +20,7 @@ pub struct SongInfo {
     pub duration: Option<std::time::Duration>,
     pub disc_number: u64,
     pub track_number: u64,
+    pub year: Option<String>,
 }
 
 impl SongInfo {
@@ -52,6 +54,7 @@ impl SongInfo {
             .title()
             .map(Self::sanitize_string)
             .unwrap_or_else(|| "Unknown Title".to_string());
+
         let artist = song
             .artists()
             .first()
@@ -67,6 +70,9 @@ impl SongInfo {
         let format = song.format.clone();
         let duration = song.duration;
         let (disc_number, track_number) = song.number();
+        let year = song.tags.get(&Tag::Date).and_then(|dates| dates.first()).and_then(|date| {
+            date.get(..4).filter(|s| s.chars().all(|c| c.is_ascii_digit())).map(|s| s.to_string())
+        });
 
         Self {
             title,
@@ -80,6 +86,7 @@ impl SongInfo {
             duration,
             disc_number,
             track_number,
+            year,
         }
     }
     pub async fn set_max_art_size(client: &Client, size_bytes: usize) -> Result<(), CommandError> {

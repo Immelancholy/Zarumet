@@ -4,6 +4,7 @@ use crate::app::SongInfo;
 pub struct Album {
     pub name: String,
     pub tracks: Vec<SongInfo>,
+    pub year: Option<String>,
     /// Pre-computed total duration (computed once on construction)
     cached_total_duration: Option<std::time::Duration>,
 }
@@ -13,13 +14,19 @@ impl Album {
     pub fn new(name: String, tracks: Vec<SongInfo>) -> Self {
         let name = SongInfo::sanitize_string(&name);
         let cached_total_duration = Self::compute_total_duration(&tracks);
+        let year = Self::compute_album_year(&tracks);
         Self {
             name,
             tracks,
+            year,
             cached_total_duration,
         }
     }
 
+    fn compute_album_year(tracks: &[SongInfo]) -> Option<String> {
+        tracks.iter().filter_map(|t| t.year.clone()).max()
+    }
+    
     /// Compute total duration from tracks (used during construction)
     fn compute_total_duration(tracks: &[SongInfo]) -> Option<std::time::Duration> {
         let mut total_secs = 0u64;
