@@ -1,4 +1,7 @@
+use std::usize;
+
 use crate::app::song::Artist;
+use crate::app::song::Album;
 use crate::app::ui::cache::width_cache::WidthCache;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use unicode_width::UnicodeWidthChar;
@@ -208,5 +211,33 @@ pub fn compute_album_display_list(
         }
     }
 
+    (display_items, album_indices)
+}
+/// Compute the display list for albums panel considering expanded albums in Years mode
+/// Returns (display_items, mapping_from_display_to_album_index)
+pub fn compute_albums_display_list_years(year: &[(String, Album)], expanded_albums: &std::collections::HashSet<(String, String)>) -> (Vec<DisplayItem>, Vec<Option<usize>>) {
+    let mut display_items = Vec::new();
+    let mut album_indices = Vec::new(); // Maps display indices to album indices (None for songs)
+
+    for (album_index, (artist_name, album)) in year.iter().enumerate() {
+        let album_key = (artist_name.clone(), album.name.clone());
+        let is_expanded = expanded_albums.contains(&album_key);
+
+        // Add album header
+        album_indices.push(Some(album_index));
+        display_items.push(DisplayItem::Album(format!("{} - {}", album.name, artist_name)));
+
+        // If expanded, add songs
+        if is_expanded {
+            for song in &album.tracks {
+                album_indices.push(None); // Songs don't map to album indices
+                display_items.push(DisplayItem::Song(
+                    song.title.clone(),
+                    song.duration,
+                    song.file_path.clone(),
+                ));
+            }
+        }
+    }
     (display_items, album_indices)
 }

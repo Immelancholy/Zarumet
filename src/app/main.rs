@@ -57,6 +57,10 @@ pub struct App {
     pub library: Option<LazyLibrary>,
     /// Expanded albums (tracks which albums are currently expanded)
     pub expanded_albums: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
+    /// Expanded albums in Years mode (tracks which albums are currently expanded in Years mode)
+    pub expanded_albums_years: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
+    /// Display list state for albums within a year (used in Years mode when an album is expanded)
+    pub year_albums_display_list_state: ListState,
     /// Current MPD status information
     pub mpd_status: Option<mpd_client::responses::Status>,
     /// Key bindings handler

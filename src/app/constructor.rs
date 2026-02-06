@@ -126,6 +126,8 @@ impl App {
             albums_panel_focus: PanelFocus::AlbumList, // Default for Albums mode
             library: None,
             expanded_albums: std::collections::HashSet::new(),
+            expanded_albums_years: std::collections::HashSet::new(),
+            year_albums_display_list_state: ListState::default(),
             mpd_status: None,
             key_binds,
             bit_perfect_enabled,

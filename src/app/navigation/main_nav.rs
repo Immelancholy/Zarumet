@@ -45,6 +45,9 @@ impl Navigation for App {
                     MenuMode::Albums => {
                         // Navigation is handled by NavigateUp/Down actions based on panel focus
                     }
+                    MenuMode::Years => {
+                        // Navigation is handled by NavigateUp/Down actions based on panel focus
+                    }
                 }
             }
             MPDAction::QueueDown => {
@@ -66,6 +69,9 @@ impl Navigation for App {
                         // Navigation is now handled by NavigateUp/Down actions based on panel focus
                     }
                     MenuMode::Albums => {
+                        // Navigation is handled by NavigateUp/Down actions based on panel focus
+                    }
+                    MenuMode::Years => {
                         // Navigation is handled by NavigateUp/Down actions based on panel focus
                     }
                 }
@@ -93,6 +99,10 @@ impl Navigation for App {
                     }
                     MenuMode::Artists => {
                         // Artists mode: handled via ToggleAlbumExpansion in binds.rs
+                    }
+                    MenuMode::Years => {
+                        // Years mode: not implemented yet
+                        // TODO: Implement context-aware play/add in Years mode based on panel focus (similar to Artists mode)
                     }
                 }
             }
@@ -207,6 +217,7 @@ impl Navigation for App {
                 match self.menu_mode {
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
                     MenuMode::Queue => {}
                 }
                 self.menu_mode = MenuMode::Queue;
@@ -218,6 +229,7 @@ impl Navigation for App {
                 match self.menu_mode {
                     MenuMode::Artists => {} // Already in Artists mode
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
                     MenuMode::Queue => {}
                 }
                 self.menu_mode = MenuMode::Artists;
@@ -229,6 +241,7 @@ impl Navigation for App {
                 // Save current panel focus before leaving
                 match self.menu_mode {
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => {} // Already in Albums mode
                     MenuMode::Queue => {}
                 }
@@ -271,6 +284,22 @@ impl Navigation for App {
                             _ => {
                                 // Invalid panel focus for Albums mode, reset to AlbumList
                                 self.panel_focus = PanelFocus::AlbumList;
+                                self.dirty.mark_panel_focus();
+                            }
+                        }
+                    }
+                    MenuMode::Years => {
+                        match self.panel_focus {
+                            PanelFocus::YearList => {
+                                // Already at leftmost panel
+                            }
+                            PanelFocus::YearAlbums => {
+                                self.panel_focus = PanelFocus::YearList;
+                                self.dirty.mark_panel_focus();
+                            }
+                            _ => {
+                                // Invalid panel focus for Years mode, reset to YearList
+                                self.panel_focus = PanelFocus::YearList;
                                 self.dirty.mark_panel_focus();
                             }
                         }
@@ -336,6 +365,27 @@ impl Navigation for App {
                             }
                         }
                     }
+                    MenuMode::Years => {
+                        match self.panel_focus {
+                            PanelFocus::YearList => {
+                                self.panel_focus = PanelFocus::YearAlbums;
+                                self.dirty.mark_panel_focus();
+                                // Initialize album selection when switching to year albums panel
+                                // Only initialize if not already selected
+                                if self.year_albums_list_state.selected().is_none() {
+                                    self.year_albums_list_state.select(Some(0));
+                                }
+                            }
+                            PanelFocus::YearAlbums => {
+                                // Already at rightmost panel
+                            }
+                            _ => {
+                                // Invalid panel focus for Years mode, reset to YearList
+                                self.panel_focus = PanelFocus::YearList;
+                                self.dirty.mark_panel_focus();
+                            }
+                        }
+                    }
                     MenuMode::Queue => {
                         // Queue mode doesn't have panels
                     }
@@ -371,32 +421,41 @@ impl Navigation for App {
                         // If on a song, add the song; if on an album, add the album
                         self.handle_add_to_queue_context_aware(client).await?;
                     }
+                    MenuMode::Years => {
+                        // Years mode: not implemented yet
+                        // TODO: Implement context-aware add in Years mode based on panel focus (similar to Artists mode)
+                    }
                     MenuMode::Queue => {
                         // Queue mode: no action
                     }
                 }
             }
             MPDAction::CycleModeLeft => {
-                // Cycle modes left: Queue -> Albums -> Artists -> Queue
+                // Cycle modes left: Queue -> Years -> Albums -> Artists -> Queue
                 // Save current panel focus before leaving
                 match self.menu_mode {
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
                     MenuMode::Queue => {}
                 }
                 match self.menu_mode {
                     MenuMode::Queue => {
+                        self.menu_mode = MenuMode::Years;
+                        self.panel_focus = self.years_panel_focus.clone();
+                    }
+                    MenuMode::Years => {
                         self.menu_mode = MenuMode::Albums;
                         self.panel_focus = self.albums_panel_focus.clone();
 
                         self.preload_albums_for_view(client).await;
                     }
-                    MenuMode::Artists => {
-                        self.menu_mode = MenuMode::Queue;
-                    }
                     MenuMode::Albums => {
                         self.menu_mode = MenuMode::Artists;
                         self.panel_focus = self.artists_panel_focus.clone();
+                    }
+                    MenuMode::Artists => {
+                        self.menu_mode = MenuMode::Queue;
                     }
                 };
                 self.dirty.mark_menu_mode();
@@ -407,6 +466,7 @@ impl Navigation for App {
                 match self.menu_mode {
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
                     MenuMode::Queue => {}
                 }
                 match self.menu_mode {
@@ -421,6 +481,10 @@ impl Navigation for App {
                         self.preload_albums_for_view(client).await;
                     }
                     MenuMode::Albums => {
+                        self.menu_mode = MenuMode::Years;
+                        self.panel_focus = self.years_panel_focus.clone();
+                    }
+                    MenuMode::Years => {
                         self.menu_mode = MenuMode::Queue;
                     }
                 };
