@@ -268,7 +268,6 @@ pub fn render(
     all_albums_list_state: &mut ListState,
     album_tracks_list_state: &mut ListState,
     panel_focus: &PanelFocus,
-    years_panel_focus: &PanelFocus,
     expanded_albums: &std::collections::HashSet<(String, String)>,
     expanded_albums_years: &std::collections::HashSet<(String, String)>,
     mpd_status: &Option<mpd_client::responses::Status>,

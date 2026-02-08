@@ -7,7 +7,7 @@ use ratatui::widgets::ListState;
 
 // Generic album expansion toggle that works for any mode with expandable albums
 async fn toggle_album_expansion_generic(
-    queue: &mut Vec<crate::app::SongInfo>,
+    queue: &mut [crate::app::SongInfo],
     display_list_state: &mut ListState,
     display_items: &[DisplayItem],
     album_indices: &[Option<usize>],
@@ -15,13 +15,13 @@ async fn toggle_album_expansion_generic(
     get_album_key: impl Fn(usize) -> Option<(String, String)>,
     client: &Client,
 ) -> color_eyre::Result<()> {
-    if let Some(display_index) = display_list_state.selected() {
-        if let Some(display_item) = display_items.get(display_index) {
+    if let Some(display_index) = display_list_state.selected()
+        && let Some(display_item) = display_items.get(display_index) {
             match display_item {
                 DisplayItem::Album(_) => {
                     // Get the album index from the mapping
-                    if let Some(album_index) = album_indices.get(display_index).copied().flatten() {
-                        if let Some(album_key) = get_album_key(album_index) {
+                    if let Some(album_index) = album_indices.get(display_index).copied().flatten()
+                        && let Some(album_key) = get_album_key(album_index) {
                             // Toggle expansion
                             if expansion_set.contains(&album_key) {
                                 expansion_set.remove(&album_key);
@@ -29,7 +29,6 @@ async fn toggle_album_expansion_generic(
                                 expansion_set.insert(album_key);
                             }
                         }
-                    }
                 }
                 DisplayItem::Song(_title, _duration, file_path) => {
                     // Add specific song to queue
@@ -48,7 +47,6 @@ async fn toggle_album_expansion_generic(
                 }
             }
         }
-    }
     Ok(())
 }
 

@@ -203,7 +203,6 @@ impl AppMainLoop for App {
                         &mut self.all_albums_list_state,
                         &mut self.album_tracks_list_state,
                         &self.panel_focus,
-                        &self.years_panel_focus,
                         &self.expanded_albums,
                         &self.expanded_albums_years,
                         &self.mpd_status,
