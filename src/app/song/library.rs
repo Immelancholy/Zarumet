@@ -60,6 +60,9 @@ impl LazyLibrary {
         // Sort alphabetically
         artist_names.sort_by_key(|a| a.to_lowercase());
 
+        // Add Unknown Artist for songs without artist metadata
+        artist_names.push("Unknown Artist".to_string());
+
         let artists: Vec<LazyArtist> = artist_names.into_iter().map(LazyArtist::new).collect();
 
         let duration = start_time.elapsed();
@@ -104,17 +107,47 @@ impl LazyLibrary {
 
         for (_, albums) in &mut known {
             albums.sort_by(|a, b| {
-                a.0.to_lowercase()
-                    .cmp(&b.0.to_lowercase())
-                    .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
+                // Check if either is "Unknown Album"
+                let a_is_unknown = a.1.name == "Unknown Album";
+                let b_is_unknown = b.1.name == "Unknown Album";
+
+                match (a_is_unknown, b_is_unknown) {
+                    (true, true) => {
+                        // Both unknown - sort by artist name
+                        a.0.to_lowercase().cmp(&b.0.to_lowercase())
+                    }
+                    (true, false) => std::cmp::Ordering::Greater, // a is unknown, put after b
+                    (false, true) => std::cmp::Ordering::Less,    // b is unknown, put a before b
+                    (false, false) => {
+                        // Both known - sort by artist then album
+                        a.0.to_lowercase()
+                            .cmp(&b.0.to_lowercase())
+                            .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
+                    }
+                }
             });
         }
 
         if let Some(mut unknown_albums) = unknown {
             unknown_albums.sort_by(|a, b| {
-                a.0.to_lowercase()
-                    .cmp(&b.0.to_lowercase())
-                    .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
+                // Check if either is "Unknown Album"
+                let a_is_unknown = a.1.name == "Unknown Album";
+                let b_is_unknown = b.1.name == "Unknown Album";
+
+                match (a_is_unknown, b_is_unknown) {
+                    (true, true) => {
+                        // Both unknown - sort by artist name
+                        a.0.to_lowercase().cmp(&b.0.to_lowercase())
+                    }
+                    (true, false) => std::cmp::Ordering::Greater, // a is unknown, put after b
+                    (false, true) => std::cmp::Ordering::Less,    // b is unknown, put a before b
+                    (false, false) => {
+                        // Both known - sort by artist then album
+                        a.0.to_lowercase()
+                            .cmp(&b.0.to_lowercase())
+                            .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
+                    }
+                }
             });
             known.push(("Unknown Year".to_string(), unknown_albums));
         }
@@ -249,10 +282,25 @@ impl LazyLibrary {
     pub fn ensure_albums_sorted(&mut self) {
         if !self.all_albums_sorted {
             self.all_albums.sort_by(|a, b| {
-                a.1.name
-                    .to_lowercase()
-                    .cmp(&b.1.name.to_lowercase())
-                    .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
+                // Check if either is "Unknown Album"
+                let a_is_unknown = a.1.name == "Unknown Album";
+                let b_is_unknown = b.1.name == "Unknown Album";
+
+                match (a_is_unknown, b_is_unknown) {
+                    (true, true) => {
+                        // Both unknown - sort by artist name
+                        a.0.to_lowercase().cmp(&b.0.to_lowercase())
+                    }
+                    (true, false) => std::cmp::Ordering::Greater, // a is unknown, put it after b
+                    (false, true) => std::cmp::Ordering::Less,    // b is unknown, put a before b
+                    (false, false) => {
+                        // Both known - normal sort
+                        a.1.name
+                            .to_lowercase()
+                            .cmp(&b.1.name.to_lowercase())
+                            .then_with(|| a.0.to_lowercase().cmp(&b.0.to_lowercase()))
+                    }
+                }
             });
             self.all_albums_sorted = true;
         }
@@ -288,11 +336,20 @@ impl LazyLibrary {
         for song in all_songs {
             let song_info = SongInfo::from_song(&song);
             // Use album artist for grouping (fall back to artist if not set)
+            // Handle empty strings by treating them as unknown
             let artist_name = song
                 .album_artists()
                 .first()
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| song_info.artist.clone());
+
+            // If artist name is empty, use "Unknown Artist"
+            let artist_name = if artist_name.is_empty() {
+                "Unknown Artist".to_string()
+            } else {
+                artist_name
+            };
+
             let album_name = song_info.album.clone();
 
             artist_albums
@@ -335,6 +392,34 @@ impl LazyLibrary {
             } else {
                 // Artist has no songs, mark as loaded with empty albums
                 artist.albums = ArtistData::Loaded(Vec::new());
+            }
+        }
+
+        // Handle any remaining artists (e.g., "Unknown Artist") not in the initial list
+        if let Some(albums_map) = artist_albums.remove("Unknown Artist") {
+            // Find the Unknown Artist entry
+            if let Some(artist) = self.artists.iter_mut().find(|a| a.name == "Unknown Artist") {
+                let mut albums: Vec<Album> = albums_map
+                    .into_iter()
+                    .map(|(album_name, mut tracks)| {
+                        tracks.sort_by(|a, b| {
+                            a.disc_number
+                                .cmp(&b.disc_number)
+                                .then(a.track_number.cmp(&b.track_number))
+                                .then(a.title.cmp(&b.title))
+                        });
+                        Album::new(album_name, tracks)
+                    })
+                    .collect();
+
+                albums.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+
+                // Add to all_albums
+                for album in &albums {
+                    self.all_albums.push((artist.name.clone(), album.clone()));
+                }
+
+                artist.albums = ArtistData::Loaded(albums);
             }
         }
 
