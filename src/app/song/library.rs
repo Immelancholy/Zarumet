@@ -20,6 +20,7 @@ pub struct LazyLibrary {
     /// Each entry is (artist_name, Album).
     pub all_albums: Vec<(String, Album)>,
     pub albums_by_year: Vec<(String, Vec<(String, Album)>)>,
+    pub albums_by_genre: Vec<(String, Vec<(String, Album)>)>,
     /// Flag to track if all_albums is complete (all artists loaded)
     pub all_albums_complete: bool,
     /// Flag to track if all_albums is sorted
@@ -78,81 +79,80 @@ impl LazyLibrary {
             all_albums_complete: false,
             all_albums_sorted: false,
             albums_by_year: Vec::new(),
+            albums_by_genre: Vec::new(),
         })
     }
 
-    pub fn ensure_albums_by_year_built(&mut self) {
-        if self.albums_by_year.is_empty() {
-            self.albums_by_year = self.build_albums_by_year();
-        }
+    fn sort_albums(albums: &mut [(String, Album)]) {
+        albums.sort_by(|a, b| {
+            // Check if either is "Unknown Album"
+            let a_is_unknown = a.1.name == "Unknown Album";
+            let b_is_unknown = b.1.name == "Unknown Album";
+
+            match (a_is_unknown, b_is_unknown) {
+                (true, true) => {
+                    // Both unknown - sort by artist name
+                    a.0.to_lowercase().cmp(&b.0.to_lowercase())
+                }
+                (true, false) => std::cmp::Ordering::Greater, // a is unknown, put after b
+                (false, true) => std::cmp::Ordering::Less,    // b is unknown, put a before b
+                (false, false) => {
+                    // Both known - sort by artist then album
+                    a.0.to_lowercase()
+                        .cmp(&b.0.to_lowercase())
+                        .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
+                }
+            }
+        });
     }
 
-    fn build_albums_by_year(&self) -> Vec<(String, Vec<(String, Album)>)> {
-        let mut by_year: HashMap<String, Vec<(String, Album)>> = HashMap::new();
+    /// Build a grouped index of albums by a specified key (e.g., year or genre).
+    fn build_albums_by<F, S>(
+        &self,
+        key_fn: F,
+        unknown_label: &str,
+        group_sort_fn: S,
+    ) -> Vec<(String, Vec<(String, Album)>)>
+    where
+        F: Fn(&Album) -> Option<String>,
+        S: Fn(&str, &str) -> std::cmp::Ordering,
+    {
+        let mut by_key: HashMap<String, Vec<(String, Album)>> = HashMap::new();
 
         for (artist, album) in &self.all_albums {
-            let year = album
-                .year
-                .clone()
-                .unwrap_or_else(|| "Unknown Year".to_string());
-            by_year
-                .entry(year)
+            let key = key_fn(album).unwrap_or_else(|| unknown_label.to_string());
+            by_key
+                .entry(key)
                 .or_default()
                 .push((artist.clone(), album.clone()));
         }
 
-        let unknown = by_year.remove("Unknown Year");
-        let mut known: Vec<_> = by_year.into_iter().collect();
-        known.sort_by(|a, b| b.0.cmp(&a.0)); // Sort years descending
+        let unknown = by_key.remove(unknown_label);
+        let mut known: Vec<_> = by_key.into_iter().collect();
+        known.sort_by(|a, b| group_sort_fn(&a.0, &b.0)); // Sort years descending
 
         for (_, albums) in &mut known {
-            albums.sort_by(|a, b| {
-                // Check if either is "Unknown Album"
-                let a_is_unknown = a.1.name == "Unknown Album";
-                let b_is_unknown = b.1.name == "Unknown Album";
-
-                match (a_is_unknown, b_is_unknown) {
-                    (true, true) => {
-                        // Both unknown - sort by artist name
-                        a.0.to_lowercase().cmp(&b.0.to_lowercase())
-                    }
-                    (true, false) => std::cmp::Ordering::Greater, // a is unknown, put after b
-                    (false, true) => std::cmp::Ordering::Less,    // b is unknown, put a before b
-                    (false, false) => {
-                        // Both known - sort by artist then album
-                        a.0.to_lowercase()
-                            .cmp(&b.0.to_lowercase())
-                            .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
-                    }
-                }
-            });
+            Self::sort_albums(albums)
         }
 
         if let Some(mut unknown_albums) = unknown {
-            unknown_albums.sort_by(|a, b| {
-                // Check if either is "Unknown Album"
-                let a_is_unknown = a.1.name == "Unknown Album";
-                let b_is_unknown = b.1.name == "Unknown Album";
-
-                match (a_is_unknown, b_is_unknown) {
-                    (true, true) => {
-                        // Both unknown - sort by artist name
-                        a.0.to_lowercase().cmp(&b.0.to_lowercase())
-                    }
-                    (true, false) => std::cmp::Ordering::Greater, // a is unknown, put after b
-                    (false, true) => std::cmp::Ordering::Less,    // b is unknown, put a before b
-                    (false, false) => {
-                        // Both known - sort by artist then album
-                        a.0.to_lowercase()
-                            .cmp(&b.0.to_lowercase())
-                            .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
-                    }
-                }
-            });
-            known.push(("Unknown Year".to_string(), unknown_albums));
+            Self::sort_albums(&mut unknown_albums);
+            known.push((unknown_label.to_string(), unknown_albums));
         }
 
         known
+    }
+
+    pub fn ensure_albums_by_year_built(&mut self) {
+        if self.albums_by_year.is_empty() {
+            self.albums_by_year = self.build_albums_by(|album| album.year.clone(), "Unknown Year", |a, b| b.cmp(a));
+        }
+    }
+
+    pub fn ensure_albums_by_genre_built(&mut self) {
+        if self.albums_by_genre.is_empty() {
+            self.albums_by_genre = self.build_albums_by(|album| album.genre.clone(), "Unknown Genre", |a, b| a.cmp(b));
+        }
     }
 
     /// Load albums and songs for a specific artist by index.
@@ -441,8 +441,9 @@ impl LazyLibrary {
             duration
         );
 
-        // Build the years index after all albums are loaded
+        // Build the years and genre index after all albums are loaded
         self.ensure_albums_by_year_built();
+        self.ensure_albums_by_genre_built();
 
         Ok(())
     }

@@ -46,6 +46,8 @@ pub struct BindsConfig {
     pub switch_to_albums: Vec<String>,
     #[serde(default = "BindsConfig::default_switch_to_years")]
     pub switch_to_years: Vec<String>,
+    #[serde(default = "BindsConfig::default_switch_to_genres")]
+    pub switch_to_genres: Vec<String>,
     #[serde(default = "BindsConfig::default_seek_forward")]
     pub seek_forward: Vec<String>,
     #[serde(default = "BindsConfig::default_seek_backward")]
@@ -159,6 +161,9 @@ impl BindsConfig {
     }
     fn default_switch_to_years() -> Vec<String> {
         vec!["4".to_string()]
+    }
+    fn default_switch_to_genres() -> Vec<String> {
+        vec!["5".to_string()]
     }
     fn default_seek_forward() -> Vec<String> {
         vec!["shift-l".to_string(), "shift-right".to_string()]
@@ -525,6 +530,12 @@ impl BindsConfig {
             sequential_bindings,
         );
         self.add_enhanced_binding_for_action(
+            &self.switch_to_genres,
+            crate::app::mpd_handler::MPDAction::SwitchToGenres,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
             &self.seek_forward,
             crate::app::mpd_handler::MPDAction::SeekForward,
             single_map,
@@ -823,6 +834,7 @@ impl Default for BindsConfig {
             switch_to_artists: Self::default_switch_to_artists(),
             switch_to_albums: Self::default_switch_to_albums(),
             switch_to_years: Self::default_switch_to_years(),
+            switch_to_genres: Self::default_switch_to_genres(),
             seek_forward: Self::default_seek_forward(),
             seek_backward: Self::default_seek_backward(),
             play_selected: Self::default_play_selected(),

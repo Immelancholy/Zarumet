@@ -40,10 +40,13 @@ pub struct App {
     /// For navigating the year list
     pub year_list_state: ListState,
     /// For navigating albums within a year
-    pub year_albums_list_state: ListState,
+    pub year_album_list_state: ListState,
     /// Cached panel focus for Years mode
     pub years_panel_focus: PanelFocus,
     /// Configuration loaded from TOML file
+    pub genre_list_state: ListState,
+    pub genre_album_list_state: ListState,
+    pub genre_panel_focus: PanelFocus,
     pub config: Config,
     /// Current menu mode
     pub menu_mode: MenuMode,
@@ -60,7 +63,9 @@ pub struct App {
     /// Expanded albums in Years mode (tracks which albums are currently expanded in Years mode)
     pub expanded_albums_years: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
     /// Display list state for albums within a year (used in Years mode when an album is expanded)
-    pub year_albums_display_list_state: ListState,
+    pub expanded_albums_genres: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
+    pub year_album_display_list_state: ListState,
+    pub genre_album_display_list_state: ListState,
     /// Current MPD status information
     pub mpd_status: Option<mpd_client::responses::Status>,
     /// Key bindings handler

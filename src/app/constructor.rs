@@ -117,8 +117,11 @@ impl App {
             all_albums_list_state: ListState::default(),
             album_tracks_list_state: ListState::default(),
             year_list_state: ListState::default(),
-            year_albums_list_state: ListState::default(),
+            genre_list_state: ListState::default(),
+            year_album_list_state: ListState::default(),
+            genre_album_list_state: ListState::default(),
             years_panel_focus: PanelFocus::YearList,
+            genre_panel_focus: PanelFocus::GenreList,
             config,
             menu_mode: MenuMode::Queue,       // Start with queue menu
             panel_focus: PanelFocus::Artists, // Start with artists panel focused
@@ -127,7 +130,9 @@ impl App {
             library: None,
             expanded_albums: std::collections::HashSet::new(),
             expanded_albums_years: std::collections::HashSet::new(),
-            year_albums_display_list_state: ListState::default(),
+            expanded_albums_genres: std::collections::HashSet::new(),
+            year_album_display_list_state: ListState::default(),
+            genre_album_display_list_state: ListState::default(),
             mpd_status: None,
             key_binds,
             bit_perfect_enabled,

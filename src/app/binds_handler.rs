@@ -72,8 +72,8 @@ impl KeyBinds {
         if let Some(action) = self.global_map.get(&key_tuple) {
             // Handle mode-specific logic for certain bindings
             match (action, mode) {
-                (MPDAction::PlaySelected, MenuMode::Artists | MenuMode::Years) => {
-                    // Don't allow play_selected in Artist and Years mode - it conflicts with navigation
+                (MPDAction::PlaySelected, MenuMode::Artists | MenuMode::Years | MenuMode::Genres) => {
+                    // Don't allow play_selected in Artist, Years and Genres mode - it conflicts with navigation
                     return None;
                 }
                 _ => return Some(action.clone()),
@@ -146,6 +146,20 @@ impl KeyBinds {
                             return Some(MPDAction::SwitchPanelRight);
                         }
                         (MPDAction::SwitchPanelRight, PanelFocus::YearAlbums) => {
+                            return Some(MPDAction::ToggleAlbumExpansion);
+                        }
+                        _ => return Some(action.clone()),
+                    }
+                }
+            }
+            MenuMode::Genres => {
+                if let Some(action) = self.artists_map.get(&key_tuple) {
+                    // Handle panel-specific logic for genres mode
+                    match (action, panel_focus) {
+                        (MPDAction::SwitchPanelRight, PanelFocus::GenreList) => {
+                            return Some(MPDAction::SwitchPanelRight);
+                        }
+                        (MPDAction::SwitchPanelRight, PanelFocus::GenreAlbums) => {
                             return Some(MPDAction::ToggleAlbumExpansion);
                         }
                         _ => return Some(action.clone()),

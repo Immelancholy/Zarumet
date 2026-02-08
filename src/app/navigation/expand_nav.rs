@@ -1,7 +1,7 @@
 use crate::App;
 use crate::app::{
     PanelFocus,
-    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years},
+    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years, compute_albums_display_list_genres,},
 };
 use log::error;
 use mpd_client::{Client, commands};
@@ -112,7 +112,7 @@ impl App {
             // Use the generic helper
             toggle_album_expansion_generic(
                 &mut self.queue,
-                &mut self.year_albums_display_list_state,
+                &mut self.year_album_display_list_state,
                 &display_items,
                 &album_indices,
                 &mut self.expanded_albums_years,
@@ -126,6 +126,40 @@ impl App {
         Ok(())
     }
 
+    pub async fn handle_genre_album_toggle(&mut self, client: &Client) -> color_eyre::Result<()> {
+        if let (Some(library), Some(selected_genre_index)) =
+            (&self.library, self.genre_list_state.selected())
+            && let Some(selected_genre) = library.albums_by_genre.get(selected_genre_index)
+        {
+            let (display_items, album_indices) =
+                compute_albums_display_list_genres(&selected_genre.1, &self.expanded_albums_genres);
+
+            // Prepare album lookup for Genres mode
+            let selected_genre_clone = selected_genre.clone();
+            let get_album_key = move |album_idx: usize| -> Option<(String, String)> {
+                selected_genre_clone
+                    .1
+                    .get(album_idx)
+                    .map(|(artist_name, album)| (artist_name.clone(), album.name.clone()))
+            };
+
+            // Use the generic helper
+            toggle_album_expansion_generic(
+                &mut self.queue,
+                &mut self.genre_album_display_list_state,
+                &display_items,
+                &album_indices,
+                &mut self.expanded_albums_genres,
+                get_album_key,
+                client,
+            )
+            .await?;
+        }
+        // Mark library dirty for album expansion changes
+        self.dirty.mark_library();
+        Ok(())
+    }
+    
     /// Handle adding to queue in Artists mode - context-aware based on what's selected
     /// If on a song, add the song; if on an album, add the album
     pub async fn handle_add_to_queue_context_aware(
@@ -199,7 +233,7 @@ impl App {
         if let (Some(library), Some(selected_year_index)) =
             (&self.library, self.year_list_state.selected())
             && let Some(selected_year) = library.albums_by_year.get(selected_year_index)
-            && let Some(display_index) = self.year_albums_display_list_state.selected()
+            && let Some(display_index) = self.year_album_display_list_state.selected()
         {
             let (display_items, _album_indices) =
                 compute_albums_display_list_years(&selected_year.1, &self.expanded_albums_years);
@@ -212,6 +246,70 @@ impl App {
                         if let Some(album_idx) =
                             _album_indices.get(display_index).copied().flatten()
                             && let Some((_artist_name, album)) = selected_year.1.get(album_idx)
+                        {
+                            let queue_was_empty = self.queue.is_empty();
+                            for song in &album.tracks {
+                                if let Err(e) = client
+                                    .command(commands::Add::uri(song.file_path.to_str().unwrap()))
+                                    .await
+                                {
+                                    error!("Error adding song to queue: {}", e);
+                                }
+                            }
+                            if queue_was_empty
+                                && let Err(e) = client.command(commands::Play::current()).await
+                            {
+                                error!("Error starting playback: {}", e);
+                            }
+                        }
+                    }
+                    DisplayItem::Song(_title, _duration, file_path) => {
+                        // Add specific song to queue
+                        let queue_was_empty = self.queue.is_empty();
+                        if let Err(e) = client
+                            .command(commands::Add::uri(file_path.to_str().unwrap()))
+                            .await
+                        {
+                            error!("Error adding song to queue: {}", e);
+                        } else if queue_was_empty
+                            && let Err(e) = client.command(commands::Play::current()).await
+                        {
+                            error!("Error starting playback: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Handle adding to queue in Genres mode - context-aware based on panel focus and selection
+    /// If on GenreAlbums panel and on a song, add the song; if on GenreAlbums panel and on an album, add the album
+    pub async fn handle_add_to_queue_genres_context_aware(
+        &mut self,
+        client: &Client,
+    ) -> color_eyre::Result<()> {
+        // Only handle when in GenreAlbums panel
+        if self.panel_focus != PanelFocus::GenreAlbums {
+            return Ok(());
+        }
+
+        if let (Some(library), Some(selected_genre_index)) =
+            (&self.library, self.genre_list_state.selected())
+            && let Some(selected_genre) = library.albums_by_genre.get(selected_genre_index)
+            && let Some(display_index) = self.genre_album_display_list_state.selected()
+        {
+            let (display_items, _album_indices) =
+                compute_albums_display_list_genres(&selected_genre.1, &self.expanded_albums_genres);
+
+            if let Some(display_item) = display_items.get(display_index) {
+                match display_item {
+                    DisplayItem::Album(_album_name) => {
+                        // Add entire album to queue
+                        // Find which album this display item corresponds to
+                        if let Some(album_idx) =
+                            _album_indices.get(display_index).copied().flatten()
+                            && let Some((_artist_name, album)) = selected_genre.1.get(album_idx)
                         {
                             let queue_was_empty = self.queue.is_empty();
                             for song in &album.tracks {

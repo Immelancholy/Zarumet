@@ -21,6 +21,7 @@ pub struct SongInfo {
     pub disc_number: u64,
     pub track_number: u64,
     pub year: Option<String>,
+    pub genre: Option<String>,
 }
 
 impl SongInfo {
@@ -82,8 +83,14 @@ impl SongInfo {
             .and_then(|date| {
                 date.get(..4)
                     .filter(|s| s.chars().all(|c| c.is_ascii_digit()))
-                    .map(|s| s.to_string())
+                    .map(Self::sanitize_string)
             });
+        let genre = song
+            .tags
+            .get(&Tag::Genre)
+            .and_then(|genres| genres.first())
+            .map(|s| Self::sanitize_string(s))
+            .filter(|s| !s.is_empty());
 
         Self {
             title,
@@ -98,6 +105,7 @@ impl SongInfo {
             disc_number,
             track_number,
             year,
+            genre,
         }
     }
     pub async fn set_max_art_size(client: &Client, size_bytes: usize) -> Result<(), CommandError> {

@@ -8,7 +8,7 @@ pub use cache::RenderCache;
 pub use cache::WidthCache;
 pub use rendering::{
     AlbumDisplayCache, DisplayItem, Protocol, compute_album_display_list,
-    compute_albums_display_list_years,
+    compute_albums_display_list_years, compute_albums_display_list_genres,
 };
 pub use views::{MenuMode, PanelFocus};
 

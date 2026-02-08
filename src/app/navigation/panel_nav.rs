@@ -2,7 +2,7 @@ use crate::App;
 use crate::app::{
     MenuMode, PanelFocus,
     mpd_handler::MPDAction,
-    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years},
+    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years, compute_albums_display_list_genres},
 };
 use mpd_client::Client;
 
@@ -161,8 +161,8 @@ impl App {
                                     };
                                     self.year_list_state.select(Some(new_index));
                                     // Clear album selection when navigating years
-                                    self.year_albums_list_state.select(None);
-                                    self.year_albums_display_list_state.select(None);
+                                    self.year_album_list_state.select(None);
+                                    self.year_album_display_list_state.select(None);
                                 }
                             }
                             PanelFocus::YearAlbums => {
@@ -181,20 +181,20 @@ impl App {
 
                                     if !display_items.is_empty() {
                                         let current = self
-                                            .year_albums_display_list_state
+                                            .year_album_display_list_state
                                             .selected()
                                             .unwrap_or(0);
                                         if current > 0 {
-                                            self.year_albums_display_list_state
+                                            self.year_album_display_list_state
                                                 .select(Some(current - 1));
                                         } else {
                                             // Wrap around to bottom
-                                            self.year_albums_display_list_state.select(Some(
+                                            self.year_album_display_list_state.select(Some(
                                                 display_items.len().saturating_sub(1),
                                             ));
                                         }
 
-                                        // Update the legacy year_albums_list_state to point to the current album if on album
+                                        // Update the legacy year_album_list_state to point to the current album if on album
                                         let wrapped_index = if current > 0 {
                                             current - 1
                                         } else {
@@ -208,7 +208,7 @@ impl App {
                                             for (i, item) in display_items.iter().enumerate() {
                                                 if matches!(item, DisplayItem::Album(_)) {
                                                     if i == wrapped_index {
-                                                        self.year_albums_list_state
+                                                        self.year_album_list_state
                                                             .select(Some(album_count));
                                                         break;
                                                     }
@@ -222,6 +222,85 @@ impl App {
                             _ => {
                                 // Invalid panel focus for Years mode, reset
                                 self.panel_focus = PanelFocus::YearList;
+                            }
+                        }
+                    }
+                    MenuMode::Genres => {
+                        match self.panel_focus {
+                            PanelFocus::GenreList => {
+                                if let Some(ref library) = self.library
+                                    && !library.albums_by_genre.is_empty()
+                                {
+                                    let current = self.genre_list_state.selected().unwrap_or(0);
+                                    let new_index = if current > 0 {
+                                        current - 1
+                                    } else {
+                                        // Wrap around to the bottom
+                                        library.albums_by_genre.len().saturating_sub(1)
+                                    };
+                                    self.genre_list_state.select(Some(new_index));
+                                    // Clear album selection when navigating genres
+                                    self.genre_album_list_state.select(None);
+                                    self.genre_album_display_list_state.select(None);
+                                }
+                            }
+                            PanelFocus::GenreAlbums => {
+                                // Navigate albums list using display list state
+                                if let (Some(library), Some(selected_genre_index)) =
+                                    (&self.library, self.genre_list_state.selected())
+                                    && let Some(selected_genre) =
+                                        library.albums_by_genre.get(selected_genre_index)
+                                {
+                                    // Compute display list to get total count
+                                    let (display_items, _album_indices) =
+                                        compute_albums_display_list_genres(
+                                            &selected_genre.1,
+                                            &self.expanded_albums_genres,
+                                        );
+
+                                    if !display_items.is_empty() {
+                                        let current = self
+                                            .genre_album_display_list_state
+                                            .selected()
+                                            .unwrap_or(0);
+                                        if current > 0 {
+                                            self.genre_album_display_list_state
+                                                .select(Some(current - 1));
+                                        } else {
+                                            // Wrap around to bottom
+                                            self.genre_album_display_list_state.select(Some(
+                                                display_items.len().saturating_sub(1),
+                                            ));
+                                        }
+
+                                        // Update the legacy genre_album_list_state to point to the current album if on album
+                                        let wrapped_index = if current > 0 {
+                                            current - 1
+                                        } else {
+                                            display_items.len().saturating_sub(1)
+                                        };
+                                        if let Some(DisplayItem::Album(_)) =
+                                            display_items.get(wrapped_index)
+                                        {
+                                            // Find which album this corresponds to
+                                            let mut album_count = 0;
+                                            for (i, item) in display_items.iter().enumerate() {
+                                                if matches!(item, DisplayItem::Album(_)) {
+                                                    if i == wrapped_index {
+                                                        self.genre_album_list_state
+                                                            .select(Some(album_count));
+                                                        break;
+                                                    }
+                                                    album_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Invalid panel focus for Genres mode, reset
+                                self.panel_focus = PanelFocus::GenreList;
                             }
                         }
                     }
@@ -372,8 +451,8 @@ impl App {
                                     };
                                     self.year_list_state.select(Some(new_index));
                                     // Clear album selection when navigating years
-                                    self.year_albums_list_state.select(None);
-                                    self.year_albums_display_list_state.select(None);
+                                    self.year_album_list_state.select(None);
+                                    self.year_album_display_list_state.select(None);
                                 }
                             }
                             PanelFocus::YearAlbums => {
@@ -392,18 +471,18 @@ impl App {
 
                                     if !display_items.is_empty() {
                                         let current = self
-                                            .year_albums_display_list_state
+                                            .year_album_display_list_state
                                             .selected()
                                             .unwrap_or(0);
                                         if current < display_items.len().saturating_sub(1) {
-                                            self.year_albums_display_list_state
+                                            self.year_album_display_list_state
                                                 .select(Some(current + 1));
                                         } else {
                                             // Wrap around to top
-                                            self.year_albums_display_list_state.select(Some(0));
+                                            self.year_album_display_list_state.select(Some(0));
                                         }
 
-                                        // Update legacy year_albums_list_state to point to current album if on album
+                                        // Update legacy year_album_list_state to point to current album if on album
                                         if let Some(DisplayItem::Album(_)) =
                                             display_items.get(current + 1)
                                         {
@@ -412,7 +491,7 @@ impl App {
                                             for (i, item) in display_items.iter().enumerate() {
                                                 if matches!(item, DisplayItem::Album(_)) {
                                                     if i == current + 1 {
-                                                        self.year_albums_list_state
+                                                        self.year_album_list_state
                                                             .select(Some(album_count));
                                                         break;
                                                     }
@@ -426,6 +505,81 @@ impl App {
                             _ => {
                                 // Invalid panel focus for Years mode, reset
                                 self.panel_focus = PanelFocus::YearList;
+                            }
+                        }
+                    }
+                    MenuMode::Genres => {
+                        match self.panel_focus {
+                            PanelFocus::GenreList => {
+                                // Navigate genress list
+                                if let Some(ref library) = self.library
+                                    && !library.albums_by_genre.is_empty()
+                                {
+                                    let current = self.genre_list_state.selected().unwrap_or(0);
+                                    let new_index = if current
+                                        < library.albums_by_genre.len().saturating_sub(1)
+                                    {
+                                        current + 1
+                                    } else {
+                                        // Wrap around to the top
+                                        0
+                                    };
+                                    self.genre_list_state.select(Some(new_index));
+                                    // Clear album selection when navigating years
+                                    self.genre_album_list_state.select(None);
+                                    self.genre_album_display_list_state.select(None);
+                                }
+                            }
+                            PanelFocus::GenreAlbums => {
+                                // Navigate albums list using display list state
+                                if let (Some(library), Some(selected_genre_index)) =
+                                    (&self.library, self.genre_list_state.selected())
+                                    && let Some(selected_genre) =
+                                        library.albums_by_genre.get(selected_genre_index)
+                                {
+                                    // Compute display list to get total count
+                                    let (display_items, _album_indices) =
+                                        compute_albums_display_list_genres(
+                                            &selected_genre.1,
+                                            &self.expanded_albums_genres,
+                                        );
+
+                                    if !display_items.is_empty() {
+                                        let current = self
+                                            .genre_album_display_list_state
+                                            .selected()
+                                            .unwrap_or(0);
+                                        if current < display_items.len().saturating_sub(1) {
+                                            self.genre_album_display_list_state
+                                                .select(Some(current + 1));
+                                        } else {
+                                            // Wrap around to top
+                                            self.genre_album_display_list_state.select(Some(0));
+                                        }
+
+                                        // Update legacy genre_album_list_state to point to current album if on album
+                                        if let Some(DisplayItem::Album(_)) =
+                                            display_items.get(current + 1)
+                                        {
+                                            // Find which album this corresponds to
+                                            let mut album_count = 0;
+                                            for (i, item) in display_items.iter().enumerate() {
+                                                if matches!(item, DisplayItem::Album(_)) {
+                                                    if i == current + 1 {
+                                                        self.genre_album_list_state
+                                                            .select(Some(album_count));
+                                                        break;
+                                                    }
+                                                    album_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Invalid panel focus for Genres mode, reset
+                                self.panel_focus = PanelFocus::GenreList;
                             }
                         }
                     }
