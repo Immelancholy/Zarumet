@@ -252,6 +252,19 @@ impl Navigation for App {
 
                 self.preload_albums_for_view(client).await;
             }
+            MPDAction::SwitchToYears => {
+                // Save current panel focus before leaving
+                match self.menu_mode {
+                    MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
+                    MenuMode::Years => {} // Already in Years mode
+                    MenuMode::Queue => {}
+                }
+                self.menu_mode = MenuMode::Years;
+                // Restore cached panel focus for Artists mode
+                self.panel_focus = self.years_panel_focus.clone();
+                self.dirty.mark_menu_mode();
+            }
             MPDAction::SwitchPanelLeft => {
                 match self.menu_mode {
                     MenuMode::Artists => {
