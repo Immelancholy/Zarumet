@@ -125,7 +125,11 @@ pub fn render_genres_mode(
                     .fg(config.colors.queue_selected_text_color())
                     .bg(config.colors.queue_selected_highlight_color()),
             );
-        frame.render_stateful_widget(genre_list_widget, left_horizontal_chunks[0], genre_list_state);
+        frame.render_stateful_widget(
+            genre_list_widget,
+            left_horizontal_chunks[0],
+            genre_list_state,
+        );
     } else {
         let genres_box = create_empty_box("Genres", config);
         frame.render_widget(genres_box, left_horizontal_chunks[0]);

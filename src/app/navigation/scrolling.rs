@@ -2,7 +2,10 @@ use crate::App;
 use crate::app::{
     MenuMode, PanelFocus,
     mpd_handler::MPDAction,
-    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years, compute_albums_display_list_genres},
+    ui::{
+        DisplayItem, compute_album_display_list, compute_albums_display_list_genres,
+        compute_albums_display_list_years,
+    },
 };
 use mpd_client::Client;
 
@@ -353,7 +356,8 @@ impl App {
                                         library.albums_by_genre.len().saturating_sub(1),
                                     );
                                     if potential == library.albums_by_genre.len().saturating_sub(1)
-                                        && current == library.albums_by_genre.len().saturating_sub(1)
+                                        && current
+                                            == library.albums_by_genre.len().saturating_sub(1)
                                     {
                                         // Already at bottom, wrap to top
                                         0
@@ -376,10 +380,11 @@ impl App {
                                 library.albums_by_genre.get(selected_genre_index)
                         {
                             // Compute display list to get total count
-                            let (display_items, _album_indices) = compute_albums_display_list_genres(
-                                &selected_genre.1,
-                                &self.expanded_albums_genres,
-                            );
+                            let (display_items, _album_indices) =
+                                compute_albums_display_list_genres(
+                                    &selected_genre.1,
+                                    &self.expanded_albums_genres,
+                                );
                             if !display_items.is_empty() {
                                 let current =
                                     self.genre_album_display_list_state.selected().unwrap_or(0);
@@ -438,7 +443,9 @@ impl App {
         // Mark appropriate dirty flags for scrolling
         match self.menu_mode {
             MenuMode::Queue => self.dirty.mark_queue_selection(),
-            MenuMode::Artists | MenuMode::Albums | MenuMode::Years | MenuMode::Genres => self.dirty.mark_library(),
+            MenuMode::Artists | MenuMode::Albums | MenuMode::Years | MenuMode::Genres => {
+                self.dirty.mark_library()
+            }
         }
     }
 
@@ -635,10 +642,11 @@ impl App {
                             && let Some(selected_genre) =
                                 library.albums_by_genre.get(selected_genre_index)
                         {
-                            let (display_items, _album_indices) = compute_albums_display_list_genres(
-                                &selected_genre.1,
-                                &self.expanded_albums_genres,
-                            );
+                            let (display_items, _album_indices) =
+                                compute_albums_display_list_genres(
+                                    &selected_genre.1,
+                                    &self.expanded_albums_genres,
+                                );
                             if !display_items.is_empty() {
                                 let new_index = match action {
                                     MPDAction::GoToTop => 0,
@@ -673,7 +681,9 @@ impl App {
         // Mark appropriate dirty flags for go to edge
         match self.menu_mode {
             MenuMode::Queue => self.dirty.mark_queue_selection(),
-            MenuMode::Artists | MenuMode::Albums | MenuMode::Years | MenuMode::Genres => self.dirty.mark_library(),
+            MenuMode::Artists | MenuMode::Albums | MenuMode::Years | MenuMode::Genres => {
+                self.dirty.mark_library()
+            }
         }
     }
 }

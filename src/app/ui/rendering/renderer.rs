@@ -11,8 +11,8 @@ use crate::app::KeyBinds;
 use crate::app::MessageType;
 use crate::app::ui::Protocol;
 use crate::app::ui::views::{
-    albums::render_albums_mode, artists::render_artists_mode, queue::render_queue_mode,
-    years::render_years_mode, genres::render_genres_mode,
+    albums::render_albums_mode, artists::render_artists_mode, genres::render_genres_mode,
+    queue::render_queue_mode, years::render_years_mode,
 };
 use crate::app::{LazyLibrary, SongInfo};
 use crate::app::{MenuMode, PanelFocus};

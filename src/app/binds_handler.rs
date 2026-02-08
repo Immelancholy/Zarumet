@@ -72,7 +72,10 @@ impl KeyBinds {
         if let Some(action) = self.global_map.get(&key_tuple) {
             // Handle mode-specific logic for certain bindings
             match (action, mode) {
-                (MPDAction::PlaySelected, MenuMode::Artists | MenuMode::Years | MenuMode::Genres) => {
+                (
+                    MPDAction::PlaySelected,
+                    MenuMode::Artists | MenuMode::Years | MenuMode::Genres,
+                ) => {
                     // Don't allow play_selected in Artist, Years and Genres mode - it conflicts with navigation
                     return None;
                 }

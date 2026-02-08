@@ -36,7 +36,10 @@ impl Album {
         for genre in tracks.iter().filter_map(|t| t.genre.clone()) {
             counts.entry(genre).and_modify(|c| *c += 1).or_insert(1);
         }
-        counts.into_iter().max_by_key(|(_, count)| *count).map(|(genre, _)| genre)
+        counts
+            .into_iter()
+            .max_by_key(|(_, count)| *count)
+            .map(|(genre, _)| genre)
     }
 
     /// Compute total duration from tracks (used during construction)

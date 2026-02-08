@@ -281,5 +281,3 @@ pub fn compute_albums_display_list_years(
     }
     (display_items, album_indices)
 }
-
-

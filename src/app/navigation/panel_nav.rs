@@ -2,7 +2,10 @@ use crate::App;
 use crate::app::{
     MenuMode, PanelFocus,
     mpd_handler::MPDAction,
-    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years, compute_albums_display_list_genres},
+    ui::{
+        DisplayItem, compute_album_display_list, compute_albums_display_list_genres,
+        compute_albums_display_list_years,
+    },
 };
 use mpd_client::Client;
 

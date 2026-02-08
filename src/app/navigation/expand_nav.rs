@@ -1,7 +1,10 @@
 use crate::App;
 use crate::app::{
     PanelFocus,
-    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years, compute_albums_display_list_genres,},
+    ui::{
+        DisplayItem, compute_album_display_list, compute_albums_display_list_genres,
+        compute_albums_display_list_years,
+    },
 };
 use log::error;
 use mpd_client::{Client, commands};
@@ -159,7 +162,7 @@ impl App {
         self.dirty.mark_library();
         Ok(())
     }
-    
+
     /// Handle adding to queue in Artists mode - context-aware based on what's selected
     /// If on a song, add the song; if on an album, add the album
     pub async fn handle_add_to_queue_context_aware(

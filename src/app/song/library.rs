@@ -145,13 +145,18 @@ impl LazyLibrary {
 
     pub fn ensure_albums_by_year_built(&mut self) {
         if self.albums_by_year.is_empty() {
-            self.albums_by_year = self.build_albums_by(|album| album.year.clone(), "Unknown Year", |a, b| b.cmp(a));
+            self.albums_by_year =
+                self.build_albums_by(|album| album.year.clone(), "Unknown Year", |a, b| b.cmp(a));
         }
     }
 
     pub fn ensure_albums_by_genre_built(&mut self) {
         if self.albums_by_genre.is_empty() {
-            self.albums_by_genre = self.build_albums_by(|album| album.genre.clone(), "Unknown Genre", |a, b| a.cmp(b));
+            self.albums_by_genre = self.build_albums_by(
+                |album| album.genre.clone(),
+                "Unknown Genre",
+                |a, b| a.cmp(b),
+            );
         }
     }
 
