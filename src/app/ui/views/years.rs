@@ -117,7 +117,7 @@ pub fn render_years_mode(
                 Block::default()
                     .borders(Borders::ALL)
                     .border_type(BorderType::Rounded)
-                    .title(Line::from(" years ").fg(config.colors.border_title_color()))
+                    .title(Line::from(" Year ").fg(config.colors.border_title_color()))
                     .border_style(year_border_style),
             )
             .highlight_style(
