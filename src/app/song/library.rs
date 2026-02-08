@@ -188,11 +188,19 @@ impl LazyLibrary {
         let start_time = std::time::Instant::now();
 
         // Fetch all songs for this artist
-        let filter = Filter::new(Tag::AlbumArtist, Operator::Equal, artist_name.clone());
+        // For "Unknown Artist", query for empty AlbumArtist tags
+        let filter = if artist_name == "Unknown Artist" {
+            Filter::new(Tag::AlbumArtist, Operator::Equal, "".to_string())
+        } else {
+            Filter::new(Tag::AlbumArtist, Operator::Equal, artist_name.clone())
+        };
         let find_cmd = commands::Find::new(filter).sort(Tag::Album);
 
         let songs = match client.command(find_cmd).await {
-            Ok(songs) => songs,
+            Ok(songs) => {
+                log::debug!("Found {} songs for artist '{}'", songs.len(), artist_name);
+                songs
+            }
             Err(e) => {
                 // Revert to NotLoaded on error
                 self.artists[artist_index].albums = ArtistData::NotLoaded;
@@ -246,17 +254,9 @@ impl LazyLibrary {
             duration
         );
 
-        // Update all_albums with newly loaded albums
-        for album in &albums {
-            // Check if this album is already in all_albums (avoid duplicates)
-            let exists = self
-                .all_albums
-                .iter()
-                .any(|(a_name, a)| a_name == &artist_name && a.name == album.name);
-            if !exists {
-                self.all_albums.push((artist_name.clone(), album.clone()));
-            }
-        }
+        // NOTE: We do NOT add to all_albums here because preload_all_albums() already did that
+        // all_albums is for the Albums view and is populated once during preload
+        // artist.albums is for the Artists view and is populated when the artist is selected
 
         // Mark as needing sort (defer sorting until all artists loaded or accessed)
         self.all_albums_sorted = false;
