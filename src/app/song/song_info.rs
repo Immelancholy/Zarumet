@@ -57,7 +57,7 @@ impl SongInfo {
             file_path
                 .file_name()
                 .and_then(|name| name.to_str())
-                .map(|s| Self::sanitize_string(s))
+                .map(Self::sanitize_string)
                 .unwrap_or_else(|| "Unknown Title".to_string())
         });
 
