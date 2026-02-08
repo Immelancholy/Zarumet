@@ -50,10 +50,19 @@ impl SongInfo {
     }
 
     pub fn from_song(song: &Song) -> Self {
+        let file_path = song.file_path().to_path_buf();
+        
         let title = song
             .title()
             .map(Self::sanitize_string)
-            .unwrap_or_else(|| "Unknown Title".to_string());
+            .unwrap_or_else(|| {
+                // Use filename as title if no title in metadata
+                file_path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .map(|s| Self::sanitize_string(s))
+                    .unwrap_or_else(|| "Unknown Title".to_string())
+            });
 
         let artist = song
             .artists()
@@ -66,7 +75,6 @@ impl SongInfo {
             .map(Self::sanitize_string)
             .unwrap_or_else(|| "Unknown Album".to_string());
 
-        let file_path = song.file_path().to_path_buf();
         let format = song.format.clone();
         let duration = song.duration;
         let (disc_number, track_number) = song.number();
