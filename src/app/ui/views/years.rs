@@ -1,13 +1,12 @@
 use crate::app::{
     Config, LazyLibrary, ListState, MenuMode, PanelFocus, SongInfo,
     ui::{
-        DisplayItem, Protocol, RENDER_CACHE, WIDTH_CACHE,
+        DisplayItem, Protocol, RENDER_CACHE, WIDTH_CACHE, compute_albums_display_list_years,
         rendering::utils,
         widgets::{
             create_empty_box, create_format_widget, create_left_box_bottom, create_song_widget,
             create_top_box, render_image_widget,
         },
-        compute_albums_display_list_years,
     },
 };
 use ratatui::{
@@ -69,8 +68,8 @@ pub fn render_years_mode(
 
     // Split the top part into two side-by-side boxes
     let left_horizontal_chunks = Layout::horizontal([
-        Constraint::Percentage(15), // Years box takes 15% of left space
-        Constraint::Percentage(85), // Albums box takes 85% of left space
+        Constraint::Percentage(20), // Years box takes 20% of left space
+        Constraint::Percentage(80), // Albums box takes 80% of left space
     ])
     .split(left_vertical_chunks[0]);
 
@@ -90,6 +89,9 @@ pub fn render_years_mode(
 
     // Render years list
     if let Some(library) = library {
+        if year_list_state.selected().is_none() && !library.albums_by_year.is_empty() {
+            year_list_state.select(Some(0));
+        }
         let year_list: Vec<ratatui::widgets::ListItem> = library
             .albums_by_year
             .iter()
@@ -123,11 +125,7 @@ pub fn render_years_mode(
                     .fg(config.colors.queue_selected_text_color())
                     .bg(config.colors.queue_selected_highlight_color()),
             );
-        frame.render_stateful_widget(
-            year_list_widget,
-            left_horizontal_chunks[0],
-            year_list_state,
-        );
+        frame.render_stateful_widget(year_list_widget, left_horizontal_chunks[0], year_list_state);
     } else {
         let years_box = create_empty_box("Years", config);
         frame.render_widget(years_box, left_horizontal_chunks[0]);
@@ -146,8 +144,12 @@ pub fn render_years_mode(
 
             // Use cached display list - get_or_compute returns references,
             // so we clone only the items we need for rendering
-            let (display_items, _album_indices) = compute_albums_display_list_years(&selected_year.1, expanded_albums_years);
+            let (display_items, _album_indices) =
+                compute_albums_display_list_years(&selected_year.1, expanded_albums_years);
 
+            if year_albums_display_list_state.selected().is_none() && !display_items.is_empty() {
+                year_albums_display_list_state.select(Some(0));
+            }
             let albums_list: Vec<ratatui::widgets::ListItem> = display_items
                 .iter()
                 .map(|item| {
@@ -157,7 +159,7 @@ pub fn render_years_mode(
                             let album = selected_year
                                 .1
                                 .iter()
-                                .find(|a| a.1.name == *album_name)
+                                .find(|a| format!("{} - {}", a.1.name, a.0) == *album_name)
                                 .unwrap();
 
                             // Format total duration using cache

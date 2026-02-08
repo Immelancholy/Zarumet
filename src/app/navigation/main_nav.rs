@@ -101,8 +101,7 @@ impl Navigation for App {
                         // Artists mode: handled via ToggleAlbumExpansion in binds.rs
                     }
                     MenuMode::Years => {
-                        // Years mode: not implemented yet
-                        // TODO: Implement context-aware play/add in Years mode based on panel focus (similar to Artists mode)
+                        // Years mode: handled via ToggleAlbumExpansion in binds.rs
                     }
                 }
             }
@@ -264,6 +263,8 @@ impl Navigation for App {
                 // Restore cached panel focus for Artists mode
                 self.panel_focus = self.years_panel_focus.clone();
                 self.dirty.mark_menu_mode();
+
+                self.preload_albums_for_view(client).await;
             }
             MPDAction::SwitchPanelLeft => {
                 match self.menu_mode {
@@ -456,6 +457,8 @@ impl Navigation for App {
                     MenuMode::Queue => {
                         self.menu_mode = MenuMode::Years;
                         self.panel_focus = self.years_panel_focus.clone();
+
+                        self.preload_albums_for_view(client).await;
                     }
                     MenuMode::Years => {
                         self.menu_mode = MenuMode::Albums;
@@ -496,6 +499,8 @@ impl Navigation for App {
                     MenuMode::Albums => {
                         self.menu_mode = MenuMode::Years;
                         self.panel_focus = self.years_panel_focus.clone();
+
+                        self.preload_albums_for_view(client).await;
                     }
                     MenuMode::Years => {
                         self.menu_mode = MenuMode::Queue;

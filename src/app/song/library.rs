@@ -265,7 +265,7 @@ impl LazyLibrary {
             return Ok(());
         }
 
-        log::info!("Preloading all albums for Albums view (bulk)...");
+        log::info!("Preloading all albums for Albums and Years view (bulk)...");
         let start_time = std::time::Instant::now();
 
         // Fetch ALL songs in the library at once using a filter that matches every song
@@ -355,6 +355,9 @@ impl LazyLibrary {
             self.all_albums.len(),
             duration
         );
+
+        // Build the years index after all albums are loaded
+        self.ensure_albums_by_year_built();
 
         Ok(())
     }
