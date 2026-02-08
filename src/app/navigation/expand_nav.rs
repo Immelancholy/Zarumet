@@ -1,9 +1,12 @@
 use crate::App;
-use crate::app::{PanelFocus, ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years}};
+use crate::app::{
+    PanelFocus,
+    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years},
+};
 use log::error;
 use mpd_client::{Client, commands};
-use std::collections::HashSet;
 use ratatui::widgets::ListState;
+use std::collections::HashSet;
 
 // Generic album expansion toggle that works for any mode with expandable albums
 async fn toggle_album_expansion_generic(
@@ -16,37 +19,39 @@ async fn toggle_album_expansion_generic(
     client: &Client,
 ) -> color_eyre::Result<()> {
     if let Some(display_index) = display_list_state.selected()
-        && let Some(display_item) = display_items.get(display_index) {
-            match display_item {
-                DisplayItem::Album(_) => {
-                    // Get the album index from the mapping
-                    if let Some(album_index) = album_indices.get(display_index).copied().flatten()
-                        && let Some(album_key) = get_album_key(album_index) {
-                            // Toggle expansion
-                            if expansion_set.contains(&album_key) {
-                                expansion_set.remove(&album_key);
-                            } else {
-                                expansion_set.insert(album_key);
-                            }
-                        }
+        && let Some(display_item) = display_items.get(display_index)
+    {
+        match display_item {
+            DisplayItem::Album(_) => {
+                // Get the album index from the mapping
+                if let Some(album_index) = album_indices.get(display_index).copied().flatten()
+                    && let Some(album_key) = get_album_key(album_index)
+                {
+                    // Toggle expansion
+                    if expansion_set.contains(&album_key) {
+                        expansion_set.remove(&album_key);
+                    } else {
+                        expansion_set.insert(album_key);
+                    }
                 }
-                DisplayItem::Song(_title, _duration, file_path) => {
-                    // Add specific song to queue
-                    let queue_was_empty = queue.is_empty();
-                    if let Err(e) = client
-                        .command(commands::Add::uri(file_path.to_str().unwrap()))
-                        .await
-                    {
-                        error!("Error adding song to queue: {}", e);
-                    } else if queue_was_empty {
-                        // Start playback if queue was empty
-                        if let Err(e) = client.command(commands::Play::current()).await {
-                            error!("Error starting playback: {}", e);
-                        }
+            }
+            DisplayItem::Song(_title, _duration, file_path) => {
+                // Add specific song to queue
+                let queue_was_empty = queue.is_empty();
+                if let Err(e) = client
+                    .command(commands::Add::uri(file_path.to_str().unwrap()))
+                    .await
+                {
+                    error!("Error adding song to queue: {}", e);
+                } else if queue_was_empty {
+                    // Start playback if queue was empty
+                    if let Err(e) = client.command(commands::Play::current()).await {
+                        error!("Error starting playback: {}", e);
                     }
                 }
             }
         }
+    }
     Ok(())
 }
 
@@ -63,9 +68,10 @@ impl App {
             // Prepare album lookup for Artists mode
             let selected_artist_clone = selected_artist.clone();
             let get_album_key = move |album_idx: usize| -> Option<(String, String)> {
-                selected_artist_clone.albums.get(album_idx).map(|album| {
-                    (selected_artist_clone.name.clone(), album.name.clone())
-                })
+                selected_artist_clone
+                    .albums
+                    .get(album_idx)
+                    .map(|album| (selected_artist_clone.name.clone(), album.name.clone()))
             };
 
             // Use the generic helper
@@ -77,7 +83,8 @@ impl App {
                 &mut self.expanded_albums,
                 get_album_key,
                 client,
-            ).await?;
+            )
+            .await?;
         }
         // Mark library dirty for album expansion changes
         self.dirty.mark_library();
@@ -86,7 +93,7 @@ impl App {
 
     /// Handle album expansion toggle for Years mode
     pub async fn handle_year_album_toggle(&mut self, client: &Client) -> color_eyre::Result<()> {
-        if let (Some(library), Some(selected_year_index)) = 
+        if let (Some(library), Some(selected_year_index)) =
             (&self.library, self.year_list_state.selected())
             && let Some(selected_year) = library.albums_by_year.get(selected_year_index)
         {
@@ -96,9 +103,10 @@ impl App {
             // Prepare album lookup for Years mode
             let selected_year_clone = selected_year.clone();
             let get_album_key = move |album_idx: usize| -> Option<(String, String)> {
-                selected_year_clone.1.get(album_idx).map(|(artist_name, album)| {
-                    (artist_name.clone(), album.name.clone())
-                })
+                selected_year_clone
+                    .1
+                    .get(album_idx)
+                    .map(|(artist_name, album)| (artist_name.clone(), album.name.clone()))
             };
 
             // Use the generic helper
@@ -110,9 +118,10 @@ impl App {
                 &mut self.expanded_albums_years,
                 get_album_key,
                 client,
-            ).await?;
+            )
+            .await?;
         }
-        // Mark library dirty for album expansion changes  
+        // Mark library dirty for album expansion changes
         self.dirty.mark_library();
         Ok(())
     }
@@ -187,7 +196,7 @@ impl App {
             return Ok(());
         }
 
-        if let (Some(library), Some(selected_year_index)) = 
+        if let (Some(library), Some(selected_year_index)) =
             (&self.library, self.year_list_state.selected())
             && let Some(selected_year) = library.albums_by_year.get(selected_year_index)
             && let Some(display_index) = self.year_albums_display_list_state.selected()
@@ -200,12 +209,16 @@ impl App {
                     DisplayItem::Album(_album_name) => {
                         // Add entire album to queue
                         // Find which album this display item corresponds to
-                        if let Some(album_idx) = _album_indices.get(display_index).copied().flatten() {
+                        if let Some(album_idx) =
+                            _album_indices.get(display_index).copied().flatten()
+                        {
                             if let Some((_artist_name, album)) = selected_year.1.get(album_idx) {
                                 let queue_was_empty = self.queue.is_empty();
                                 for song in &album.tracks {
                                     if let Err(e) = client
-                                        .command(commands::Add::uri(song.file_path.to_str().unwrap()))
+                                        .command(commands::Add::uri(
+                                            song.file_path.to_str().unwrap(),
+                                        ))
                                         .await
                                     {
                                         error!("Error adding song to queue: {}", e);

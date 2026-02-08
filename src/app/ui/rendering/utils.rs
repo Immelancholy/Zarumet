@@ -1,5 +1,5 @@
-use crate::app::song::Artist;
 use crate::app::song::Album;
+use crate::app::song::Artist;
 use crate::app::ui::cache::width_cache::WidthCache;
 use ratatui::layout::{Constraint, Flex, Layout, Rect};
 use unicode_width::UnicodeWidthChar;
@@ -213,7 +213,10 @@ pub fn compute_album_display_list(
 }
 /// Compute the display list for albums panel considering expanded albums in Years mode
 /// Returns (display_items, mapping_from_display_to_album_index)
-pub fn compute_albums_display_list_years(year: &[(String, Album)], expanded_albums: &std::collections::HashSet<(String, String)>) -> (Vec<DisplayItem>, Vec<Option<usize>>) {
+pub fn compute_albums_display_list_years(
+    year: &[(String, Album)],
+    expanded_albums: &std::collections::HashSet<(String, String)>,
+) -> (Vec<DisplayItem>, Vec<Option<usize>>) {
     let mut display_items = Vec::new();
     let mut album_indices = Vec::new(); // Maps display indices to album indices (None for songs)
 
@@ -223,7 +226,10 @@ pub fn compute_albums_display_list_years(year: &[(String, Album)], expanded_albu
 
         // Add album header
         album_indices.push(Some(album_index));
-        display_items.push(DisplayItem::Album(format!("{} - {}", album.name, artist_name)));
+        display_items.push(DisplayItem::Album(format!(
+            "{} - {}",
+            album.name, artist_name
+        )));
 
         // If expanded, add songs
         if is_expanded {

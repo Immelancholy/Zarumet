@@ -70,9 +70,15 @@ impl SongInfo {
         let format = song.format.clone();
         let duration = song.duration;
         let (disc_number, track_number) = song.number();
-        let year = song.tags.get(&Tag::Date).and_then(|dates| dates.first()).and_then(|date| {
-            date.get(..4).filter(|s| s.chars().all(|c| c.is_ascii_digit())).map(|s| s.to_string())
-        });
+        let year = song
+            .tags
+            .get(&Tag::Date)
+            .and_then(|dates| dates.first())
+            .and_then(|date| {
+                date.get(..4)
+                    .filter(|s| s.chars().all(|c| c.is_ascii_digit()))
+                    .map(|s| s.to_string())
+            });
 
         Self {
             title,

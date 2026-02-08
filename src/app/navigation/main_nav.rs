@@ -425,7 +425,6 @@ impl Navigation for App {
                     MenuMode::Queue => {
                         // Not needed
                     }
-
                 }
             }
             MPDAction::AddSongToQueue => {

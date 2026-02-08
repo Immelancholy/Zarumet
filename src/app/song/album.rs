@@ -26,7 +26,7 @@ impl Album {
     fn compute_album_year(tracks: &[SongInfo]) -> Option<String> {
         tracks.iter().filter_map(|t| t.year.clone()).max()
     }
-    
+
     /// Compute total duration from tracks (used during construction)
     fn compute_total_duration(tracks: &[SongInfo]) -> Option<std::time::Duration> {
         let mut total_secs = 0u64;

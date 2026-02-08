@@ -6,7 +6,10 @@ pub mod widgets;
 pub use cache::DirtyFlags;
 pub use cache::RenderCache;
 pub use cache::WidthCache;
-pub use rendering::{AlbumDisplayCache, DisplayItem, Protocol, compute_album_display_list, compute_albums_display_list_years};
+pub use rendering::{
+    AlbumDisplayCache, DisplayItem, Protocol, compute_album_display_list,
+    compute_albums_display_list_years,
+};
 pub use views::{MenuMode, PanelFocus};
 
 use std::cell::RefCell;

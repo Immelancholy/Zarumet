@@ -180,10 +180,13 @@ impl App {
                                         );
 
                                     if !display_items.is_empty() {
-                                        let current =
-                                            self.year_albums_display_list_state.selected().unwrap_or(0);
+                                        let current = self
+                                            .year_albums_display_list_state
+                                            .selected()
+                                            .unwrap_or(0);
                                         if current > 0 {
-                                            self.year_albums_display_list_state.select(Some(current - 1));
+                                            self.year_albums_display_list_state
+                                                .select(Some(current - 1));
                                         } else {
                                             // Wrap around to bottom
                                             self.year_albums_display_list_state.select(Some(
@@ -359,13 +362,14 @@ impl App {
                                     && !library.albums_by_year.is_empty()
                                 {
                                     let current = self.year_list_state.selected().unwrap_or(0);
-                                    let new_index =
-                                        if current < library.albums_by_year.len().saturating_sub(1) {
-                                            current + 1
-                                        } else {
-                                            // Wrap around to the top
-                                            0
-                                        };
+                                    let new_index = if current
+                                        < library.albums_by_year.len().saturating_sub(1)
+                                    {
+                                        current + 1
+                                    } else {
+                                        // Wrap around to the top
+                                        0
+                                    };
                                     self.year_list_state.select(Some(new_index));
                                     // Clear album selection when navigating years
                                     self.year_albums_list_state.select(None);
@@ -387,10 +391,13 @@ impl App {
                                         );
 
                                     if !display_items.is_empty() {
-                                        let current =
-                                            self.year_albums_display_list_state.selected().unwrap_or(0);
+                                        let current = self
+                                            .year_albums_display_list_state
+                                            .selected()
+                                            .unwrap_or(0);
                                         if current < display_items.len().saturating_sub(1) {
-                                            self.year_albums_display_list_state.select(Some(current + 1));
+                                            self.year_albums_display_list_state
+                                                .select(Some(current + 1));
                                         } else {
                                             // Wrap around to top
                                             self.year_albums_display_list_state.select(Some(0));

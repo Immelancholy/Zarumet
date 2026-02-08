@@ -267,13 +267,17 @@ impl App {
                     PanelFocus::YearAlbums => {
                         if let (Some(library), Some(selected_year_index)) =
                             (&self.library, self.year_list_state.selected())
-                            && let Some(selected_year) = library.albums_by_year.get(selected_year_index)
+                            && let Some(selected_year) =
+                                library.albums_by_year.get(selected_year_index)
                         {
                             // Compute display list to get total count
-                            let (display_items, _album_indices) =
-                                compute_albums_display_list_years(&selected_year.1, &self.expanded_albums_years);
+                            let (display_items, _album_indices) = compute_albums_display_list_years(
+                                &selected_year.1,
+                                &self.expanded_albums_years,
+                            );
                             if !display_items.is_empty() {
-                                let current = self.year_albums_display_list_state.selected().unwrap_or(0);
+                                let current =
+                                    self.year_albums_display_list_state.selected().unwrap_or(0);
                                 let new_index = match action {
                                     MPDAction::ScrollUp => {
                                         let potential = current.saturating_sub(15);
@@ -309,7 +313,8 @@ impl App {
                                     for (i, item) in display_items.iter().enumerate() {
                                         if matches!(item, DisplayItem::Album(_)) {
                                             if i == new_index {
-                                                self.year_albums_list_state.select(Some(album_count));
+                                                self.year_albums_list_state
+                                                    .select(Some(album_count));
                                                 break;
                                             }
                                             album_count += 1;
@@ -449,7 +454,9 @@ impl App {
                         {
                             let new_index = match action {
                                 MPDAction::GoToTop => 0,
-                                MPDAction::GoToBottom => library.albums_by_year.len().saturating_sub(1),
+                                MPDAction::GoToBottom => {
+                                    library.albums_by_year.len().saturating_sub(1)
+                                }
                                 _ => return,
                             };
                             self.year_list_state.select(Some(new_index));
@@ -461,10 +468,13 @@ impl App {
                     PanelFocus::YearAlbums => {
                         if let (Some(library), Some(selected_year_index)) =
                             (&self.library, self.year_list_state.selected())
-                            && let Some(selected_year) = library.albums_by_year.get(selected_year_index)
+                            && let Some(selected_year) =
+                                library.albums_by_year.get(selected_year_index)
                         {
-                            let (display_items, _album_indices) =
-                                compute_albums_display_list_years(&selected_year.1, &self.expanded_albums_years);
+                            let (display_items, _album_indices) = compute_albums_display_list_years(
+                                &selected_year.1,
+                                &self.expanded_albums_years,
+                            );
                             if !display_items.is_empty() {
                                 let new_index = match action {
                                     MPDAction::GoToTop => 0,
@@ -479,7 +489,8 @@ impl App {
                                     for (i, item) in display_items.iter().enumerate() {
                                         if matches!(item, DisplayItem::Album(_)) {
                                             if i == new_index {
-                                                self.year_albums_list_state.select(Some(album_count));
+                                                self.year_albums_list_state
+                                                    .select(Some(album_count));
                                                 break;
                                             }
                                             album_count += 1;
