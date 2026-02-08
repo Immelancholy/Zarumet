@@ -176,7 +176,7 @@ impl App {
                                     let (display_items, _album_indices) =
                                         compute_albums_display_list_years(
                                             &selected_year.1,
-                                            &self.expanded_albums,
+                                            &self.expanded_albums_years,
                                         );
 
                                     if !display_items.is_empty() {
