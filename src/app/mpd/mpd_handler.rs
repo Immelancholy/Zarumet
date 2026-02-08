@@ -51,6 +51,7 @@ pub enum MPDAction {
     SwitchToQueueMenu,
     SwitchToArtists,
     SwitchToAlbums,
+    SwitchToYears,
 
     // Panel focus
     SwitchPanelLeft,
@@ -109,6 +110,7 @@ impl fmt::Display for MPDAction {
             MPDAction::SwitchToQueueMenu => write!(f, "SwitchToQueueMenu"),
             MPDAction::SwitchToArtists => write!(f, "SwitchToArtists"),
             MPDAction::SwitchToAlbums => write!(f, "SwitchToAlbums"),
+            MPDAction::SwitchToYears => write!(f, "SwitchToYears"),
             MPDAction::SwitchPanelLeft => write!(f, "SwitchPanelLeft"),
             MPDAction::SwitchPanelRight => write!(f, "SwitchPanelRight"),
             MPDAction::NavigateUp => write!(f, "NavigateUp"),
@@ -320,6 +322,7 @@ impl MPDAction {
             | MPDAction::SwitchToQueueMenu
             | MPDAction::SwitchToArtists
             | MPDAction::SwitchToAlbums
+            | MPDAction::SwitchToYears
             | MPDAction::SwitchPanelLeft
             | MPDAction::SwitchPanelRight
             | MPDAction::NavigateUp

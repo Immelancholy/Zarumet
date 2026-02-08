@@ -137,6 +137,7 @@ pub fn create_top_box<'a>(
             MenuMode::Queue => (" ", accent_color, "Queue", mode_color),
             MenuMode::Artists => ("󰠃 ", accent_color, "Artists", mode_color),
             MenuMode::Albums => ("󰀥 ", accent_color, "Albums", mode_color),
+            MenuMode::Years => ("󰭦 ", accent_color, "Years", mode_color),
         };
         spans.push(Span::styled(mode_text.0, Style::default().fg(mode_text.1)));
         spans.push(Span::styled(mode_text.2, Style::default().fg(mode_text.3)));

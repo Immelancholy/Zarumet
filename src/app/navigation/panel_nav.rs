@@ -2,7 +2,7 @@ use crate::App;
 use crate::app::{
     MenuMode, PanelFocus,
     mpd_handler::MPDAction,
-    ui::{DisplayItem, compute_album_display_list},
+    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years},
 };
 use mpd_client::Client;
 
@@ -146,6 +146,82 @@ impl App {
                             }
                         }
                     }
+                    MenuMode::Years => {
+                        match self.panel_focus {
+                            PanelFocus::YearList => {
+                                if let Some(ref library) = self.library
+                                    && !library.albums_by_year.is_empty()
+                                {
+                                    let current = self.year_list_state.selected().unwrap_or(0);
+                                    let new_index = if current > 0 {
+                                        current - 1
+                                    } else {
+                                        // Wrap around to the bottom
+                                        library.albums_by_year.len().saturating_sub(1)
+                                    };
+                                    self.year_list_state.select(Some(new_index));
+                                    // Clear album selection when navigating years
+                                    self.year_albums_list_state.select(None);
+                                    self.year_albums_display_list_state.select(None);
+                                }
+                            }
+                            PanelFocus::YearAlbums => {
+                                // Navigate albums list using display list state
+                                if let (Some(library), Some(selected_year_index)) =
+                                    (&self.library, self.year_list_state.selected())
+                                    && let Some(selected_year) =
+                                        library.albums_by_year.get(selected_year_index)
+                                {
+                                    // Compute display list to get total count
+                                    let (display_items, _album_indices) =
+                                        compute_albums_display_list_years(
+                                            &selected_year.1,
+                                            &self.expanded_albums,
+                                        );
+
+                                    if !display_items.is_empty() {
+                                        let current =
+                                            self.year_albums_display_list_state.selected().unwrap_or(0);
+                                        if current > 0 {
+                                            self.year_albums_display_list_state.select(Some(current - 1));
+                                        } else {
+                                            // Wrap around to bottom
+                                            self.year_albums_display_list_state.select(Some(
+                                                display_items.len().saturating_sub(1),
+                                            ));
+                                        }
+
+                                        // Update the legacy year_albums_list_state to point to the current album if on album
+                                        let wrapped_index = if current > 0 {
+                                            current - 1
+                                        } else {
+                                            display_items.len().saturating_sub(1)
+                                        };
+                                        if let Some(DisplayItem::Album(_)) =
+                                            display_items.get(wrapped_index)
+                                        {
+                                            // Find which album this corresponds to
+                                            let mut album_count = 0;
+                                            for (i, item) in display_items.iter().enumerate() {
+                                                if matches!(item, DisplayItem::Album(_)) {
+                                                    if i == wrapped_index {
+                                                        self.year_albums_list_state
+                                                            .select(Some(album_count));
+                                                        break;
+                                                    }
+                                                    album_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Invalid panel focus for Years mode, reset
+                                self.panel_focus = PanelFocus::YearList;
+                            }
+                        }
+                    }
                 }
             }
             MPDAction::NavigateDown => {
@@ -272,6 +348,77 @@ impl App {
                             _ => {
                                 // Invalid panel focus for Albums mode, reset
                                 self.panel_focus = PanelFocus::AlbumList;
+                            }
+                        }
+                    }
+                    MenuMode::Years => {
+                        match self.panel_focus {
+                            PanelFocus::YearList => {
+                                // Navigate years list
+                                if let Some(ref library) = self.library
+                                    && !library.albums_by_year.is_empty()
+                                {
+                                    let current = self.year_list_state.selected().unwrap_or(0);
+                                    let new_index =
+                                        if current < library.albums_by_year.len().saturating_sub(1) {
+                                            current + 1
+                                        } else {
+                                            // Wrap around to the top
+                                            0
+                                        };
+                                    self.year_list_state.select(Some(new_index));
+                                    // Clear album selection when navigating years
+                                    self.year_albums_list_state.select(None);
+                                    self.year_albums_display_list_state.select(None);
+                                }
+                            }
+                            PanelFocus::YearAlbums => {
+                                // Navigate albums list using display list state
+                                if let (Some(library), Some(selected_year_index)) =
+                                    (&self.library, self.year_list_state.selected())
+                                    && let Some(selected_year) =
+                                        library.albums_by_year.get(selected_year_index)
+                                {
+                                    // Compute display list to get total count
+                                    let (display_items, _album_indices) =
+                                        compute_albums_display_list_years(
+                                            &selected_year.1,
+                                            &self.expanded_albums_years,
+                                        );
+
+                                    if !display_items.is_empty() {
+                                        let current =
+                                            self.year_albums_display_list_state.selected().unwrap_or(0);
+                                        if current < display_items.len().saturating_sub(1) {
+                                            self.year_albums_display_list_state.select(Some(current + 1));
+                                        } else {
+                                            // Wrap around to top
+                                            self.year_albums_display_list_state.select(Some(0));
+                                        }
+
+                                        // Update legacy year_albums_list_state to point to current album if on album
+                                        if let Some(DisplayItem::Album(_)) =
+                                            display_items.get(current + 1)
+                                        {
+                                            // Find which album this corresponds to
+                                            let mut album_count = 0;
+                                            for (i, item) in display_items.iter().enumerate() {
+                                                if matches!(item, DisplayItem::Album(_)) {
+                                                    if i == current + 1 {
+                                                        self.year_albums_list_state
+                                                            .select(Some(album_count));
+                                                        break;
+                                                    }
+                                                    album_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Invalid panel focus for Years mode, reset
+                                self.panel_focus = PanelFocus::YearList;
                             }
                         }
                     }

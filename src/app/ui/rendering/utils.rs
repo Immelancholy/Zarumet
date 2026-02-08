@@ -1,5 +1,3 @@
-use std::usize;
-
 use crate::app::song::Artist;
 use crate::app::song::Album;
 use crate::app::ui::cache::width_cache::WidthCache;

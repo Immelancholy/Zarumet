@@ -2,7 +2,7 @@ use crate::App;
 use crate::app::{
     MenuMode, PanelFocus,
     mpd_handler::MPDAction,
-    ui::{DisplayItem, compute_album_display_list},
+    ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years},
 };
 use mpd_client::Client;
 
@@ -143,7 +143,7 @@ impl App {
                             }
                         }
                     }
-                    PanelFocus::AlbumList | PanelFocus::AlbumTracks => {
+                    _ => {
                         // Not applicable in Artists mode
                     }
                 }
@@ -219,8 +219,108 @@ impl App {
                             self.album_tracks_list_state.select(Some(new_index));
                         }
                     }
-                    PanelFocus::Artists | PanelFocus::Albums => {
+                    _ => {
                         // Not applicable in Albums mode
+                    }
+                }
+            }
+            MenuMode::Years => {
+                // Handle scrolling based on current panel focus
+                match self.panel_focus {
+                    PanelFocus::YearList => {
+                        if let Some(ref library) = self.library
+                            && !library.albums_by_year.is_empty()
+                        {
+                            let current = self.year_list_state.selected().unwrap_or(0);
+                            let new_index = match action {
+                                MPDAction::ScrollUp => {
+                                    let potential = current.saturating_sub(15);
+                                    if potential == 0 && current == 0 {
+                                        // Already at top, wrap to bottom
+                                        library.albums_by_year.len().saturating_sub(1)
+                                    } else {
+                                        potential
+                                    }
+                                }
+                                MPDAction::ScrollDown => {
+                                    let potential = std::cmp::min(
+                                        current + 15,
+                                        library.albums_by_year.len().saturating_sub(1),
+                                    );
+                                    if potential == library.albums_by_year.len().saturating_sub(1)
+                                        && current == library.albums_by_year.len().saturating_sub(1)
+                                    {
+                                        // Already at bottom, wrap to top
+                                        0
+                                    } else {
+                                        potential
+                                    }
+                                }
+                                _ => current,
+                            };
+                            self.year_list_state.select(Some(new_index));
+                            // Clear album selection when scrolling years
+                            self.year_albums_list_state.select(None);
+                            self.year_albums_display_list_state.select(None);
+                        }
+                    }
+                    PanelFocus::YearAlbums => {
+                        if let (Some(library), Some(selected_year_index)) =
+                            (&self.library, self.year_list_state.selected())
+                            && let Some(selected_year) = library.albums_by_year.get(selected_year_index)
+                        {
+                            // Compute display list to get total count
+                            let (display_items, _album_indices) =
+                                compute_albums_display_list_years(&selected_year.1, &self.expanded_albums_years);
+                            if !display_items.is_empty() {
+                                let current = self.year_albums_display_list_state.selected().unwrap_or(0);
+                                let new_index = match action {
+                                    MPDAction::ScrollUp => {
+                                        let potential = current.saturating_sub(15);
+                                        if potential == 0 && current == 0 {
+                                            // Already at top, wrap to bottom
+                                            display_items.len().saturating_sub(1)
+                                        } else {
+                                            potential
+                                        }
+                                    }
+                                    MPDAction::ScrollDown => {
+                                        let potential = std::cmp::min(
+                                            current + 15,
+                                            display_items.len().saturating_sub(1),
+                                        );
+                                        if potential == display_items.len().saturating_sub(1)
+                                            && current == display_items.len().saturating_sub(1)
+                                        {
+                                            // Wrap around to top
+                                            0
+                                        } else {
+                                            potential
+                                        }
+                                    }
+                                    _ => current,
+                                };
+                                self.year_albums_display_list_state.select(Some(new_index));
+
+                                // Update the legacy year_albums_list_state to point to the current album if on album
+                                if let Some(DisplayItem::Album(_)) = display_items.get(new_index) {
+                                    // Find which album this corresponds to
+                                    let mut album_count = 0;
+                                    for (i, item) in display_items.iter().enumerate() {
+                                        if matches!(item, DisplayItem::Album(_)) {
+                                            if i == new_index {
+                                                self.year_albums_list_state.select(Some(album_count));
+                                                break;
+                                            }
+                                            album_count += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        // Not applicable in Years mode
                     }
                 }
             }
@@ -228,7 +328,7 @@ impl App {
         // Mark appropriate dirty flags for scrolling
         match self.menu_mode {
             MenuMode::Queue => self.dirty.mark_queue_selection(),
-            MenuMode::Artists | MenuMode::Albums => self.dirty.mark_library(),
+            MenuMode::Artists | MenuMode::Albums | MenuMode::Years => self.dirty.mark_library(),
         }
     }
 
@@ -301,7 +401,7 @@ impl App {
                             }
                         }
                     }
-                    PanelFocus::AlbumList | PanelFocus::AlbumTracks => {
+                    _ => {
                         // Not applicable in Artists mode
                     }
                 }
@@ -336,8 +436,61 @@ impl App {
                             self.album_tracks_list_state.select(Some(new_index));
                         }
                     }
-                    PanelFocus::Artists | PanelFocus::Albums => {
+                    _ => {
                         // Not applicable in Albums mode
+                    }
+                }
+            }
+            MenuMode::Years => {
+                match self.panel_focus {
+                    PanelFocus::YearList => {
+                        if let Some(ref library) = self.library
+                            && !library.albums_by_year.is_empty()
+                        {
+                            let new_index = match action {
+                                MPDAction::GoToTop => 0,
+                                MPDAction::GoToBottom => library.albums_by_year.len().saturating_sub(1),
+                                _ => return,
+                            };
+                            self.year_list_state.select(Some(new_index));
+                            // Clear album selection when jumping in year list
+                            self.year_albums_list_state.select(None);
+                            self.year_albums_display_list_state.select(None);
+                        }
+                    }
+                    PanelFocus::YearAlbums => {
+                        if let (Some(library), Some(selected_year_index)) =
+                            (&self.library, self.year_list_state.selected())
+                            && let Some(selected_year) = library.albums_by_year.get(selected_year_index)
+                        {
+                            let (display_items, _album_indices) =
+                                compute_albums_display_list_years(&selected_year.1, &self.expanded_albums_years);
+                            if !display_items.is_empty() {
+                                let new_index = match action {
+                                    MPDAction::GoToTop => 0,
+                                    MPDAction::GoToBottom => display_items.len().saturating_sub(1),
+                                    _ => return,
+                                };
+                                self.year_albums_display_list_state.select(Some(new_index));
+
+                                // Update the legacy year_albums_list_state if on an album
+                                if let Some(DisplayItem::Album(_)) = display_items.get(new_index) {
+                                    let mut album_count = 0;
+                                    for (i, item) in display_items.iter().enumerate() {
+                                        if matches!(item, DisplayItem::Album(_)) {
+                                            if i == new_index {
+                                                self.year_albums_list_state.select(Some(album_count));
+                                                break;
+                                            }
+                                            album_count += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        // Not applicable in Years mode
                     }
                 }
             }
@@ -345,7 +498,7 @@ impl App {
         // Mark appropriate dirty flags for go to edge
         match self.menu_mode {
             MenuMode::Queue => self.dirty.mark_queue_selection(),
-            MenuMode::Artists | MenuMode::Albums => self.dirty.mark_library(),
+            MenuMode::Artists | MenuMode::Albums | MenuMode::Years => self.dirty.mark_library(),
         }
     }
 }

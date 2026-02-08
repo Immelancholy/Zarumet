@@ -11,7 +11,7 @@ use crate::app::KeyBinds;
 use crate::app::MessageType;
 use crate::app::ui::Protocol;
 use crate::app::ui::views::{
-    albums::render_albums_mode, artists::render_artists_mode, queue::render_queue_mode,
+    albums::render_albums_mode, artists::render_artists_mode, queue::render_queue_mode, years::render_years_mode,
 };
 use crate::app::{LazyLibrary, SongInfo};
 use crate::app::{MenuMode, PanelFocus};
@@ -260,12 +260,17 @@ pub fn render(
     menu_mode: &MenuMode,
     library: &Option<LazyLibrary>,
     artist_list_state: &mut ListState,
+    year_list_state: &mut ListState,
     album_list_state: &mut ListState,
+    year_albums_list_state: &mut ListState,
     album_display_list_state: &mut ListState,
+    year_albums_display_list_state: &mut ListState,
     all_albums_list_state: &mut ListState,
     album_tracks_list_state: &mut ListState,
     panel_focus: &PanelFocus,
+    years_panel_focus: &PanelFocus,
     expanded_albums: &std::collections::HashSet<(String, String)>,
+    expanded_albums_years: &std::collections::HashSet<(String, String)>,
     mpd_status: &Option<mpd_client::responses::Status>,
     key_binds: &KeyBinds,
     bit_perfect_enabled: bool,
@@ -346,6 +351,30 @@ pub fn render(
                 album_tracks_list_state,
                 panel_focus,
                 expanded_albums,
+                &play_state,
+                progress,
+                elapsed,
+                duration,
+                mpd_status,
+                menu_mode,
+                bit_perfect_enabled,
+                show_config_warnings_popup,
+            );
+        }
+        MenuMode::Years => {
+            render_years_mode(
+                frame,
+                protocol,
+                area,
+                &format,
+                current_song,
+                config,
+                library,
+                year_list_state,
+                year_albums_list_state,
+                year_albums_display_list_state,
+                years_panel_focus,
+                expanded_albums_years,
                 &play_state,
                 progress,
                 elapsed,

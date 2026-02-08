@@ -72,8 +72,8 @@ impl KeyBinds {
         if let Some(action) = self.global_map.get(&key_tuple) {
             // Handle mode-specific logic for certain bindings
             match (action, mode) {
-                (MPDAction::PlaySelected, MenuMode::Artists) => {
-                    // Don't allow play_selected in tracks mode - it conflicts with navigation
+                (MPDAction::PlaySelected, MenuMode::Artists | MenuMode::Years) => {
+                    // Don't allow play_selected in Artist and Years mode - it conflicts with navigation
                     return None;
                 }
                 _ => return Some(action.clone()),
@@ -133,6 +133,20 @@ impl KeyBinds {
                         // Skip album expansion actions in albums mode
                         (MPDAction::ToggleAlbumExpansion, _) => {
                             return None;
+                        }
+                        _ => return Some(action.clone()),
+                    }
+                }
+            }
+            MenuMode::Years => {
+                if let Some(action) = self.artists_map.get(&key_tuple) {
+                    // Handle panel-specific logic for years mode
+                    match (action, panel_focus) {
+                        (MPDAction::SwitchPanelRight, PanelFocus::YearList) => {
+                            return Some(MPDAction::SwitchPanelRight);
+                        }
+                        (MPDAction::SwitchPanelRight, PanelFocus::YearAlbums) => {
+                            return Some(MPDAction::ToggleAlbumExpansion);
                         }
                         _ => return Some(action.clone()),
                     }
