@@ -211,8 +211,7 @@ impl App {
                         // Find which album this display item corresponds to
                         if let Some(album_idx) =
                             _album_indices.get(display_index).copied().flatten()
-                        {
-                            if let Some((_artist_name, album)) = selected_year.1.get(album_idx) {
+                            && let Some((_artist_name, album)) = selected_year.1.get(album_idx) {
                                 let queue_was_empty = self.queue.is_empty();
                                 for song in &album.tracks {
                                     if let Err(e) = client
@@ -230,7 +229,6 @@ impl App {
                                     error!("Error starting playback: {}", e);
                                 }
                             }
-                        }
                     }
                     DisplayItem::Song(_title, _duration, file_path) => {
                         // Add specific song to queue
