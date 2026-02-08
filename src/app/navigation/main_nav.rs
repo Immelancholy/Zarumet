@@ -450,8 +450,9 @@ impl Navigation for App {
                         self.handle_add_to_queue_context_aware(client).await?;
                     }
                     MenuMode::Years => {
-                        // Years mode: not implemented yet
-                        // TODO: Implement context-aware add in Years mode based on panel focus (similar to Artists mode)
+                        // Years mode: context-aware based on panel focus
+                        // If on YearAlbums panel: add selected song or album
+                        self.handle_add_to_queue_years_context_aware(client).await?;
                     }
                     MenuMode::Queue => {
                         // Queue mode: no action

@@ -1,5 +1,5 @@
 use crate::App;
-use crate::app::ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years};
+use crate::app::{PanelFocus, ui::{DisplayItem, compute_album_display_list, compute_albums_display_list_years}};
 use log::error;
 use mpd_client::{Client, commands};
 use std::collections::HashSet;
@@ -153,6 +153,69 @@ impl App {
                                 && let Err(e) = client.command(commands::Play::current()).await
                             {
                                 error!("Error starting playback: {}", e);
+                            }
+                        }
+                    }
+                    DisplayItem::Song(_title, _duration, file_path) => {
+                        // Add specific song to queue
+                        let queue_was_empty = self.queue.is_empty();
+                        if let Err(e) = client
+                            .command(commands::Add::uri(file_path.to_str().unwrap()))
+                            .await
+                        {
+                            error!("Error adding song to queue: {}", e);
+                        } else if queue_was_empty
+                            && let Err(e) = client.command(commands::Play::current()).await
+                        {
+                            error!("Error starting playback: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Handle adding to queue in Years mode - context-aware based on panel focus and selection
+    /// If on YearAlbums panel and on a song, add the song; if on YearAlbums panel and on an album, add the album
+    pub async fn handle_add_to_queue_years_context_aware(
+        &mut self,
+        client: &Client,
+    ) -> color_eyre::Result<()> {
+        // Only handle when in YearAlbums panel
+        if self.panel_focus != PanelFocus::YearAlbums {
+            return Ok(());
+        }
+
+        if let (Some(library), Some(selected_year_index)) = 
+            (&self.library, self.year_list_state.selected())
+            && let Some(selected_year) = library.albums_by_year.get(selected_year_index)
+            && let Some(display_index) = self.year_albums_display_list_state.selected()
+        {
+            let (display_items, _album_indices) =
+                compute_albums_display_list_years(&selected_year.1, &self.expanded_albums_years);
+
+            if let Some(display_item) = display_items.get(display_index) {
+                match display_item {
+                    DisplayItem::Album(_album_name) => {
+                        // Add entire album to queue
+                        // Find which album this display item corresponds to
+                        if let Some(album_idx) = _album_indices.get(display_index).copied().flatten() {
+                            if let Some((_artist_name, album)) = selected_year.1.get(album_idx) {
+                                let queue_was_empty = self.queue.is_empty();
+                                for song in &album.tracks {
+                                    if let Err(e) = client
+                                        .command(commands::Add::uri(song.file_path.to_str().unwrap()))
+                                        .await
+                                    {
+                                        error!("Error adding song to queue: {}", e);
+                                    }
+                                }
+                                if queue_was_empty
+                                    && let Err(e) = client.command(commands::Play::current()).await
+                                {
+                                    error!("Error starting playback: {}", e);
+                                }
                             }
                         }
                     }
