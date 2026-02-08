@@ -412,7 +412,21 @@ impl Navigation for App {
                 self.handle_go_to_edge(action, client).await;
             }
             MPDAction::ToggleAlbumExpansion => {
-                self.handle_album_toggle(client).await?;
+                match self.menu_mode {
+                    MenuMode::Artists => {
+                        self.handle_album_toggle(client).await?;
+                    }
+                    MenuMode::Years => {
+                        self.handle_year_album_toggle(client).await?;
+                    }
+                    MenuMode::Albums => {
+                        // Not needed
+                    }
+                    MenuMode::Queue => {
+                        // Not needed
+                    }
+
+                }
             }
             MPDAction::AddSongToQueue => {
                 match self.menu_mode {
