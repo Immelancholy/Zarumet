@@ -211,24 +211,23 @@ impl App {
                         // Find which album this display item corresponds to
                         if let Some(album_idx) =
                             _album_indices.get(display_index).copied().flatten()
-                            && let Some((_artist_name, album)) = selected_year.1.get(album_idx) {
-                                let queue_was_empty = self.queue.is_empty();
-                                for song in &album.tracks {
-                                    if let Err(e) = client
-                                        .command(commands::Add::uri(
-                                            song.file_path.to_str().unwrap(),
-                                        ))
-                                        .await
-                                    {
-                                        error!("Error adding song to queue: {}", e);
-                                    }
-                                }
-                                if queue_was_empty
-                                    && let Err(e) = client.command(commands::Play::current()).await
+                            && let Some((_artist_name, album)) = selected_year.1.get(album_idx)
+                        {
+                            let queue_was_empty = self.queue.is_empty();
+                            for song in &album.tracks {
+                                if let Err(e) = client
+                                    .command(commands::Add::uri(song.file_path.to_str().unwrap()))
+                                    .await
                                 {
-                                    error!("Error starting playback: {}", e);
+                                    error!("Error adding song to queue: {}", e);
                                 }
                             }
+                            if queue_was_empty
+                                && let Err(e) = client.command(commands::Play::current()).await
+                            {
+                                error!("Error starting playback: {}", e);
+                            }
+                        }
                     }
                     DisplayItem::Song(_title, _duration, file_path) => {
                         // Add specific song to queue
