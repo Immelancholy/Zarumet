@@ -73,6 +73,8 @@ refresh = ["u"]
 switch_to_queue_menu = ["1"]
 switch_to_artists = ["2"]
 switch_to_albums = ["3"]
+switch_to_years = ["4"]
+switch_to_genres = ["5"]
 seek_forward = [
     "shift-l",
     "shift-right",

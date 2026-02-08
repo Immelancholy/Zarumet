@@ -115,10 +115,12 @@ A TUI MPD client with album art
 Usage: zarumet [OPTIONS]
 
 Options:
-  -c, --config <CONFIG>    Path to config file
-  -a, --address <ADDRESS>  MPD server address (overrides config)
-  -h, --help               Print help
-  -V, --version            Print version
+  -c, --config <CONFIG>            Path to config file
+  -a, --address <ADDRESS>          MPD server address (overrides config)
+  -b, --bit-perfect <BIT_PERFECT>  Set bit-perfect mode (PipeWire sample rate matching): "on" or "off"
+      --generate-config [<PATH>]   Generate default config file at the specified path (or ./config.toml if not specified)
+  -h, --help                       Print help
+  -V, --version                    Print version
 ```
 
 ## Configuration
@@ -206,6 +208,8 @@ refresh = ["u"]
 switch_to_queue_menu = ["1"]
 switch_to_artists = ["2"]
 switch_to_albums = ["3"]
+switch_to_years = ["4"]
+switch_to_genres = ["5"]
 seek_forward = [
     "shift-l",
     "shift-right",
