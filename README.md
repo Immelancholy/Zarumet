@@ -164,6 +164,7 @@ volume = "#26a0a1"
 volume_empty = "#1b1d0e"
 mode = "#fae280"
 track_duration = "#e16a7c"
+border_selected = "#b18a4a"
 
 [binds]
 next = [
