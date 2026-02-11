@@ -1,10 +1,5 @@
-use crate::app::Config;
 use crate::logging::log_mpd_command;
-use mpd_client::{
-    client::CommandError,
-    commands,
-    responses::{PlayState, Status},
-};
+use mpd_client::{client::CommandError, commands, responses::PlayState};
 use std::fmt;
 
 /// Actions that can be performed on MPD
@@ -159,10 +154,11 @@ impl MPDAction {
     pub async fn execute(
         &self,
         client: &mpd_client::Client,
-        config: &Config,
-        cached_status: Option<&Status>,
+        // config: &Config,
+        // cached_status: Option<&Status>,
+        app: &mut crate::App,
     ) -> Result<(), CommandError> {
-        let result = self.execute_inner(client, config, cached_status).await;
+        let result = self.execute_inner(client, app).await;
 
         // Log MPD commands (not UI-only actions)
         if self.is_mpd_command() {
@@ -178,9 +174,10 @@ impl MPDAction {
     async fn execute_inner(
         &self,
         client: &mpd_client::Client,
-        config: &Config,
-        cached_status: Option<&Status>,
+        app: &mut crate::App,
     ) -> Result<(), CommandError> {
+        let cached_status = app.mpd_status.as_ref();
+        let config = &app.config;
         match self {
             MPDAction::TogglePlayPause => {
                 // Use cached status if available, otherwise fetch
@@ -252,9 +249,12 @@ impl MPDAction {
                     client.command(commands::Status).await?.volume
                 };
                 if current_volume > 0 {
+                    app.vol_before_mute = current_volume;
                     client.command(commands::SetVolume(0)).await?;
                 } else {
-                    client.command(commands::SetVolume(50)).await?;
+                    client
+                        .command(commands::SetVolume(app.vol_before_mute))
+                        .await?;
                 }
             }
             MPDAction::SeekForward => {

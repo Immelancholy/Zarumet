@@ -612,12 +612,10 @@ impl Navigation for App {
             MPDAction::ScrollUp | MPDAction::ScrollDown => {
                 self.handle_scroll(action, client).await;
             }
+
             _ => {
                 // Execute MPD command for other actions, passing cached status
-                if let Err(e) = action
-                    .execute(client, &self.config, self.mpd_status.as_ref())
-                    .await
-                {
+                if let Err(e) = action.execute(client, self).await {
                     error!("Error executing MPD command: {}", e);
                 }
             }

@@ -100,6 +100,7 @@ pub struct App {
     pub last_animation_frame: Cell<u64>,
     /// Track if current reload was user-initiated (for status messages)
     pub user_initiated_reload: bool,
+    pub vol_before_mute: u8,
 }
 
 impl App {

@@ -150,6 +150,7 @@ impl App {
             update_in_progress: false,
             last_animation_frame: Cell::new(0),
             user_initiated_reload: false,
+            vol_before_mute: 100,
         })
     }
 }
