@@ -52,6 +52,8 @@ pub struct ColorsConfig {
     pub mode: String,
     #[serde(default = "ColorsConfig::default_track_duration")]
     pub track_duration: String,
+    #[serde(default = "ColorsConfig::default_border_selected")]
+    pub border_selected: String,
 }
 
 impl ColorsConfig {
@@ -216,6 +218,12 @@ impl ColorsConfig {
             .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
             .unwrap_or(ratatui::style::Color::Red)
     }
+
+    pub fn border_selected_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.border_selected)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Yellow)
+    }
 }
 
 impl ColorsConfig {
@@ -318,6 +326,10 @@ impl ColorsConfig {
     fn default_mode() -> String {
         "#fae280".to_string()
     }
+
+    fn default_border_selected() -> String {
+        "#b18a4a".to_string()
+    }
 }
 
 impl Default for ColorsConfig {
@@ -348,6 +360,7 @@ impl Default for ColorsConfig {
             volume_empty: Self::default_volume_empty(),
             mode: Self::default_mode(),
             track_duration: Self::default_track_duration(),
+            border_selected: Self::default_border_selected(),
         }
     }
 }

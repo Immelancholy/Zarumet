@@ -107,7 +107,7 @@ pub fn render_genres_mode(
             .collect();
 
         let genre_border_style = if panel_focus == &PanelFocus::GenreList {
-            Style::default().fg(config.colors.queue_selected_highlight_color())
+            Style::default().fg(config.colors.border_selected_color())
         } else {
             Style::default().fg(config.colors.border_color())
         };
@@ -272,7 +272,7 @@ pub fn render_genres_mode(
                 .collect();
 
             let albums_border_color = if panel_focus == &PanelFocus::GenreAlbums {
-                config.colors.queue_selected_highlight_color()
+                config.colors.border_selected_color()
             } else {
                 config.colors.border_color()
             };

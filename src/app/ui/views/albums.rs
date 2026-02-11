@@ -102,7 +102,7 @@ pub fn render_albums_mode(
             .collect();
 
         let albums_border_style = if panel_focus == &PanelFocus::AlbumList {
-            Style::default().fg(config.colors.queue_selected_highlight_color())
+            Style::default().fg(config.colors.border_selected_color())
         } else {
             Style::default().fg(config.colors.border_color())
         };
@@ -183,7 +183,7 @@ pub fn render_albums_mode(
                     .collect();
 
                 let tracks_border_color = if panel_focus == &PanelFocus::AlbumTracks {
-                    config.colors.queue_selected_highlight_color()
+                    config.colors.border_selected_color()
                 } else {
                     config.colors.border_color()
                 };
