@@ -168,6 +168,7 @@ impl Config {
             "album",
             "artist",
             "border_title",
+            "border_selected",
             "progress_filled",
             "progress_empty",
             "paused",
