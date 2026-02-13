@@ -212,6 +212,8 @@ impl Config {
             "switch_to_queue_menu",
             "switch_to_artists",
             "switch_to_albums",
+            "switch_to_years",
+            "switch_to_genres",
             "seek_forward",
             "seek_backward",
             "scroll_up",
