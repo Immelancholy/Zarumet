@@ -281,3 +281,36 @@ pub fn compute_albums_display_list_years(
     }
     (display_items, album_indices)
 }
+
+pub fn compute_albums_display_list_uris(
+    uri: &[(String, Album)],
+    expanded_albums: &std::collections::HashSet<(String, String)>,
+) -> (Vec<DisplayItem>, Vec<Option<usize>>) {
+    let mut display_items = Vec::new();
+    let mut album_indices = Vec::new(); // Maps display indices to album indices (None for songs)
+
+    for (album_index, (artist_name, album)) in uri.iter().enumerate() {
+        let album_key = (artist_name.clone(), album.name.clone());
+        let is_expanded = expanded_albums.contains(&album_key);
+
+        // Add album header
+        album_indices.push(Some(album_index));
+        display_items.push(DisplayItem::Album(format!(
+            "{} - {}",
+            album.name, artist_name
+        )));
+
+        // If expanded, add songs
+        if is_expanded {
+            for song in &album.tracks {
+                album_indices.push(None); // Songs don't map to album indices
+                display_items.push(DisplayItem::Song(
+                    song.title.clone(),
+                    song.duration,
+                    song.file_path.clone(),
+                ));
+            }
+        }
+    }
+    (display_items, album_indices)
+}

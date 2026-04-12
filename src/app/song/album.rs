@@ -1,5 +1,6 @@
 use crate::app::SongInfo;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Album {
@@ -7,6 +8,7 @@ pub struct Album {
     pub tracks: Vec<SongInfo>,
     pub year: Option<String>,
     pub genre: Option<String>,
+    pub uri:  PathBuf,
     /// Pre-computed total duration (computed once on construction)
     cached_total_duration: Option<std::time::Duration>,
 }
@@ -18,11 +20,13 @@ impl Album {
         let cached_total_duration = Self::compute_total_duration(&tracks);
         let year = Self::compute_album_year(&tracks);
         let genre = Self::compute_album_genre(&tracks);
+        let uri = Self::compute_album_uri(&tracks);
         Self {
             name,
             tracks,
             year,
             genre,
+            uri,
             cached_total_duration,
         }
     }
@@ -40,6 +44,11 @@ impl Album {
             .into_iter()
             .max_by_key(|(_, count)| *count)
             .map(|(genre, _)| genre)
+    }
+
+    fn compute_album_uri(tracks: &[SongInfo]) -> PathBuf {
+        let path = tracks[0].file_path.parent().unwrap();
+        path.to_path_buf()
     }
 
     /// Compute total duration from tracks (used during construction)

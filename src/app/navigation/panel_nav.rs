@@ -307,6 +307,85 @@ impl App {
                             }
                         }
                     }
+                    MenuMode::Uris => {
+                        match self.panel_focus {
+                            PanelFocus::UriList => {
+                                if let Some(ref library) = self.library
+                                    && !library.albums_by_uri.is_empty()
+                                {
+                                    let current = self.uri_list_state.selected().unwrap_or(0);
+                                    let new_index = if current > 0 {
+                                        current - 1
+                                    } else {
+                                        // Wrap around to the bottom
+                                        library.albums_by_uri.len().saturating_sub(1)
+                                    };
+                                    self.uri_list_state.select(Some(new_index));
+                                    // Clear album selection when navigating uris 
+                                    self.uri_album_list_state.select(None);
+                                    self.uri_album_display_list_state.select(None);
+                                }
+                            }
+                            PanelFocus::UriAlbums => {
+                                // Navigate albums list using display list state
+                                if let (Some(library), Some(selected_uri_index)) =
+                                    (&self.library, self.uri_list_state.selected())
+                                    && let Some(selected_uri) =
+                                        library.albums_by_uri.get(selected_uri_index)
+                                {
+                                    // Compute display list to get total count
+                                    let (display_items, _album_indices) =
+                                        compute_albums_display_list_uris(
+                                            &selected_uri.1,
+                                            &self.expanded_albums_uris,
+                                        );
+
+                                    if !display_items.is_empty() {
+                                        let current = self
+                                            .uri_album_display_list_state
+                                            .selected()
+                                            .unwrap_or(0);
+                                        if current > 0 {
+                                            self.uri_album_display_list_state
+                                                .select(Some(current - 1));
+                                        } else {
+                                            // Wrap around to bottom
+                                            self.uri_album_display_list_state.select(Some(
+                                                display_items.len().saturating_sub(1),
+                                            ));
+                                        }
+
+                                        // Update the legacy uri_album_list_state to point to the current album if on album
+                                        let wrapped_index = if current > 0 {
+                                            current - 1
+                                        } else {
+                                            display_items.len().saturating_sub(1)
+                                        };
+                                        if let Some(DisplayItem::Album(_)) =
+                                            display_items.get(wrapped_index)
+                                        {
+                                            // Find which album this corresponds to
+                                            let mut album_count = 0;
+                                            for (i, item) in display_items.iter().enumerate() {
+                                                if matches!(item, DisplayItem::Album(_)) {
+                                                    if i == wrapped_index {
+                                                        self.uri_album_list_state
+                                                            .select(Some(album_count));
+                                                        break;
+                                                    }
+                                                    album_count += 1;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Invalid panel focus for Uris mode, reset
+                                self.panel_focus = PanelFocus::UriList;
+                            }
+                        }
+                    }
                 }
             }
             MPDAction::NavigateDown => {

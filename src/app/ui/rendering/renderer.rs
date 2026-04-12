@@ -12,7 +12,7 @@ use crate::app::MessageType;
 use crate::app::ui::Protocol;
 use crate::app::ui::views::{
     albums::render_albums_mode, artists::render_artists_mode, genres::render_genres_mode,
-    queue::render_queue_mode, years::render_years_mode,
+    queue::render_queue_mode, years::render_years_mode, dirs::render_uris_mode,
 };
 use crate::app::{LazyLibrary, SongInfo};
 use crate::app::{MenuMode, PanelFocus};
@@ -263,18 +263,22 @@ pub fn render(
     artist_list_state: &mut ListState,
     year_list_state: &mut ListState,
     genre_list_state: &mut ListState,
+    uri_list_state: &mut ListState,
     album_list_state: &mut ListState,
     year_albums_list_state: &mut ListState,
     genre_albums_list_state: &mut ListState,
+    uri_albums_list_state: &mut ListState,
     album_display_list_state: &mut ListState,
     year_albums_display_list_state: &mut ListState,
     genre_albums_display_list_state: &mut ListState,
+    uri_albums_display_list_state: &mut ListState,
     all_albums_list_state: &mut ListState,
     album_tracks_list_state: &mut ListState,
     panel_focus: &PanelFocus,
     expanded_albums: &std::collections::HashSet<(String, String)>,
     expanded_albums_years: &std::collections::HashSet<(String, String)>,
     expanded_albums_genres: &std::collections::HashSet<(String, String)>,
+    expanded_albums_uris: &std::collections::HashSet<(String, String)>,
     mpd_status: &Option<mpd_client::responses::Status>,
     key_binds: &KeyBinds,
     bit_perfect_enabled: bool,
@@ -403,6 +407,30 @@ pub fn render(
                 genre_albums_display_list_state,
                 panel_focus,
                 expanded_albums_genres,
+                &play_state,
+                progress,
+                elapsed,
+                duration,
+                mpd_status,
+                menu_mode,
+                bit_perfect_enabled,
+                show_config_warnings_popup,
+            );
+        }
+        MenuMode::Uris => {
+            render_uris_mode(
+                frame,
+                protocol,
+                area,
+                &format,
+                current_song,
+                config,
+                library,
+                uri_list_state,
+                uri_albums_list_state,
+                uri_albums_display_list_state,
+                panel_focus,
+                expanded_albums_uris,
                 &play_state,
                 progress,
                 elapsed,

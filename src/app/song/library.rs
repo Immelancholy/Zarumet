@@ -21,6 +21,7 @@ pub struct LazyLibrary {
     pub all_albums: Vec<(String, Album)>,
     pub albums_by_year: Vec<(String, Vec<(String, Album)>)>,
     pub albums_by_genre: Vec<(String, Vec<(String, Album)>)>,
+    pub albums_by_uri: Vec<(String, Vec<(String, Album)>)>,
     /// Flag to track if all_albums is complete (all artists loaded)
     pub all_albums_complete: bool,
     /// Flag to track if all_albums is sorted
@@ -80,6 +81,7 @@ impl LazyLibrary {
             all_albums_sorted: false,
             albums_by_year: Vec::new(),
             albums_by_genre: Vec::new(),
+            albums_by_uri: Vec::new(),
         })
     }
 
@@ -157,6 +159,13 @@ impl LazyLibrary {
                 "Unknown Genre",
                 |a, b| a.cmp(b),
             );
+        }
+    }
+
+    pub fn ensure_albums_by_uri_built(&mut self) {
+        if self.albums_by_uri.is_empty() {
+            self.albums_by_uri =
+                self.build_albums_by(|album| Some(album.uri.clone().to_str().unwrap().to_string()), "Unknown Path", |a, b| a.cmp(b));
         }
     }
 
@@ -449,6 +458,7 @@ impl LazyLibrary {
         // Build the years and genre index after all albums are loaded
         self.ensure_albums_by_year_built();
         self.ensure_albums_by_genre_built();
+        self.ensure_albums_by_uri_built();
 
         Ok(())
     }

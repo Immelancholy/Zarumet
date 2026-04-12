@@ -92,6 +92,7 @@ impl SongInfo {
             .map(|s| Self::sanitize_string(s))
             .filter(|s| !s.is_empty());
 
+
         Self {
             title,
             artist,
@@ -110,19 +111,6 @@ impl SongInfo {
     }
     pub async fn set_max_art_size(client: &Client, size_bytes: usize) -> Result<(), CommandError> {
         client.command(SetBinaryLimit(size_bytes)).await
-    }
-
-    /// Load album cover art for this song.
-    /// Note: This is kept for potential future use, but the main loop now uses
-    /// background loading via spawn_cover_art_loader for better responsiveness.
-    #[allow(dead_code)]
-    pub async fn load_cover(&self, client: &Client) -> Option<Vec<u8>> {
-        let uri = self.file_path.to_str()?;
-        let art_data_result = client.album_art(uri).await.ok()?;
-
-        let (raw_data, _mime_type_option) = art_data_result?;
-
-        Some(raw_data.to_vec())
     }
 
     pub fn update_playback_info(&mut self, play_state: Option<PlayState>, progress: Option<f64>) {

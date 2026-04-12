@@ -3,7 +3,7 @@ use crate::app::{
     PanelFocus,
     ui::{
         DisplayItem, compute_album_display_list, compute_albums_display_list_genres,
-        compute_albums_display_list_years,
+        compute_albums_display_list_uris, compute_albums_display_list_years,
     },
 };
 use log::error;
@@ -153,6 +153,40 @@ impl App {
                 &display_items,
                 &album_indices,
                 &mut self.expanded_albums_genres,
+                get_album_key,
+                client,
+            )
+            .await?;
+        }
+        // Mark library dirty for album expansion changes
+        self.dirty.mark_library();
+        Ok(())
+    }
+
+    pub async fn handle_uri_album_toggle(&mut self, client: &Client) -> color_eyre::Result<()> {
+        if let (Some(library), Some(selected_uri_index)) =
+            (&self.library, self.uri_list_state.selected())
+            && let Some(selected_uri) = library.albums_by_uri.get(selected_uri_index)
+        {
+            let (display_items, album_indices) =
+                compute_albums_display_list_uris(&selected_uri.1, &self.expanded_albums_uris);
+
+            // Prepare album lookup for Dirs mode
+            let selected_uri_clone = selected_uri.clone();
+            let get_album_key = move |album_idx: usize| -> Option<(String, String)> {
+                selected_uri_clone
+                    .1
+                    .get(album_idx)
+                    .map(|(artist_name, album)| (artist_name.clone(), album.name.clone()))
+            };
+
+            // Use the generic helper
+            toggle_album_expansion_generic(
+                &mut self.queue,
+                &mut self.uri_album_display_list_state,
+                &display_items,
+                &album_indices,
+                &mut self.expanded_albums_uris,
                 get_album_key,
                 client,
             )
@@ -313,6 +347,68 @@ impl App {
                         if let Some(album_idx) =
                             _album_indices.get(display_index).copied().flatten()
                             && let Some((_artist_name, album)) = selected_genre.1.get(album_idx)
+                        {
+                            let queue_was_empty = self.queue.is_empty();
+                            for song in &album.tracks {
+                                if let Err(e) = client
+                                    .command(commands::Add::uri(song.file_path.to_str().unwrap()))
+                                    .await
+                                {
+                                    error!("Error adding song to queue: {}", e);
+                                }
+                            }
+                            if queue_was_empty
+                                && let Err(e) = client.command(commands::Play::current()).await
+                            {
+                                error!("Error starting playback: {}", e);
+                            }
+                        }
+                    }
+                    DisplayItem::Song(_title, _duration, file_path) => {
+                        // Add specific song to queue
+                        let queue_was_empty = self.queue.is_empty();
+                        if let Err(e) = client
+                            .command(commands::Add::uri(file_path.to_str().unwrap()))
+                            .await
+                        {
+                            error!("Error adding song to queue: {}", e);
+                        } else if queue_was_empty
+                            && let Err(e) = client.command(commands::Play::current()).await
+                        {
+                            error!("Error starting playback: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn handle_add_to_queue_uris_context_aware(
+        &mut self,
+        client: &Client,
+    ) -> color_eyre::Result<()> {
+        // Only handle when in UriAlbums panel
+        if self.panel_focus != PanelFocus::UriAlbums {
+            return Ok(());
+        }
+
+        if let (Some(library), Some(selected_uri_index)) =
+            (&self.library, self.uri_list_state.selected())
+            && let Some(selected_uri) = library.albums_by_uri.get(selected_uri_index)
+            && let Some(display_index) = self.uri_album_display_list_state.selected()
+        {
+            let (display_items, _album_indices) =
+                compute_albums_display_list_uris(&selected_uri.1, &self.expanded_albums_uris);
+
+            if let Some(display_item) = display_items.get(display_index) {
+                match display_item {
+                    DisplayItem::Album(_album_name) => {
+                        // Add entire album to queue
+                        // Find which album this display item corresponds to
+                        if let Some(album_idx) =
+                            _album_indices.get(display_index).copied().flatten()
+                            && let Some((_artist_name, album)) = selected_uri.1.get(album_idx)
                         {
                             let queue_was_empty = self.queue.is_empty();
                             for song in &album.tracks {

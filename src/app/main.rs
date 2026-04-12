@@ -47,6 +47,9 @@ pub struct App {
     pub genre_list_state: ListState,
     pub genre_album_list_state: ListState,
     pub genre_panel_focus: PanelFocus,
+    pub uri_list_state: ListState,
+    pub uri_album_list_state: ListState,
+    pub uri_panel_focus: PanelFocus,
     pub config: Config,
     /// Current menu mode
     pub menu_mode: MenuMode,
@@ -64,8 +67,10 @@ pub struct App {
     pub expanded_albums_years: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
     /// Display list state for albums within a year (used in Years mode when an album is expanded)
     pub expanded_albums_genres: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
+    pub expanded_albums_uris: std::collections::HashSet<(String, String)>,
     pub year_album_display_list_state: ListState,
     pub genre_album_display_list_state: ListState,
+    pub uri_album_display_list_state: ListState,
     /// Current MPD status information
     pub mpd_status: Option<mpd_client::responses::Status>,
     /// Key bindings handler

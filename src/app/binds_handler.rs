@@ -169,6 +169,20 @@ impl KeyBinds {
                     }
                 }
             }
+            MenuMode::Uris => {
+                if let Some(action) = self.artists_map.get(&key_tuple) {
+                    // Handle panel-specific logic for genres mode
+                    match (action, panel_focus) {
+                        (MPDAction::SwitchPanelRight, PanelFocus::UriList) => {
+                            return Some(MPDAction::SwitchPanelRight);
+                        }
+                        (MPDAction::SwitchPanelRight, PanelFocus::UriAlbums) => {
+                            return Some(MPDAction::ToggleAlbumExpansion);
+                        }
+                        _ => return Some(action.clone()),
+                    }
+                }
+            }
         }
 
         // Check if this key could start a sequential binding
