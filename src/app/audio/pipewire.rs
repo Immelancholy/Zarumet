@@ -229,9 +229,7 @@ fn get_supported_rates_inner() -> Result<Vec<u32>, String> {
     // No allowed-rates configured means PipeWire allows any rate
     // Use common rates as reasonable defaults
     debug!("No allowed-rates found in PipeWire, using common rates");
-    Ok(vec![
-        44100, 48000,
-    ])
+    Ok(vec![44100, 48000])
 }
 
 /// Read allowed-rates from pw-metadata command output
