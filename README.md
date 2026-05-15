@@ -129,6 +129,15 @@ Configuration is stored in a TOML file. The default location is:
 `~/.config/zarumet/config.toml`.
 You can override this with the `-c` flag.
 
+Zarumet will fill in missing config fields with their default values.
+This means if you wanted to unbind a keybinding you cannot uncomment it.
+
+Instead you would leave it as an empty list to show that there are no bindings assigned to the action:
+
+```Toml
+clear_queue = []
+```
+
 <details>
 <summary>Default Configuration: </summary>
 
@@ -235,7 +244,6 @@ play_selected = [
 remove_from_queue = [
     "x",
     "backspace",
-    "d d",
 ]
 move_up_in_queue = [
     "ctrl-k",
