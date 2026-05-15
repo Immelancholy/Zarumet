@@ -100,7 +100,6 @@ play_selected = [
 remove_from_queue = [
     "x",
     "backspace",
-    "d d",
 ]
 move_up_in_queue = [
     "ctrl-k",
