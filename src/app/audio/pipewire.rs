@@ -230,7 +230,7 @@ fn get_supported_rates_inner() -> Result<Vec<u32>, String> {
     // Use common rates as reasonable defaults
     debug!("No allowed-rates found in PipeWire, using common rates");
     Ok(vec![
-        44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000,
+        44100, 48000,
     ])
 }
 
@@ -424,7 +424,7 @@ mod tests {
     #[test]
     #[ignore] // Requires a running PipeWire instance
     fn test_common_sample_rates() {
-        let rates = [44100, 48000, 88200, 96000, 176400, 192000];
+        let rates = [44100, 48000];
 
         for rate in rates {
             let result = set_sample_rate(rate);
