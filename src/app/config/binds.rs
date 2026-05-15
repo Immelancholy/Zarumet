@@ -193,7 +193,7 @@ impl BindsConfig {
     }
 
     fn default_remove_from_queue_enhanced() -> Vec<String> {
-        vec!["x".to_string(), "backspace".to_string(), "d d".to_string()]
+        vec!["x".to_string(), "backspace".to_string()]
     }
     fn default_move_up_in_queue() -> Vec<String> {
         vec!["ctrl-k".to_string(), "ctrl-up".to_string()]
