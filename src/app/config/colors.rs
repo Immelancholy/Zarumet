@@ -306,7 +306,7 @@ impl ColorsConfig {
     fn default_queue_song_title() -> String {
         "#fae280".to_string()
     }
-    
+
     fn default_queue_song_playing() -> String {
         "#8193af".to_string()
     }

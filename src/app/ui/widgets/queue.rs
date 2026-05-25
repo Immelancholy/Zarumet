@@ -118,7 +118,10 @@ pub fn create_queue_widget<'a>(
                 // Apply bold-italics to currently playing song content
                 if is_currently_playing {
                     queue_album_color = queue_album_color.bold().italic();
-                    queue_song_title_color = queue_song_title_color.fg(config.colors.queue_song_playing_color()).bold().italic();
+                    queue_song_title_color = queue_song_title_color
+                        .fg(config.colors.queue_song_playing_color())
+                        .bold()
+                        .italic();
                     queue_artist_color = queue_artist_color.bold().italic();
                     border_color = border_color.bold().italic();
                     duration_color = duration_color.bold().italic();
