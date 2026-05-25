@@ -181,6 +181,7 @@ impl Config {
             "queue_selected_text",
             "queue_album",
             "queue_song_title",
+            "queue_song_playing",
             "queue_artist",
             "queue_position",
             "queue_duration",

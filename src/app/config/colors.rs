@@ -36,6 +36,8 @@ pub struct ColorsConfig {
     pub queue_album: String,
     #[serde(default = "ColorsConfig::default_queue_song_title")]
     pub queue_song_title: String,
+    #[serde(default = "ColorsConfig::default_queue_song_playing")]
+    pub queue_song_playing: String,
     #[serde(default = "ColorsConfig::default_queue_artist")]
     pub queue_artist: String,
     #[serde(default = "ColorsConfig::default_queue_position")]
@@ -161,6 +163,12 @@ impl ColorsConfig {
 
     pub fn queue_song_title_color(&self) -> ratatui::style::Color {
         Self::parse_hex(&self.queue_song_title)
+            .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
+            .unwrap_or(ratatui::style::Color::Yellow)
+    }
+
+    pub fn queue_song_playing_color(&self) -> ratatui::style::Color {
+        Self::parse_hex(&self.queue_song_playing)
             .map(|(r, g, b)| ratatui::style::Color::Rgb(r, g, b))
             .unwrap_or(ratatui::style::Color::Yellow)
     }
@@ -298,6 +306,10 @@ impl ColorsConfig {
     fn default_queue_song_title() -> String {
         "#fae280".to_string()
     }
+    
+    fn default_queue_song_playing() -> String {
+        "#8193af".to_string()
+    }
 
     fn default_queue_position() -> String {
         "#e16a7c".to_string()
@@ -353,6 +365,7 @@ impl Default for ColorsConfig {
             queue_album: Self::default_queue_album(),
             queue_artist: Self::default_queue_artist(),
             queue_song_title: Self::default_queue_song_title(),
+            queue_song_playing: Self::default_queue_song_playing(),
             queue_position: Self::default_queue_position(),
             queue_duration: Self::default_queue_duration(),
             top_accent: Self::default_top_accent(),
