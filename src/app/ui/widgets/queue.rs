@@ -93,6 +93,19 @@ pub fn create_queue_widget<'a>(
                 let mut duration_color = Style::default().fg(queue_duration_color);
                 let mut pos_color = Style::default().fg(queue_position_color);
 
+                // Apply bold-italics to currently playing song content
+                if is_currently_playing {
+                    queue_album_color = queue_album_color.bold().italic();
+                    queue_song_title_color = queue_song_title_color
+                        .fg(config.colors.queue_song_playing_color())
+                        .bold()
+                        .italic();
+                    queue_artist_color = queue_artist_color.bold().italic();
+                    border_color = border_color.bold().italic();
+                    duration_color = duration_color.bold().italic();
+                    pos_color = pos_color.bold().italic();
+                }
+
                 // Apply background highlight for selected song
                 if is_selected {
                     queue_album_color = queue_album_color
@@ -113,19 +126,6 @@ pub fn create_queue_widget<'a>(
                     pos_color = pos_color
                         .bg(config.colors.queue_selected_highlight_color())
                         .fg(config.colors.queue_selected_text_color());
-                }
-
-                // Apply bold-italics to currently playing song content
-                if is_currently_playing {
-                    queue_album_color = queue_album_color.bold().italic();
-                    queue_song_title_color = queue_song_title_color
-                        .fg(config.colors.queue_song_playing_color())
-                        .bold()
-                        .italic();
-                    queue_artist_color = queue_artist_color.bold().italic();
-                    border_color = border_color.bold().italic();
-                    duration_color = duration_color.bold().italic();
-                    pos_color = pos_color.bold().italic();
                 }
 
                 // Create spans with appropriate styling - use cached position string
