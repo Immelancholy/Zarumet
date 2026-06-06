@@ -25,17 +25,19 @@
       ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
       mkZarumet =
-        pkgs:
+        package: pkgs:
         let
           rustBin = rust-overlay.lib.mkRustBin { } pkgs;
         in
-        pkgs.callPackage ./nix/build.nix {
+        pkgs.callPackage ./nix/${package}.nix {
           rustToolchain = rustBin.fromRustupToolchainFile ./rust-toolchain.toml;
         };
     in
     {
       packages = forAllSystems (pkgs: {
-        default = mkZarumet pkgs;
+        default = mkZarumet "build" pkgs;
+        dev = mkZarumet "dev" pkgs;
+        zarumet = self.packages.default;
       });
       devShells = forAllSystems (
         pkgs:
@@ -44,14 +46,22 @@
           rustToolchain = rustBin.fromRustupToolchainFile ./rust-toolchain.toml;
         in
         {
-          default = pkgs.callPackage ./nix/shell.nix {
+          dev = pkgs.callPackage ./nix/shell.nix {
             inherit rustToolchain;
+          };
+          direnv = pkgs.mkShell {
+            packages = [
+              self.packages.${pkgs.stdenv.hostPlatform.system}.dev
+            ];
           };
         }
       );
       formatter = forAllSystems (pkgs: pkgs.nixfmt-tree);
-      overlays.default = final: _prev: {
-        zarumet = mkZarumet final;
+      overlays = {
+        default = final: _prev: {
+          zarumet = mkZarumet final;
+        };
+        zarumet = self.overlays.default;
       };
 
       homeModules.default = import ./nix/hm-module.nix self;

@@ -27,7 +27,7 @@ mkShell {
 
   shellHook = /* bash */ ''
     if cargo clippy; then
-            nix shell
+            cargo build
     fi
   '';
 }
