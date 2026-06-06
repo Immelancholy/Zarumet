@@ -77,21 +77,14 @@
         }
       );
 
-      homeModules.default = import ./nix/hm.nix self;
-
       devShells = forAllSystems (
         pkgs:
         let
-          rustBin = rust-overlay.lib.mkRustBin { } pkgs;
-          rustToolchain = rustBin.fromRustupToolchainFile ./rust-toolchain.toml;
           system = pkgs.stdenv.hostPlatform.system;
           inherit (self.checks.${system}.pre-commit-check) shellHook enabledPackages;
         in
         {
-          default = pkgs.callPackage ./nix/shell.nix {
-            inherit rustToolchain;
-          };
-          direnv = pkgs.mkShell {
+          default = pkgs.mkShell {
             inherit shellHook;
             buildInputs = enabledPackages;
             packages = [
@@ -100,5 +93,7 @@
           };
         }
       );
+
+      homeModules.default = import ./nix/hm.nix self;
     };
 }
