@@ -249,7 +249,7 @@ impl LazyLibrary {
             .collect();
 
         // Sort albums alphabetically
-        albums.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        albums.sort_by_key(|a| a.name.to_lowercase());
 
         let duration = start_time.elapsed();
         log::debug!(
@@ -386,7 +386,7 @@ impl LazyLibrary {
                     })
                     .collect();
 
-                albums.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+                albums.sort_by_key(|a| a.name.to_lowercase());
 
                 // Add to all_albums
                 for album in &albums {
@@ -417,7 +417,7 @@ impl LazyLibrary {
                     })
                     .collect();
 
-                albums.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+                albums.sort_by_key(|a| a.name.to_lowercase());
 
                 // Add to all_albums
                 for album in &albums {

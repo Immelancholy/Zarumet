@@ -247,11 +247,7 @@ pub fn render_artists_mode(
                             let filler_width =
                                 max_song_title_width.saturating_sub(truncated_song_title.width());
                             let filler = RENDER_CACHE.with(|cache| {
-                                cache
-                                    .borrow()
-                                    .fillers
-                                    .spaces(filler_width.max(0))
-                                    .to_owned()
+                                cache.borrow().fillers.spaces(filler_width).to_owned()
                             });
 
                             let song_text = format!("   {}{}", truncated_song_title, filler,);
