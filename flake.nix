@@ -78,6 +78,7 @@
                 settings.extraArgs = "--fix --allow-dirty";
               };
             };
+            package = pkgs.prek;
           };
         }
       );
