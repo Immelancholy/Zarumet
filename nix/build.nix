@@ -1,4 +1,5 @@
 {
+  rustToolchain,
   rustPlatform,
   pipewire,
   pkg-config,
@@ -6,7 +7,7 @@
   clang,
 }:
 let
-  zarumetCargoLock = builtins.fromTOML (builtins.readFile ../Cargo.toml);
+  zarumetCargoLock = fromTOML (builtins.readFile ../Cargo.toml);
 in
 rustPlatform.buildRustPackage {
   pname = "zarumet";
