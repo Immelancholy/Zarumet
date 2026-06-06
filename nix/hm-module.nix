@@ -1,15 +1,18 @@
-self: {
+self:
+{
   lib,
   pkgs,
   config,
   ...
 }:
-with lib; let
+with lib;
+let
   cfg = config.programs.zarumet;
   zarumet = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
-  tomlFormat = pkgs.formats.toml {};
-in {
+  tomlFormat = pkgs.formats.toml { };
+in
+{
   options.programs.zarumet = {
     enable = mkEnableOption "zarumet";
     package = mkOption {
@@ -20,7 +23,7 @@ in {
 
     settings = mkOption {
       type = tomlFormat.type;
-      default = {};
+      default = { };
       example = literalExpression ''
         {
           address = "localhost:6600";
@@ -30,9 +33,9 @@ in {
     };
   };
   config = mkIf cfg.enable {
-    home.packages = mkIf (cfg.package != null) [cfg.package];
+    home.packages = mkIf (cfg.package != null) [ cfg.package ];
 
-    xdg.configFile."zarumet/config.toml" = mkIf (cfg.settings != {}) {
+    xdg.configFile."zarumet/config.toml" = mkIf (cfg.settings != { }) {
       source = tomlFormat.generate "config.toml" cfg.settings;
     };
   };

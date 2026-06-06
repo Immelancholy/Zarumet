@@ -4,7 +4,6 @@
   rust-analyzer,
   cargo-nextest,
   cargo-about,
-  alejandra,
   pkg-config,
   pipewire,
   libclang,
@@ -16,7 +15,6 @@ mkShell {
     rust-analyzer
     cargo-nextest
     cargo-about
-    alejandra
     pkg-config
     clang
   ];
@@ -26,4 +24,8 @@ mkShell {
   ];
 
   LIBCLANG_PATH = "${libclang.lib}/lib";
+
+  shellHook = /* bash */ ''
+    cargo clippy
+  '';
 }
