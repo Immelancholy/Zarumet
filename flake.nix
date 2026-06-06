@@ -72,6 +72,11 @@
             src = ./.;
             hooks = {
               nixfmt.enable = true;
+
+              clippy = {
+                enable = true;
+                settings.extraArgs = "--fix --allow-dirty";
+              };
             };
           };
         }
