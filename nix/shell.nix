@@ -26,6 +26,8 @@ mkShell {
   LIBCLANG_PATH = "${libclang.lib}/lib";
 
   shellHook = /* bash */ ''
-    cargo clippy
+    if cargo clippy; then
+            cargo build
+    fi
   '';
 }
