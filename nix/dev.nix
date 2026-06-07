@@ -7,22 +7,27 @@
   clang,
 }:
 let
-  zarumetCargoLock = fromTOML (builtins.readFile ../Cargo.toml);
+  zarumetCargoToml = fromTOML (builtins.readFile ../Cargo.toml);
 in
 rustPlatform.buildRustPackage {
   pname = "zarumet";
-  version = zarumetCargoLock.package.version;
+  version = "${zarumetCargoToml.package.version}-git";
   src = ../.;
 
   buildType = "debug";
+
+  buildInputs = [
+    pipewire
+  ];
 
   nativeBuildInputs = [
     pkg-config
     clang
   ];
-  buildInputs = [ pipewire ];
 
   LIBCLANG_PATH = "${libclang.lib}/lib";
 
   cargoLock.lockFile = ../Cargo.lock;
+
+  rustToolchain = rustToolchain;
 }

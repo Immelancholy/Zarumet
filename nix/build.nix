@@ -14,13 +14,18 @@ rustPlatform.buildRustPackage {
   version = zarumetCargoLock.package.version;
   src = ../.;
 
+  buildInputs = [
+    pipewire
+  ];
+
   nativeBuildInputs = [
     pkg-config
     clang
   ];
-  buildInputs = [ pipewire ];
 
   LIBCLANG_PATH = "${libclang.lib}/lib";
 
   cargoLock.lockFile = ../Cargo.lock;
+
+  rustToolchain = rustToolchain;
 }

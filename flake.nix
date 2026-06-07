@@ -25,21 +25,20 @@
         "x86_64-darwin"
         "aarch64-darwin"
       ];
-      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+      overlays = [ (import rust-overlay) ];
+      mkPkgs = (system: import nixpkgs { inherit system overlays; });
+      forAllSystems = nixpkgs.lib.genAttrs systems;
       mkZarumet =
         package: pkgs:
-        let
-          rustBin = rust-overlay.lib.mkRustBin { } pkgs;
-        in
         pkgs.callPackage ./nix/${package}.nix {
-          rustToolchain = rustBin.fromRustupToolchainFile ./rust-toolchain.toml;
+          rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         };
     in
     {
       formatter = forAllSystems (
-        pkgs:
+        system:
         let
-          system = pkgs.stdenv.hostPlatform.system;
+          pkgs = mkPkgs system;
           config = self.checks.${system}.pre-commit-check.config;
           inherit (config) package configFile;
           script = ''
@@ -49,11 +48,18 @@
         pkgs.writeShellScriptBin "pre-commit-run" script
       );
 
-      packages = forAllSystems (pkgs: {
-        default = mkZarumet "build" pkgs;
-        dev = mkZarumet "dev" pkgs;
-        zarumet = self.packages.default;
-      });
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = mkPkgs system;
+        in
+        {
+          default = mkZarumet "build" pkgs;
+          dev = mkZarumet "dev" pkgs;
+          dev-shell = mkZarumet "dev-shell" pkgs;
+          zarumet = self.packages.${system}.default;
+        }
+      );
 
       overlays = {
         default = final: _prev: {
@@ -63,20 +69,47 @@
       };
 
       checks = forAllSystems (
-        pkgs:
+        system:
         let
-          system = pkgs.stdenv.hostPlatform.system;
+          pkgs = mkPkgs system;
         in
         {
           pre-commit-check = inputs.git-hooks.lib.${system}.run {
             src = ./.;
+            settings.rust = {
+              check.cargoDeps = pkgs.rustPlatform.importCargoLock { lockFile = ./Cargo.lock; };
+            };
             hooks = {
               nixfmt.enable = true;
 
-              clippy = {
-                enable = true;
-                settings.extraArgs = "--fix --allow-dirty";
-              };
+              rustfmt.enable = true;
+
+              clippy-fix =
+                let
+                  rust-toolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+                  clippy = pkgs.writeShellApplication {
+                    name = "my-clippy";
+                    runtimeInputs = [
+                      rust-toolchain
+                    ];
+                    text = ''
+                      export LIBCLANG_PATH="${pkgs.libclang.lib}/lib"
+                      ${rust-toolchain}/bin/cargo clippy --fix --allow-dirty --offline
+                    '';
+                  };
+                in
+                {
+                  enable = true;
+                  extraPackages = with pkgs; [
+                    pipewire
+                    pkg-config
+                    clang
+                    rust-toolchain
+                  ];
+                  package = clippy;
+                  entry = "${pkgs.lib.getExe clippy}";
+                  pass_filenames = false;
+                };
             };
             package = pkgs.prek;
           };
@@ -84,18 +117,24 @@
       );
 
       devShells = forAllSystems (
-        pkgs:
+        system:
         let
-          system = pkgs.stdenv.hostPlatform.system;
+          pkgs = mkPkgs system;
           inherit (self.checks.${system}.pre-commit-check) shellHook enabledPackages;
         in
         {
           default = pkgs.mkShell {
-            inherit shellHook;
             buildInputs = enabledPackages;
-            packages = [
-              self.packages.${pkgs.stdenv.hostPlatform.system}.dev
+
+            nativeBuildInputs = [
+              self.packages.${system}.dev-shell
             ];
+
+            shellHook = shellHook + ''
+              cargo build
+            '';
+
+            LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
           };
         }
       );
