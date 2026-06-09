@@ -65,8 +65,8 @@
       );
 
       overlays = {
-        default = final: _prev: {
-          zarumet = mkZarumet final;
+        default = final: _: {
+          zarumet = mkZarumet "build" final;
         };
         zarumet = self.overlays.default;
       };
