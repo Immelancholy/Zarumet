@@ -26,7 +26,9 @@ in
       default = { };
       example = literalExpression ''
         {
-          address = "localhost:6600";
+          mpd = {
+            address = "localhost:6600";
+          };
         }
       '';
       description = "Settings for zarumet";
