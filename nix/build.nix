@@ -5,6 +5,7 @@
   pkg-config,
   libclang,
   clang,
+  lib,
 }:
 let
   zarumetCargoLock = fromTOML (builtins.readFile ../Cargo.toml);
@@ -28,4 +29,12 @@ rustPlatform.buildRustPackage {
   cargoLock.lockFile = ../Cargo.lock;
 
   rustToolchain = rustToolchain;
+
+  meta = with lib; {
+    description = "A performant rust mpd client with a sleek look!";
+    homepage = "https://github.com/Immelancholy/Zarumet";
+    license = licenses.mit;
+    maintainers = with maintainers; [ Immelancholy ];
+    mainProgram = "zarumet";
+  };
 }
