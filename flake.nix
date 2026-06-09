@@ -26,8 +26,15 @@
         "aarch64-darwin"
       ];
       overlays = [ (import rust-overlay) ];
-      mkPkgs = (system: import nixpkgs { inherit system overlays; });
-      forAllSystems = nixpkgs.lib.genAttrs systems;
+      forAllSystems =
+        f:
+        nixpkgs.lib.genAttrs systems (
+          system:
+          f {
+            system = system;
+            pkgs = import nixpkgs { inherit system overlays; };
+          }
+        );
       mkZarumet =
         package: pkgs:
         pkgs.callPackage ./nix/${package}.nix {
@@ -36,9 +43,8 @@
     in
     {
       formatter = forAllSystems (
-        system:
+        { pkgs, system }:
         let
-          pkgs = mkPkgs system;
           config = self.checks.${system}.pre-commit-check.config;
           inherit (config) package configFile;
           script = ''
@@ -49,10 +55,7 @@
       );
 
       packages = forAllSystems (
-        system:
-        let
-          pkgs = mkPkgs system;
-        in
+        { pkgs, system }:
         {
           default = mkZarumet "build" pkgs;
           dev = mkZarumet "dev" pkgs;
@@ -69,10 +72,7 @@
       };
 
       checks = forAllSystems (
-        system:
-        let
-          pkgs = mkPkgs system;
-        in
+        { pkgs, system }:
         {
           pre-commit-check = inputs.git-hooks.lib.${system}.run {
             src = ./.;
@@ -117,9 +117,8 @@
       );
 
       devShells = forAllSystems (
-        system:
+        { pkgs, system }:
         let
-          pkgs = mkPkgs system;
           inherit (self.checks.${system}.pre-commit-check) shellHook enabledPackages;
         in
         {
