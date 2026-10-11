@@ -268,3 +268,91 @@ impl KeyBinds {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::app::binds_handler::KeyBinds;
+    use crate::app::config::binds::BindsConfig;
+    use crate::app::mpd_handler::MPDAction;
+    use crate::app::ui::{MenuMode, PanelFocus};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    fn keys(config: BindsConfig) -> KeyBinds {
+        let (global, queue, artists, albums, sequences) = config.build_enhanced_key_maps();
+        KeyBinds::new_with_sequential(global, queue, artists, albums, sequences)
+    }
+    fn key(c: char) -> KeyEvent {
+        KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE)
+    }
+
+    #[test]
+    fn existing_mode_numbers_keep_their_meaning() {
+        let mut binds = keys(BindsConfig::default());
+        for (c, expected) in [
+            ('1', "SwitchToQueueMenu"),
+            ('2', "SwitchToArtists"),
+            ('3', "SwitchToAlbums"),
+            ('4', "SwitchToYears"),
+            ('5', "SwitchToGenres"),
+        ] {
+            let action = binds
+                .handle_key(key(c), &MenuMode::Queue, &PanelFocus::Artists)
+                .unwrap();
+            assert_eq!(action.to_string(), expected);
+        }
+    }
+
+    #[test]
+    fn partial_destructive_sequence_does_nothing() {
+        let mut binds = keys(BindsConfig::default());
+        assert!(
+            binds
+                .handle_key(key('d'), &MenuMode::Queue, &PanelFocus::Artists)
+                .is_none()
+        );
+        assert!(binds.is_awaiting_input());
+        assert!(matches!(
+            binds.handle_key(key('d'), &MenuMode::Queue, &PanelFocus::Artists),
+            Some(MPDAction::ClearQueue)
+        ));
+        assert!(!binds.is_awaiting_input());
+    }
+
+    #[test]
+    fn empty_configuration_binding_disables_clear() {
+        let config: BindsConfig = toml::from_str("clear_queue = []").unwrap();
+        let mut binds = keys(config);
+        for _ in 0..2 {
+            assert!(
+                binds
+                    .handle_key(key('d'), &MenuMode::Queue, &PanelFocus::Artists)
+                    .is_none()
+            );
+        }
+        assert!(!binds.is_awaiting_input());
+    }
+
+    #[test]
+    fn global_binding_precedes_mode_binding() {
+        let mut config = BindsConfig::default();
+        config.quit = vec!["x".into()];
+        let mut binds = keys(config);
+        assert!(matches!(
+            binds.handle_key(key('x'), &MenuMode::Queue, &PanelFocus::Artists),
+            Some(MPDAction::Quit)
+        ));
+    }
+
+    #[test]
+    fn navigation_enters_album_without_playing() {
+        let mut binds = keys(BindsConfig::default());
+        assert!(matches!(
+            binds.handle_key(key('l'), &MenuMode::Artists, &PanelFocus::Artists),
+            Some(MPDAction::SwitchPanelRight)
+        ));
+        assert!(matches!(
+            binds.handle_key(key('l'), &MenuMode::Artists, &PanelFocus::Albums),
+            Some(MPDAction::ToggleAlbumExpansion)
+        ));
+    }
+}
