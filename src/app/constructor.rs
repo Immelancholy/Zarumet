@@ -91,13 +91,15 @@ impl App {
         // Build enhanced key maps from config
         let (global_map, queue_map, artists_map, albums_map, sequential_bindings) =
             config.binds.build_enhanced_key_maps();
-        let key_binds = KeyBinds::new_with_sequential(
+        let mut key_binds = KeyBinds::new_with_sequential(
             global_map,
             queue_map,
             artists_map,
             albums_map,
             sequential_bindings,
         );
+
+        key_binds.configure_playlists(&config.binds);
 
         // Determine bit-perfect state: CLI flag takes priority, then saved state
         let bit_perfect_enabled = match args.bit_perfect {
@@ -128,6 +130,7 @@ impl App {
             artists_panel_focus: PanelFocus::Artists, // Default for Artists mode
             albums_panel_focus: PanelFocus::AlbumList, // Default for Albums mode
             library: None,
+            playlists: Default::default(),
             expanded_albums: std::collections::HashSet::new(),
             expanded_albums_years: std::collections::HashSet::new(),
             expanded_albums_genres: std::collections::HashSet::new(),

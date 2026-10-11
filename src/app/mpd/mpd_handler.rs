@@ -48,6 +48,12 @@ pub enum MPDAction {
     SwitchToAlbums,
     SwitchToYears,
     SwitchToGenres,
+    SwitchToPlaylists,
+    PlayPlaylist,
+    RenamePlaylist,
+    DeletePlaylist,
+    AddPlaylistToQueue,
+    SaveQueueAsPlaylist,
 
     // Panel focus
     SwitchPanelLeft,
@@ -108,6 +114,12 @@ impl fmt::Display for MPDAction {
             MPDAction::SwitchToAlbums => write!(f, "SwitchToAlbums"),
             MPDAction::SwitchToYears => write!(f, "SwitchToYears"),
             MPDAction::SwitchToGenres => write!(f, "SwitchToGenres"),
+            MPDAction::SwitchToPlaylists => write!(f, "SwitchToPlaylists"),
+            MPDAction::RenamePlaylist => write!(f, "RenamePlaylist"),
+            MPDAction::DeletePlaylist => write!(f, "DeletePlaylist"),
+            MPDAction::PlayPlaylist => write!(f, "PlayPlaylist"),
+            MPDAction::AddPlaylistToQueue => write!(f, "AddPlaylistToQueue"),
+            MPDAction::SaveQueueAsPlaylist => write!(f, "SaveQueueAsPlaylist"),
             MPDAction::SwitchPanelLeft => write!(f, "SwitchPanelLeft"),
             MPDAction::SwitchPanelRight => write!(f, "SwitchPanelRight"),
             MPDAction::NavigateUp => write!(f, "NavigateUp"),
@@ -325,6 +337,12 @@ impl MPDAction {
             | MPDAction::SwitchToArtists
             | MPDAction::SwitchToAlbums
             | MPDAction::SwitchToYears
+            | MPDAction::SwitchToPlaylists
+            | MPDAction::RenamePlaylist
+            | MPDAction::DeletePlaylist
+            | MPDAction::PlayPlaylist
+            | MPDAction::AddPlaylistToQueue
+            | MPDAction::SaveQueueAsPlaylist
             | MPDAction::SwitchToGenres
             | MPDAction::SwitchPanelLeft
             | MPDAction::SwitchPanelRight

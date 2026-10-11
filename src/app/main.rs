@@ -58,6 +58,7 @@ pub struct App {
     pub albums_panel_focus: PanelFocus,
     /// Music library (lazy-loaded)
     pub library: Option<LazyLibrary>,
+    pub playlists: crate::app::song::playlist::PlaylistBrowserState,
     /// Expanded albums (tracks which albums are currently expanded)
     pub expanded_albums: std::collections::HashSet<(String, String)>, // (artist_name, album_name)
     /// Expanded albums in Years mode (tracks which albums are currently expanded in Years mode)

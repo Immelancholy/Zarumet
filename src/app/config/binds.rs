@@ -48,6 +48,18 @@ pub struct BindsConfig {
     pub switch_to_years: Vec<String>,
     #[serde(default = "BindsConfig::default_switch_to_genres")]
     pub switch_to_genres: Vec<String>,
+    #[serde(default = "BindsConfig::default_switch_to_playlists")]
+    pub switch_to_playlists: Vec<String>,
+    #[serde(default = "BindsConfig::default_play_playlist")]
+    pub play_playlist: Vec<String>,
+    #[serde(default = "BindsConfig::default_rename_playlist")]
+    pub rename_playlist: Vec<String>,
+    #[serde(default = "BindsConfig::default_delete_playlist")]
+    pub delete_playlist: Vec<String>,
+    #[serde(default = "BindsConfig::default_add_playlist_to_queue")]
+    pub add_playlist_to_queue: Vec<String>,
+    #[serde(default = "BindsConfig::default_save_queue_as_playlist")]
+    pub save_queue_as_playlist: Vec<String>,
     #[serde(default = "BindsConfig::default_seek_forward")]
     pub seek_forward: Vec<String>,
     #[serde(default = "BindsConfig::default_seek_backward")]
@@ -164,6 +176,24 @@ impl BindsConfig {
     }
     fn default_switch_to_genres() -> Vec<String> {
         vec!["5".to_string()]
+    }
+    fn default_switch_to_playlists() -> Vec<String> {
+        vec!["7".to_string()]
+    }
+    fn default_rename_playlist() -> Vec<String> {
+        vec!["shift-r".to_string()]
+    }
+    fn default_delete_playlist() -> Vec<String> {
+        vec!["shift-d".to_string()]
+    }
+    fn default_play_playlist() -> Vec<String> {
+        vec!["shift-p".to_string()]
+    }
+    fn default_add_playlist_to_queue() -> Vec<String> {
+        vec!["a".to_string(), "enter".to_string()]
+    }
+    fn default_save_queue_as_playlist() -> Vec<String> {
+        vec!["shift-s".to_string()]
     }
     fn default_seek_forward() -> Vec<String> {
         vec!["shift-l".to_string(), "shift-right".to_string()]
@@ -402,6 +432,12 @@ impl BindsConfig {
         >,
         sequential_bindings: &mut Vec<SequentialKeyBinding>,
     ) {
+        self.add_enhanced_binding_for_action(
+            &self.switch_to_playlists,
+            crate::app::mpd_handler::MPDAction::SwitchToPlaylists,
+            single_map,
+            sequential_bindings,
+        );
         // Global bindings - these work in all modes
         self.add_enhanced_binding_for_action(
             &self.next,
@@ -556,7 +592,7 @@ impl BindsConfig {
     }
 
     /// Helper method to add bindings that may be sequential
-    fn add_enhanced_binding_for_action(
+    pub(crate) fn add_enhanced_binding_for_action(
         &self,
         binding_strings: &[String],
         action: crate::app::mpd_handler::MPDAction,
@@ -591,6 +627,12 @@ impl BindsConfig {
         sequential_bindings: &mut Vec<SequentialKeyBinding>,
     ) {
         // Queue mode specific bindings
+        self.add_enhanced_binding_for_action(
+            &self.save_queue_as_playlist,
+            crate::app::mpd_handler::MPDAction::SaveQueueAsPlaylist,
+            single_map,
+            sequential_bindings,
+        );
         self.add_enhanced_binding_for_action(
             &self.scroll_up,
             crate::app::mpd_handler::MPDAction::QueueUp,
@@ -835,6 +877,12 @@ impl Default for BindsConfig {
             switch_to_albums: Self::default_switch_to_albums(),
             switch_to_years: Self::default_switch_to_years(),
             switch_to_genres: Self::default_switch_to_genres(),
+            switch_to_playlists: Self::default_switch_to_playlists(),
+            play_playlist: Self::default_play_playlist(),
+            rename_playlist: Self::default_rename_playlist(),
+            delete_playlist: Self::default_delete_playlist(),
+            add_playlist_to_queue: Self::default_add_playlist_to_queue(),
+            save_queue_as_playlist: Self::default_save_queue_as_playlist(),
             seek_forward: Self::default_seek_forward(),
             seek_backward: Self::default_seek_backward(),
             play_selected: Self::default_play_selected(),

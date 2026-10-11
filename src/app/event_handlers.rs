@@ -31,6 +31,10 @@ impl EventHandlers for App {
 
     /// Handles the key events and updates the state of [`App`].
     async fn on_key_event(&mut self, key: KeyEvent, client: &Client) -> color_eyre::Result<()> {
+        if self.playlists.dialog.is_some() {
+            self.handle_playlist_dialog(key, client).await;
+            return Ok(());
+        }
         // Handle config warnings popup - any key closes it
         if self.show_config_warnings_popup {
             self.show_config_warnings_popup = false;

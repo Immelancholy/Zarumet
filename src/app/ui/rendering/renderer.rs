@@ -56,7 +56,8 @@ fn get_status_message_text(msg: &crate::app::StatusMessage) -> Option<String> {
                 _ => "Updating...",
             }
         }
-        MessageType::Success => "Updated!  ",
+        MessageType::Success if msg.text.is_empty() => "Updated!  ",
+        MessageType::Success => &msg.text,
         MessageType::Error => &msg.text,
     };
     Some(text.to_string())
@@ -281,6 +282,7 @@ pub fn render(
     show_config_warnings_popup: bool,
     config_warnings: &[String],
     status_message: &Option<crate::app::StatusMessage>,
+    playlists: &mut crate::app::song::playlist::PlaylistBrowserState,
 ) {
     let area = frame.area();
 
@@ -298,6 +300,18 @@ pub fn render(
     };
 
     match menu_mode {
+        MenuMode::Playlists => {
+            crate::app::ui::views::playlists::render_playlists_mode(
+                frame,
+                protocol,
+                current_song,
+                config,
+                playlists,
+                mpd_status,
+                bit_perfect_enabled,
+                show_config_warnings_popup,
+            );
+        }
         MenuMode::Queue => {
             render_queue_mode(
                 frame,
@@ -315,7 +329,7 @@ pub fn render(
                 mpd_status,
                 menu_mode,
                 bit_perfect_enabled,
-                show_config_warnings_popup,
+                show_config_warnings_popup || playlists.dialog.is_some(),
             );
         }
         MenuMode::Artists => {
@@ -339,7 +353,7 @@ pub fn render(
                 mpd_status,
                 menu_mode,
                 bit_perfect_enabled,
-                show_config_warnings_popup,
+                show_config_warnings_popup || playlists.dialog.is_some(),
             );
         }
         MenuMode::Albums => {
@@ -362,7 +376,7 @@ pub fn render(
                 mpd_status,
                 menu_mode,
                 bit_perfect_enabled,
-                show_config_warnings_popup,
+                show_config_warnings_popup || playlists.dialog.is_some(),
             );
         }
         MenuMode::Years => {
@@ -386,7 +400,7 @@ pub fn render(
                 mpd_status,
                 menu_mode,
                 bit_perfect_enabled,
-                show_config_warnings_popup,
+                show_config_warnings_popup || playlists.dialog.is_some(),
             );
         }
         MenuMode::Genres => {
@@ -410,13 +424,17 @@ pub fn render(
                 mpd_status,
                 menu_mode,
                 bit_perfect_enabled,
-                show_config_warnings_popup,
+                show_config_warnings_popup || playlists.dialog.is_some(),
             );
         }
     }
 
     // Render key sequence status overlay
     render_top_right_status(frame, key_binds, status_message, area, config);
+
+    if let Some(dialog) = &playlists.dialog {
+        crate::app::ui::views::playlists::render_playlist_dialog(frame, dialog, config);
+    }
 
     // Render config warnings popup if showing
     if show_config_warnings_popup && !config_warnings.is_empty() {

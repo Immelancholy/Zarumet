@@ -51,6 +51,27 @@ def client_at(address):
     client.connect(str(address), 6600)
     return client
 
+def write_cover(path, colors):
+    """Generate a small, original PNG fixture without an image-library dependency."""
+    import struct
+    import zlib
+
+    width = height = 96
+    rows = bytearray()
+    for y in range(height):
+        rows.append(0)
+        for x in range(width):
+            rows.extend(colors[(x // 24 + y // 24) % len(colors)])
+
+    def chunk(kind, data):
+        return (struct.pack('!I', len(data)) + kind + data
+                + struct.pack('!I', zlib.crc32(kind + data)))
+
+    Path(path).write_bytes(b'\x89PNG\r\n\x1a\n'
+                          + chunk(b'IHDR', struct.pack('!2I5B', width, height, 8, 2, 0, 0, 0))
+                          + chunk(b'IDAT', zlib.compress(rows)) + chunk(b'IEND', b''))
+
+
 def prepare_fixtures(music):
     """Small tagged silent files; no archive, network, or copyrighted assets required."""
     fixtures = [
@@ -73,6 +94,9 @@ def prepare_fixtures(music):
 
 
 class MPDFixture:
+    def __init__(self, restrict_control=False):
+        self.restrict_control = restrict_control
+
     def __enter__(self):
         self.tmp = tempfile.TemporaryDirectory(prefix='zarumet-test-')
         self.root = Path(self.tmp.name)
@@ -80,11 +104,16 @@ class MPDFixture:
         music = self.root / 'music'
         prepare_fixtures(music)
         config = mpd_config(self.root, music, self.address)
+        if self.restrict_control:
+            with config.open('a') as file:
+                file.write('default_permissions "read,add"\npassword "fixture-admin@read,add,control,admin"\n')
         self.log = (self.root / 'stderr').open('w')
         self.process = subprocess.Popen(['mpd', '--no-daemon', str(config)], stdout=self.log, stderr=self.log)
         try:
             eventually(lambda: self.address.exists())
             self.client = client_at(self.address)
+            if self.restrict_control:
+                self.client.password('fixture-admin')
             self.client.update()
             eventually(lambda: 'updating_db' not in self.client.status())
             self.songs = sorted(song['file'] for song in self.client.listallinfo() if 'file' in song)
@@ -107,12 +136,15 @@ class MPDFixture:
         self.tmp.cleanup()
 
 class TUI:
-    def __init__(self, fixture, name):
+    def __init__(self, fixture, name, extra_config='', color=False):
         self.name = name
         self.root = fixture.root
         config = self.root / 'zarumet.toml'
-        config.write_text('[pipewire]\nbit_perfect_enabled = false\n[logging]\nenabled = false\n')
-        env = dict(os.environ, TERM='xterm-256color', COLORTERM='truecolor')
+        config.write_text('[pipewire]\nbit_perfect_enabled = false\n[logging]\nenabled = false\n' + extra_config)
+        env = dict(os.environ, TERM='xterm-256color', COLORTERM='truecolor',
+                   XDG_STATE_HOME=str(self.root / 'state-home'))
+        if color:
+            env.pop('NO_COLOR', None)
         self.screen = pyte.Screen(140, 42)
         self.stream = pyte.Stream(self.screen)
         self.proc = pexpect.spawn(str(BINARY), ['-c', str(config), '-a', str(fixture.address), '-b', 'off'],
@@ -152,7 +184,8 @@ class TUI:
     def close(self):
         try:
             (ARTIFACTS / f'{self.name}.screen.txt').write_text(self.pump())
-            self.proc.send('q')
+            # Cancel an open modal, then quit; neither key can become name text.
+            self.proc.send('\x03\x03')
             self.proc.expect(pexpect.EOF, timeout=5)
             self.proc.close()
             assert self.proc.exitstatus == 0, f'Zarumet exit: {self.proc.exitstatus}'
