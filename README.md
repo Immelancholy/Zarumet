@@ -123,6 +123,29 @@ Options:
   -V, --version                    Print version
 ```
 
+## Directories
+
+Press **6** to browse MPD's music directory. Folders appear first with a trailing
+slash, followed by files; the current MPD path appears above the list.
+
+- **j/k** or **Down/Up**: select an entry; **gg/G** and **Ctrl-U/Ctrl-D** jump or page.
+- **h / Left**, **l / Right**: focus the directory pane or its contents.
+- **Enter**: open the focused folder, or append the focused file.
+- **Backspace**: move the left pane up to its parent and select the folder you left.
+- **a**: append the selected file or the selected folder recursively.
+- **u**: refresh the current directory. MPD database updates also refresh it.
+
+Browsing does not change playback. Adding appends without starting, stopping or
+replacing the current queue. Folder expansion runs on MPD, including when the
+server is remote; paths are never resolved against the client filesystem.
+A failed recursive add may have appended some entries; the error is displayed
+and the queue is refreshed to reflect MPD's actual state.
+
+The left pane shows the current directory; the right previews the selected folder.
+Entering a folder moves its contents into the left pane. Both listings load asynchronously. Empty folders are shown
+when MPD exposes them; database updates may omit empty folders. The current-song
+artwork follows playback, as in the other views.
+
 ## Stored playlists
 
 Press **7** for MPD stored playlists. The left panel lists names and the right panel
@@ -251,6 +274,10 @@ switch_to_artists = ["2"]
 switch_to_albums = ["3"]
 switch_to_years = ["4"]
 switch_to_genres = ["5"]
+switch_to_directories = ["6"]
+open_directory = ["enter"]
+parent_directory = ["backspace"]
+add_directory_selection = ["a"]
 switch_to_playlists = ["7"]
 play_playlist = ["shift-p"]
 rename_playlist = ["shift-r"]

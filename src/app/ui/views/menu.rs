@@ -6,6 +6,7 @@ pub enum MenuMode {
     Albums,
     Years,
     Genres,
+    Directories,
     Playlists,
 }
 

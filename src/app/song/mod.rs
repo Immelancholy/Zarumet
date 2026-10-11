@@ -9,3 +9,5 @@ pub use album::Album;
 pub use artist::{Artist, LazyArtist};
 pub use library::LazyLibrary;
 pub use song_info::SongInfo;
+
+pub mod directory;

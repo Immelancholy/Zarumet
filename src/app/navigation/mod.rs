@@ -7,3 +7,5 @@ pub mod playlists_nav;
 pub mod scrolling;
 
 pub use main_nav::Navigation;
+
+mod directories_nav;

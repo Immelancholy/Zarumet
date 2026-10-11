@@ -15,7 +15,7 @@ impl App {
         match action {
             MPDAction::NavigateUp => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Queue => {
                         // Queue navigation is handled elsewhere
                     }
@@ -312,7 +312,7 @@ impl App {
             }
             MPDAction::NavigateDown => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Queue => {
                         // Queue navigation is handled elsewhere
                     }

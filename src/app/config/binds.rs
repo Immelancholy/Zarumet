@@ -48,6 +48,14 @@ pub struct BindsConfig {
     pub switch_to_years: Vec<String>,
     #[serde(default = "BindsConfig::default_switch_to_genres")]
     pub switch_to_genres: Vec<String>,
+    #[serde(default = "BindsConfig::default_switch_to_directories")]
+    pub switch_to_directories: Vec<String>,
+    #[serde(default = "BindsConfig::default_open_directory")]
+    pub open_directory: Vec<String>,
+    #[serde(default = "BindsConfig::default_parent_directory")]
+    pub parent_directory: Vec<String>,
+    #[serde(default = "BindsConfig::default_add_directory_selection")]
+    pub add_directory_selection: Vec<String>,
     #[serde(default = "BindsConfig::default_switch_to_playlists")]
     pub switch_to_playlists: Vec<String>,
     #[serde(default = "BindsConfig::default_play_playlist")]
@@ -176,6 +184,18 @@ impl BindsConfig {
     }
     fn default_switch_to_genres() -> Vec<String> {
         vec!["5".to_string()]
+    }
+    fn default_switch_to_directories() -> Vec<String> {
+        vec!["6".to_string()]
+    }
+    fn default_open_directory() -> Vec<String> {
+        vec!["enter".to_string()]
+    }
+    fn default_parent_directory() -> Vec<String> {
+        vec!["backspace".to_string()]
+    }
+    fn default_add_directory_selection() -> Vec<String> {
+        vec!["a".to_string()]
     }
     fn default_switch_to_playlists() -> Vec<String> {
         vec!["7".to_string()]
@@ -435,6 +455,12 @@ impl BindsConfig {
         self.add_enhanced_binding_for_action(
             &self.switch_to_playlists,
             crate::app::mpd_handler::MPDAction::SwitchToPlaylists,
+            single_map,
+            sequential_bindings,
+        );
+        self.add_enhanced_binding_for_action(
+            &self.switch_to_directories,
+            crate::app::mpd_handler::MPDAction::SwitchToDirectories,
             single_map,
             sequential_bindings,
         );
@@ -877,6 +903,10 @@ impl Default for BindsConfig {
             switch_to_albums: Self::default_switch_to_albums(),
             switch_to_years: Self::default_switch_to_years(),
             switch_to_genres: Self::default_switch_to_genres(),
+            switch_to_directories: Self::default_switch_to_directories(),
+            open_directory: Self::default_open_directory(),
+            parent_directory: Self::default_parent_directory(),
+            add_directory_selection: Self::default_add_directory_selection(),
             switch_to_playlists: Self::default_switch_to_playlists(),
             play_playlist: Self::default_play_playlist(),
             rename_playlist: Self::default_rename_playlist(),

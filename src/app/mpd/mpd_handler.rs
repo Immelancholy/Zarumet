@@ -48,6 +48,10 @@ pub enum MPDAction {
     SwitchToAlbums,
     SwitchToYears,
     SwitchToGenres,
+    SwitchToDirectories,
+    OpenDirectory,
+    ParentDirectory,
+    AddDirectorySelection,
     SwitchToPlaylists,
     PlayPlaylist,
     RenamePlaylist,
@@ -114,6 +118,10 @@ impl fmt::Display for MPDAction {
             MPDAction::SwitchToAlbums => write!(f, "SwitchToAlbums"),
             MPDAction::SwitchToYears => write!(f, "SwitchToYears"),
             MPDAction::SwitchToGenres => write!(f, "SwitchToGenres"),
+            MPDAction::SwitchToDirectories => write!(f, "SwitchToDirectories"),
+            MPDAction::OpenDirectory => write!(f, "OpenDirectory"),
+            MPDAction::ParentDirectory => write!(f, "ParentDirectory"),
+            MPDAction::AddDirectorySelection => write!(f, "AddDirectorySelection"),
             MPDAction::SwitchToPlaylists => write!(f, "SwitchToPlaylists"),
             MPDAction::RenamePlaylist => write!(f, "RenamePlaylist"),
             MPDAction::DeletePlaylist => write!(f, "DeletePlaylist"),
@@ -337,6 +345,10 @@ impl MPDAction {
             | MPDAction::SwitchToArtists
             | MPDAction::SwitchToAlbums
             | MPDAction::SwitchToYears
+            | MPDAction::SwitchToDirectories
+            | MPDAction::OpenDirectory
+            | MPDAction::ParentDirectory
+            | MPDAction::AddDirectorySelection
             | MPDAction::SwitchToPlaylists
             | MPDAction::RenamePlaylist
             | MPDAction::DeletePlaylist

@@ -22,13 +22,15 @@ impl Navigation for App {
         action: MPDAction,
         client: &Client,
     ) -> color_eyre::Result<()> {
-        if self.handle_playlist_action(&action, client).await {
+        if self.handle_directory_action(&action, client).await
+            || self.handle_playlist_action(&action, client).await
+        {
             return Ok(());
         }
         match action {
             MPDAction::QueueUp => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Queue => {
                         if !self.queue.is_empty() {
                             let current = self.queue_list_state.selected().unwrap_or(0);
@@ -59,7 +61,7 @@ impl Navigation for App {
             }
             MPDAction::QueueDown => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Queue => {
                         if !self.queue.is_empty() {
                             let current = self.queue_list_state.selected().unwrap_or(0);
@@ -89,7 +91,7 @@ impl Navigation for App {
             }
             MPDAction::PlaySelected => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Queue => {
                         // Queue mode: play the selected song
                         if let Some(selected) = self.queue_list_state.selected()
@@ -229,7 +231,7 @@ impl Navigation for App {
             MPDAction::SwitchToQueueMenu => {
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
@@ -243,7 +245,7 @@ impl Navigation for App {
             MPDAction::SwitchToArtists => {
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => {} // Already in Artists mode
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
@@ -258,7 +260,7 @@ impl Navigation for App {
             MPDAction::SwitchToAlbums => {
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => {} // Already in Albums mode
@@ -275,7 +277,7 @@ impl Navigation for App {
             MPDAction::SwitchToYears => {
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Years => {} // Already in Years mode
@@ -292,7 +294,7 @@ impl Navigation for App {
             MPDAction::SwitchToGenres => {
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
@@ -308,7 +310,7 @@ impl Navigation for App {
             }
             MPDAction::SwitchPanelLeft => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => {
                         match self.panel_focus {
                             PanelFocus::Artists => {
@@ -382,7 +384,7 @@ impl Navigation for App {
             }
             MPDAction::SwitchPanelRight => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => {
                         match self.panel_focus {
                             PanelFocus::Artists => {
@@ -492,7 +494,7 @@ impl Navigation for App {
             }
             MPDAction::ToggleAlbumExpansion => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => {
                         self.handle_album_toggle(client).await?;
                     }
@@ -512,7 +514,7 @@ impl Navigation for App {
             }
             MPDAction::AddSongToQueue => {
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Albums => {
                         // Albums mode: context-aware add
                         match self.panel_focus {
@@ -549,10 +551,10 @@ impl Navigation for App {
                 }
             }
             MPDAction::CycleModeLeft => {
-                // Cycle modes left: Queue -> Playlists -> Genres -> Years -> Albums -> Artists -> Queue
+                // Cycle modes left: Queue -> Playlists -> Directories -> Genres -> Years -> Albums -> Artists -> Queue
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
@@ -561,6 +563,10 @@ impl Navigation for App {
                 }
                 match self.menu_mode {
                     MenuMode::Playlists => {
+                        self.menu_mode = MenuMode::Directories;
+                        self.directories.invalidate();
+                    }
+                    MenuMode::Directories => {
                         self.menu_mode = MenuMode::Genres;
                         self.panel_focus = self.genre_panel_focus.clone();
                         self.preload_albums_for_view(client).await;
@@ -590,10 +596,10 @@ impl Navigation for App {
                 self.dirty.mark_menu_mode();
             }
             MPDAction::CycleModeRight => {
-                // Cycle modes right: Queue -> Artists -> Albums -> Years -> Genres -> Playlists -> Queue
+                // Cycle modes right: Queue -> Artists -> Albums -> Years -> Genres -> Directories -> Playlists -> Queue
                 // Save current panel focus before leaving
                 match self.menu_mode {
-                    MenuMode::Playlists => {}
+                    MenuMode::Playlists | MenuMode::Directories => {}
                     MenuMode::Artists => self.artists_panel_focus = self.panel_focus.clone(),
                     MenuMode::Albums => self.albums_panel_focus = self.panel_focus.clone(),
                     MenuMode::Years => self.years_panel_focus = self.panel_focus.clone(),
@@ -627,6 +633,10 @@ impl Navigation for App {
                         self.preload_albums_for_view(client).await;
                     }
                     MenuMode::Genres => {
+                        self.menu_mode = MenuMode::Directories;
+                        self.directories.invalidate();
+                    }
+                    MenuMode::Directories => {
                         self.menu_mode = MenuMode::Playlists;
                         self.playlists.invalidate();
                     }

@@ -29,6 +29,8 @@ pub struct KeyBinds {
     queue_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     artists_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     albums_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
+    directories_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
+    directory_sequences: Vec<SequentialKeyBinding>,
     playlists_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     playlist_sequences: Vec<SequentialKeyBinding>,
     sequential_bindings: Vec<SequentialKeyBinding>,
@@ -50,6 +52,8 @@ impl KeyBinds {
             queue_map,
             artists_map,
             albums_map,
+            directories_map: HashMap::new(),
+            directory_sequences: Vec::new(),
             playlists_map: HashMap::new(),
             playlist_sequences: Vec::new(),
             sequential_bindings,
@@ -87,6 +91,33 @@ impl KeyBinds {
         }
     }
 
+    /// Keep directory actions scoped without changing existing modes' maps.
+    pub fn configure_directories(&mut self, config: &crate::app::config::binds::BindsConfig) {
+        for (bindings, action) in [
+            (&config.switch_panel_left, MPDAction::SwitchPanelLeft),
+            (&config.switch_panel_right, MPDAction::SwitchPanelRight),
+            (&config.scroll_up, MPDAction::NavigateUp),
+            (&config.scroll_down, MPDAction::NavigateDown),
+            (&config.scroll_up_big, MPDAction::ScrollUp),
+            (&config.scroll_down_big, MPDAction::ScrollDown),
+            (&config.go_to_top, MPDAction::GoToTop),
+            (&config.go_to_bottom, MPDAction::GoToBottom),
+            (&config.open_directory, MPDAction::OpenDirectory),
+            (&config.parent_directory, MPDAction::ParentDirectory),
+            (
+                &config.add_directory_selection,
+                MPDAction::AddDirectorySelection,
+            ),
+        ] {
+            config.add_enhanced_binding_for_action(
+                bindings,
+                action,
+                &mut self.directories_map,
+                &mut self.directory_sequences,
+            );
+        }
+    }
+
     /// Handle key events and return corresponding MPD commands with sequential support
     pub fn handle_key(
         &mut self,
@@ -118,6 +149,11 @@ impl KeyBinds {
 
         // Check mode-specific bindings
         match mode {
+            MenuMode::Directories => {
+                if let Some(action) = self.directories_map.get(&key_tuple) {
+                    return Some(action.clone());
+                }
+            }
             MenuMode::Playlists => {
                 if let Some(action) = self.playlists_map.get(&key_tuple) {
                     return Some(action.clone());
@@ -248,7 +284,12 @@ impl KeyBinds {
                 for binding in self.sequential_bindings.iter().chain(
                     self.playlist_sequences
                         .iter()
-                        .filter(|_| *mode == MenuMode::Playlists),
+                        .filter(|_| *mode == MenuMode::Playlists)
+                        .chain(
+                            self.directory_sequences
+                                .iter()
+                                .filter(|_| *mode == MenuMode::Directories),
+                        ),
                 ) {
                     if binding.sequence == *sequence {
                         self.current_state = KeyState::Idle;
@@ -263,7 +304,12 @@ impl KeyBinds {
                     .chain(
                         self.playlist_sequences
                             .iter()
-                            .filter(|_| *mode == MenuMode::Playlists),
+                            .filter(|_| *mode == MenuMode::Playlists)
+                            .chain(
+                                self.directory_sequences
+                                    .iter()
+                                    .filter(|_| *mode == MenuMode::Directories),
+                            ),
                     )
                     .filter(|binding| {
                         sequence.len() <= binding.sequence.len()
@@ -291,7 +337,12 @@ impl KeyBinds {
             .chain(
                 self.playlist_sequences
                     .iter()
-                    .filter(|_| *mode == MenuMode::Playlists),
+                    .filter(|_| *mode == MenuMode::Playlists)
+                    .chain(
+                        self.directory_sequences
+                            .iter()
+                            .filter(|_| *mode == MenuMode::Directories),
+                    ),
             )
             .any(|binding| binding.sequence.first() == Some(&key_tuple))
     }
@@ -331,7 +382,10 @@ mod tests {
 
     fn keys(config: BindsConfig) -> KeyBinds {
         let (global, queue, artists, albums, sequences) = config.build_enhanced_key_maps();
-        KeyBinds::new_with_sequential(global, queue, artists, albums, sequences)
+        let mut binds = KeyBinds::new_with_sequential(global, queue, artists, albums, sequences);
+        binds.configure_playlists(&config);
+        binds.configure_directories(&config);
+        binds
     }
     fn key(c: char) -> KeyEvent {
         KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE)
@@ -346,6 +400,8 @@ mod tests {
             ('3', "SwitchToAlbums"),
             ('4', "SwitchToYears"),
             ('5', "SwitchToGenres"),
+            ('6', "SwitchToDirectories"),
+            ('7', "SwitchToPlaylists"),
         ] {
             let action = binds
                 .handle_key(key(c), &MenuMode::Queue, &PanelFocus::Artists)
@@ -407,6 +463,37 @@ mod tests {
         assert!(matches!(
             binds.handle_key(key('l'), &MenuMode::Artists, &PanelFocus::Albums),
             Some(MPDAction::ToggleAlbumExpansion)
+        ));
+    }
+
+    #[test]
+    fn directory_bindings_are_scoped_and_global_bindings_keep_priority() {
+        let config = BindsConfig::default();
+        let mut binds = keys(config);
+        assert!(matches!(
+            binds.handle_key(key('a'), &MenuMode::Directories, &PanelFocus::Artists),
+            Some(MPDAction::AddDirectorySelection)
+        ));
+        assert!(matches!(
+            binds.handle_key(key('l'), &MenuMode::Directories, &PanelFocus::Artists),
+            Some(MPDAction::SwitchPanelRight)
+        ));
+        assert!(!matches!(
+            binds.handle_key(key('a'), &MenuMode::Queue, &PanelFocus::Artists),
+            Some(MPDAction::AddDirectorySelection)
+        ));
+        assert!(matches!(
+            binds.handle_key(key('l'), &MenuMode::Artists, &PanelFocus::Artists),
+            Some(MPDAction::SwitchPanelRight)
+        ));
+        let config = BindsConfig {
+            quit: vec!["a".into()],
+            ..Default::default()
+        };
+        let mut binds = keys(config);
+        assert!(matches!(
+            binds.handle_key(key('a'), &MenuMode::Directories, &PanelFocus::Artists),
+            Some(MPDAction::Quit)
         ));
     }
 }
