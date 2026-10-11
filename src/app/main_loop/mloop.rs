@@ -179,7 +179,36 @@ impl AppMainLoop for App {
         let (playlist_tx, mut playlist_rx) = mpsc::unbounded_channel();
         let mut playlist_load: Option<tokio::task::JoinHandle<()>> = None;
 
+        let (directory_tx, mut directory_rx) = mpsc::unbounded_channel();
+        let mut directory_load: [Option<tokio::task::JoinHandle<()>>; 2] = [None, None];
+
         while self.running {
+            if self.menu_mode == crate::app::MenuMode::Directories {
+                for (index, pane) in [&mut self.directories.current, &mut self.directories.preview]
+                    .into_iter()
+                    .enumerate()
+                {
+                    if let Some(task) = directory_load[index].as_ref()
+                        && (pane.needs_refresh || (index == 1 && pane.path.is_empty()))
+                    {
+                        task.abort();
+                    }
+                    if !pane.needs_refresh || (index == 1 && pane.path.is_empty()) {
+                        continue;
+                    }
+                    let client = client.clone();
+                    let tx = directory_tx.clone();
+                    let generation = pane.generation;
+                    let path = pane.path.clone();
+                    pane.needs_refresh = false;
+                    pane.loading = true;
+                    self.dirty.mark_menu_mode();
+                    directory_load[index] = Some(tokio::spawn(async move {
+                        let result = crate::app::mpd::directories::browse(&client, &path).await;
+                        let _ = tx.send((index, generation, result));
+                    }));
+                }
+            }
             if self.menu_mode == crate::app::MenuMode::Playlists && self.playlists.needs_refresh {
                 if let Some(task) = playlist_load.take() {
                     task.abort();
@@ -236,6 +265,7 @@ impl AppMainLoop for App {
                         &self.config_warnings,
                         &self.status_message,
                         &mut self.playlists,
+                        &mut self.directories,
                     )
                 })?;
 
@@ -279,6 +309,15 @@ impl AppMainLoop for App {
 
             // Event-driven loop using tokio::select!
             tokio::select! {
+                Some((index, generation, result)) = directory_rx.recv() => {
+                    if index == 0 {
+                        self.directories.current.apply(generation, result);
+                        self.directories.sync_preview();
+                    } else {
+                        self.directories.preview.apply(generation, result);
+                    }
+                    self.dirty.mark_menu_mode();
+                }
                 Some((generation, result)) = playlist_rx.recv() => {
                     self.playlists.apply(generation, result);
                     self.dirty.mark_menu_mode();
@@ -336,7 +375,9 @@ impl AppMainLoop for App {
                                 Subsystem::StoredPlaylist => {
                                     self.playlists.invalidate();
                                 }
+                                Subsystem::Database => self.directories.invalidate(),
                                 Subsystem::Update => {
+                                    self.directories.invalidate();
                                     if self.library_reload_pending {
                                         let was_user_initiated = self.user_initiated_reload;
                                         self.update_in_progress = false;  // Allow new refreshes
@@ -466,8 +507,7 @@ impl AppMainLoop for App {
                                     }
                                 }
                                 // Database, output, sticker, etc. - typically don't affect current playback
-                                Subsystem::Database
-                                | Subsystem::Output
+                                Subsystem::Output
                                 | Subsystem::Sticker
                                 | Subsystem::Subscription
                                 | Subsystem::Message

@@ -1,6 +1,6 @@
 # MPD and terminal regression tests
 
-These optional Unix tests (baseline and stored-playlist workflows) run the actual Zarumet binary against a fresh MPD per test. They require `mpd`, `ffmpeg`, Python 3.10+, and the Python packages in `requirements.txt`. No real music, running MPD service, desktop window, audio device, or elevated permissions are needed. Audio output is silent.
+These optional Unix tests (baseline, stored-playlist and directory workflows) run the actual Zarumet binary against a fresh MPD per test. They require `mpd`, `ffmpeg`, Python 3.10+, and the Python packages in `requirements.txt`. No real music, running MPD service, desktop window, audio device, or elevated permissions are needed. Audio output is silent.
 
 From the repository root:
 
@@ -38,6 +38,20 @@ missing-file errors and preserved playback. A generated PNG fixture proves MPD a
 retrieval and rendered cover colors in Playlists, including after a dialog closes.
 Rust playlist tests cover name validation, stale-response rejection, and selection identity.
 
-Feature work should add focused tests alongside its requirements. Mid-command connection
-loss, crop and large-directory responsiveness are not covered by this suite. Human testing
-is still needed for audible output, album art, fonts and interaction feel.
+`test_directories.py` covers root/parent/empty/deep navigation, server-relative paths,
+Unicode and quotes, file and recursive folder append with paused playback preserved,
+external database updates, selection identity, missing folders, mode cycling and
+scoped sequential bindings. A proxy forwards real MPD traffic and injects delayed
+reads, browse failures and partial-add failures to verify responsiveness and recovery.
+Rust state tests reject stale loads and preserve or repair path-based selection.
+
+Set `ZARUMET_LARGE_DIRECTORY=1` to include a 3,000-entry browse and jump-to-end
+measurement with a three-second local budget. This measures a local server; it
+does not guarantee the same latency over a remote connection.
+
+Mid-command connection loss and crop are not covered by this suite. Human testing
+is still needed for audible output, fonts and interaction feel.
+
+Directory split-pane checks cover focused single-track append, nested preview entry,
+parent restoration and preview failure/retry. Rust state tests cover preserving
+both pane selections across refresh.

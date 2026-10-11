@@ -149,6 +149,8 @@ class TUI:
         self.stream = pyte.Stream(self.screen)
         self.proc = pexpect.spawn(str(BINARY), ['-c', str(config), '-a', str(fixture.address), '-b', 'off'],
                                   env=env, encoding='utf-8', codec_errors='replace', dimensions=(42, 140), timeout=8)
+        if hasattr(fixture, 'start'):
+            fixture.start()
         self.raw = (ARTIFACTS / f'{name}.ansi').open('w')
         self.proc.logfile_read = self.raw
         try:
@@ -193,3 +195,57 @@ class TUI:
             if self.proc.isalive():
                 self.proc.terminate(force=True)
             self.raw.close()
+
+
+class MPDProxy:
+    """Intercept client command lines while forwarding real MPD responses and events."""
+    def __init__(self, fixture, intercept):
+        import socketserver
+        import select
+        import socket
+        import threading
+
+        self.root = fixture.root
+        self.address = fixture.root / 'proxy.sock'
+        self.stop = threading.Event()
+        proxy = self
+
+        class Handler(socketserver.BaseRequestHandler):
+            def handle(self):
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as upstream:
+                    upstream.connect(str(fixture.address))
+                    upstream.settimeout(3)
+                    pending = b''
+                    try:
+                        while not proxy.stop.is_set():
+                            readable, _, _ = select.select([self.request, upstream], [], [], .1)
+                            for source in readable:
+                                data = source.recv(65536)
+                                if not data:
+                                    return
+                                if source is upstream:
+                                    self.request.sendall(data)
+                                else:
+                                    pending += data
+                                    while b'\n' in pending:
+                                        line, pending = pending.split(b'\n', 1)
+                                        if not intercept(line, self.request, upstream):
+                                            upstream.sendall(line + b'\n')
+                    except (BrokenPipeError, ConnectionResetError, TimeoutError):
+                        pass
+
+        class Server(socketserver.ThreadingUnixStreamServer):
+            daemon_threads = False
+
+        self.server = Server(str(self.address), Handler)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+
+    def start(self):
+        # Start forwarding after the terminal process is spawned, avoiding fork with threads.
+        self.thread.start()
+
+    def close(self):
+        self.stop.set()
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)

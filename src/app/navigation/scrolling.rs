@@ -13,7 +13,7 @@ impl App {
     /// Handle scrolling by 15 items at a time
     pub async fn handle_scroll(&mut self, action: MPDAction, client: &Client) {
         match self.menu_mode {
-            MenuMode::Playlists => {}
+            MenuMode::Playlists | MenuMode::Directories => {}
             MenuMode::Queue => {
                 if !self.queue.is_empty() {
                     let current = self.queue_list_state.selected().unwrap_or(0);
@@ -443,7 +443,7 @@ impl App {
         }
         // Mark appropriate dirty flags for scrolling
         match self.menu_mode {
-            MenuMode::Playlists => {}
+            MenuMode::Playlists | MenuMode::Directories => {}
             MenuMode::Queue => self.dirty.mark_queue_selection(),
             MenuMode::Artists | MenuMode::Albums | MenuMode::Years | MenuMode::Genres => {
                 self.dirty.mark_library()
@@ -454,7 +454,7 @@ impl App {
     /// Handle jumping to the top or bottom of the current list
     pub async fn handle_go_to_edge(&mut self, action: MPDAction, client: &Client) {
         match self.menu_mode {
-            MenuMode::Playlists => {}
+            MenuMode::Playlists | MenuMode::Directories => {}
             MenuMode::Queue => {
                 if !self.queue.is_empty() {
                     let new_index = match action {
@@ -683,7 +683,7 @@ impl App {
         }
         // Mark appropriate dirty flags for go to edge
         match self.menu_mode {
-            MenuMode::Playlists => {}
+            MenuMode::Playlists | MenuMode::Directories => {}
             MenuMode::Queue => self.dirty.mark_queue_selection(),
             MenuMode::Artists | MenuMode::Albums | MenuMode::Years | MenuMode::Genres => {
                 self.dirty.mark_library()

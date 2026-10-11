@@ -283,6 +283,7 @@ pub fn render(
     config_warnings: &[String],
     status_message: &Option<crate::app::StatusMessage>,
     playlists: &mut crate::app::song::playlist::PlaylistBrowserState,
+    directories: &mut crate::app::song::directory::DirectoryBrowserState,
 ) {
     let area = frame.area();
 
@@ -300,6 +301,18 @@ pub fn render(
     };
 
     match menu_mode {
+        MenuMode::Directories => {
+            crate::app::ui::views::directories::render_directories_mode(
+                frame,
+                protocol,
+                current_song,
+                config,
+                directories,
+                mpd_status,
+                bit_perfect_enabled,
+                show_config_warnings_popup,
+            );
+        }
         MenuMode::Playlists => {
             crate::app::ui::views::playlists::render_playlists_mode(
                 frame,
