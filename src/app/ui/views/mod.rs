@@ -6,3 +6,5 @@ pub mod queue;
 pub mod years;
 
 pub use menu::{MenuMode, PanelFocus};
+
+pub mod playlists;

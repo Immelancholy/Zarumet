@@ -123,6 +123,36 @@ Options:
   -V, --version                    Print version
 ```
 
+## Stored playlists
+
+Press **7** for MPD stored playlists. The left panel lists names and the right panel
+shows the selected playlist's tracks. Use the existing movement and panel keys;
+browsing does not change the playback queue.
+
+- **a / Enter**: append the selected playlist from the names panel, or just the
+  selected track from the tracks panel, without interrupting playback.
+- **Shift-P**: replace the queue and play the playlist, after Enter confirms the prompt.
+  Esc cancels. Empty or unavailable playlists leave the queue intact.
+- **Shift-S** in Queue or Playlists: save the current queue under a new name.
+  Enter saves, Esc cancels, Backspace edits, and Ctrl-U clears the name. Unicode
+  names and empty queues are supported; an existing playlist is never overwritten.
+- **Shift-R**: rename the selected playlist. The current name is prefilled; Ctrl-U
+  clears it. Existing destinations are never overwritten.
+- **Shift-D**: delete the selected playlist after a named confirmation. Esc cancels.
+  Rename and delete leave the playback queue and music files unchanged.
+- **u** in Playlists: refresh saved playlists. Changes from other MPD clients also
+  refresh automatically, preserving selection by name where possible.
+
+These actions are configurable in `[binds]` (see below). Keys 1–5 retain their
+existing meanings; 6 is unassigned. Use h/l (or the configured panel keys) to focus names or tracks. Shift-P always
+replaces and plays the whole playlist; a/Enter adds the focused selection.
+
+Playlist data stays on MPD. Replace-and-play stages tracks before removing old
+queue entries, so a missing track does not first destroy the old queue. MPD
+operations are not atomic: connection loss or a failure during removal/playback
+can leave a partial result. Zarumet reports the error and refreshes the queue;
+it does not claim to roll back changes from other clients.
+
 ## Configuration
 
 Configuration is stored in a TOML file. The default location is:
@@ -221,6 +251,12 @@ switch_to_artists = ["2"]
 switch_to_albums = ["3"]
 switch_to_years = ["4"]
 switch_to_genres = ["5"]
+switch_to_playlists = ["7"]
+play_playlist = ["shift-p"]
+rename_playlist = ["shift-r"]
+delete_playlist = ["shift-d"]
+add_playlist_to_queue = ["a", "enter"]
+save_queue_as_playlist = ["shift-s"]
 seek_forward = [
     "shift-l",
     "shift-right",

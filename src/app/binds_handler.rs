@@ -29,6 +29,8 @@ pub struct KeyBinds {
     queue_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     artists_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
     albums_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
+    playlists_map: HashMap<(KeyModifiers, KeyCode), MPDAction>,
+    playlist_sequences: Vec<SequentialKeyBinding>,
     sequential_bindings: Vec<SequentialKeyBinding>,
     current_state: KeyState,
     default_timeout: Duration,
@@ -48,9 +50,40 @@ impl KeyBinds {
             queue_map,
             artists_map,
             albums_map,
+            playlists_map: HashMap::new(),
+            playlist_sequences: Vec::new(),
             sequential_bindings,
             current_state: KeyState::Idle,
             default_timeout: Duration::from_millis(1000),
+        }
+    }
+
+    /// Keep playlist actions scoped without changing existing modes' maps.
+    pub fn configure_playlists(&mut self, config: &crate::app::config::binds::BindsConfig) {
+        for (bindings, action) in [
+            (&config.scroll_up, MPDAction::NavigateUp),
+            (&config.scroll_down, MPDAction::NavigateDown),
+            (&config.switch_panel_left, MPDAction::SwitchPanelLeft),
+            (&config.switch_panel_right, MPDAction::SwitchPanelRight),
+            (&config.scroll_up_big, MPDAction::ScrollUp),
+            (&config.scroll_down_big, MPDAction::ScrollDown),
+            (&config.go_to_top, MPDAction::GoToTop),
+            (&config.go_to_bottom, MPDAction::GoToBottom),
+            (&config.play_playlist, MPDAction::PlayPlaylist),
+            (&config.rename_playlist, MPDAction::RenamePlaylist),
+            (&config.delete_playlist, MPDAction::DeletePlaylist),
+            (&config.add_playlist_to_queue, MPDAction::AddPlaylistToQueue),
+            (
+                &config.save_queue_as_playlist,
+                MPDAction::SaveQueueAsPlaylist,
+            ),
+        ] {
+            config.add_enhanced_binding_for_action(
+                bindings,
+                action,
+                &mut self.playlists_map,
+                &mut self.playlist_sequences,
+            );
         }
     }
 
@@ -85,6 +118,11 @@ impl KeyBinds {
 
         // Check mode-specific bindings
         match mode {
+            MenuMode::Playlists => {
+                if let Some(action) = self.playlists_map.get(&key_tuple) {
+                    return Some(action.clone());
+                }
+            }
             MenuMode::Queue => {
                 if let Some(action) = self.queue_map.get(&key_tuple) {
                     return Some(action.clone());
@@ -172,7 +210,7 @@ impl KeyBinds {
         }
 
         // Check if this key could start a sequential binding
-        if self.could_start_sequence(key_tuple) {
+        if self.could_start_sequence(key_tuple, mode) {
             self.current_state = KeyState::Awaiting {
                 sequence: vec![key_tuple],
                 timeout: Instant::now() + self.default_timeout,
@@ -207,7 +245,11 @@ impl KeyBinds {
                 sequence.push(key_tuple);
 
                 // Check for complete sequence match
-                for binding in &self.sequential_bindings {
+                for binding in self.sequential_bindings.iter().chain(
+                    self.playlist_sequences
+                        .iter()
+                        .filter(|_| *mode == MenuMode::Playlists),
+                ) {
                     if binding.sequence == *sequence {
                         self.current_state = KeyState::Idle;
                         return Some(binding.action.clone());
@@ -218,6 +260,11 @@ impl KeyBinds {
                 let possible_matches: Vec<_> = self
                     .sequential_bindings
                     .iter()
+                    .chain(
+                        self.playlist_sequences
+                            .iter()
+                            .filter(|_| *mode == MenuMode::Playlists),
+                    )
                     .filter(|binding| {
                         sequence.len() <= binding.sequence.len()
                             && binding.sequence.starts_with(sequence)
@@ -238,9 +285,14 @@ impl KeyBinds {
     }
 
     /// Check if a key could start a sequential binding
-    fn could_start_sequence(&self, key_tuple: (KeyModifiers, KeyCode)) -> bool {
+    fn could_start_sequence(&self, key_tuple: (KeyModifiers, KeyCode), mode: &MenuMode) -> bool {
         self.sequential_bindings
             .iter()
+            .chain(
+                self.playlist_sequences
+                    .iter()
+                    .filter(|_| *mode == MenuMode::Playlists),
+            )
             .any(|binding| binding.sequence.first() == Some(&key_tuple))
     }
 
@@ -266,5 +318,95 @@ impl KeyBinds {
             // No action on timeout, just reset
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::app::binds_handler::KeyBinds;
+    use crate::app::config::binds::BindsConfig;
+    use crate::app::mpd_handler::MPDAction;
+    use crate::app::ui::{MenuMode, PanelFocus};
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
+    fn keys(config: BindsConfig) -> KeyBinds {
+        let (global, queue, artists, albums, sequences) = config.build_enhanced_key_maps();
+        KeyBinds::new_with_sequential(global, queue, artists, albums, sequences)
+    }
+    fn key(c: char) -> KeyEvent {
+        KeyEvent::new(KeyCode::Char(c), KeyModifiers::NONE)
+    }
+
+    #[test]
+    fn existing_mode_numbers_keep_their_meaning() {
+        let mut binds = keys(BindsConfig::default());
+        for (c, expected) in [
+            ('1', "SwitchToQueueMenu"),
+            ('2', "SwitchToArtists"),
+            ('3', "SwitchToAlbums"),
+            ('4', "SwitchToYears"),
+            ('5', "SwitchToGenres"),
+        ] {
+            let action = binds
+                .handle_key(key(c), &MenuMode::Queue, &PanelFocus::Artists)
+                .unwrap();
+            assert_eq!(action.to_string(), expected);
+        }
+    }
+
+    #[test]
+    fn partial_destructive_sequence_does_nothing() {
+        let mut binds = keys(BindsConfig::default());
+        assert!(
+            binds
+                .handle_key(key('d'), &MenuMode::Queue, &PanelFocus::Artists)
+                .is_none()
+        );
+        assert!(binds.is_awaiting_input());
+        assert!(matches!(
+            binds.handle_key(key('d'), &MenuMode::Queue, &PanelFocus::Artists),
+            Some(MPDAction::ClearQueue)
+        ));
+        assert!(!binds.is_awaiting_input());
+    }
+
+    #[test]
+    fn empty_configuration_binding_disables_clear() {
+        let config: BindsConfig = toml::from_str("clear_queue = []").unwrap();
+        let mut binds = keys(config);
+        for _ in 0..2 {
+            assert!(
+                binds
+                    .handle_key(key('d'), &MenuMode::Queue, &PanelFocus::Artists)
+                    .is_none()
+            );
+        }
+        assert!(!binds.is_awaiting_input());
+    }
+
+    #[test]
+    fn global_binding_precedes_mode_binding() {
+        let config = BindsConfig {
+            quit: vec!["x".into()],
+            ..Default::default()
+        };
+        let mut binds = keys(config);
+        assert!(matches!(
+            binds.handle_key(key('x'), &MenuMode::Queue, &PanelFocus::Artists),
+            Some(MPDAction::Quit)
+        ));
+    }
+
+    #[test]
+    fn navigation_enters_album_without_playing() {
+        let mut binds = keys(BindsConfig::default());
+        assert!(matches!(
+            binds.handle_key(key('l'), &MenuMode::Artists, &PanelFocus::Artists),
+            Some(MPDAction::SwitchPanelRight)
+        ));
+        assert!(matches!(
+            binds.handle_key(key('l'), &MenuMode::Artists, &PanelFocus::Albums),
+            Some(MPDAction::ToggleAlbumExpansion)
+        ));
     }
 }

@@ -176,7 +176,27 @@ impl AppMainLoop for App {
 
         log::info!("Entering event-driven main loop");
 
+        let (playlist_tx, mut playlist_rx) = mpsc::unbounded_channel();
+        let mut playlist_load: Option<tokio::task::JoinHandle<()>> = None;
+
         while self.running {
+            if self.menu_mode == crate::app::MenuMode::Playlists && self.playlists.needs_refresh {
+                if let Some(task) = playlist_load.take() {
+                    task.abort();
+                }
+                let client = client.clone();
+                let tx = playlist_tx.clone();
+                let generation = self.playlists.generation;
+                let selected = self.playlists.selected_name.clone();
+                let index = self.playlists.list_state.selected().unwrap_or(0);
+                self.playlists.needs_refresh = false;
+                self.playlists.loading = true;
+                self.dirty.mark_menu_mode();
+                playlist_load = Some(tokio::spawn(async move {
+                    let result = crate::app::mpd::playlists::browse(&client, selected, index).await;
+                    let _ = tx.send((generation, result));
+                }));
+            }
             // Check terminal size for dirty tracking
             let term_size = terminal.size()?;
             self.dirty
@@ -215,6 +235,7 @@ impl AppMainLoop for App {
                         self.show_config_warnings_popup,
                         &self.config_warnings,
                         &self.status_message,
+                        &mut self.playlists,
                     )
                 })?;
 
@@ -258,6 +279,10 @@ impl AppMainLoop for App {
 
             // Event-driven loop using tokio::select!
             tokio::select! {
+                Some((generation, result)) = playlist_rx.recv() => {
+                    self.playlists.apply(generation, result);
+                    self.dirty.mark_menu_mode();
+                }
                 // Keyboard events (with short timeout for responsive UI)
                 _ = tokio::time::sleep(Duration::from_millis(10)) => {
                     // Check for keyboard events non-blocking
@@ -307,9 +332,9 @@ impl AppMainLoop for App {
                                 Subsystem::Queue => {
                                     self.run_updates(&client).await?;
                                 }
-                                // Stored playlist changes - may affect queue if current playlist modified
+                                // Stored playlists have their own lifecycle; queue versions do not track them.
                                 Subsystem::StoredPlaylist => {
-                                    self.run_updates(&client).await?;
+                                    self.playlists.invalidate();
                                 }
                                 Subsystem::Update => {
                                     if self.library_reload_pending {
